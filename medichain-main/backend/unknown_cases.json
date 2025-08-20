@@ -1,0 +1,254 @@
+[
+  {
+    "timestamp": "2025-08-18T10:22:37.023232",
+    "symptoms": "fever",
+    "patient_data": {
+      "age": 15,
+      "gender": "Male",
+      "patient_id": "temp_1755483756388",
+      "name": "Patient"
+    },
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  },
+  {
+    "timestamp": "2025-08-18T10:26:21.724807",
+    "symptoms": "cough",
+    "patient_data": {
+      "age": 12,
+      "gender": "Female",
+      "patient_id": "temp_1755483981354",
+      "name": "Patient"
+    },
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  },
+  {
+    "timestamp": "2025-08-18T10:34:19.421414",
+    "symptoms": "cough",
+    "patient_data": {
+      "age": 2,
+      "gender": "Male",
+      "patient_id": "temp_1755484459049",
+      "name": "Patient"
+    },
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  },
+  {
+    "timestamp": "2025-08-18T10:38:35.333202",
+    "symptoms": {
+      "fever": 0,
+      "cough": 0,
+      "fatigue": 0,
+      "shortness_of_breath": 0,
+      "headache": 0,
+      "sore_throat": 0
+    },
+    "patient_data": {
+      "age": 35,
+      "gender": "Male"
+    },
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  },
+  {
+    "timestamp": "2025-08-18T10:39:46.541737",
+    "symptoms": {
+      "fever": 0,
+      "cough": 1,
+      "fatigue": 0,
+      "shortness_of_breath": 0,
+      "headache": 0,
+      "sore_throat": 0
+    },
+    "patient_data": {
+      "age": 2,
+      "gender": "Male",
+      "patient_id": "temp_1755484785904",
+      "name": "Patient"
+    },
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  },
+  {
+    "timestamp": "2025-08-18T10:48:45.430322",
+    "symptoms": {
+      "fever": 0,
+      "cough": 1,
+      "fatigue": 0,
+      "shortness_of_breath": 0,
+      "headache": 0,
+      "sore_throat": 0
+    },
+    "patient_data": {
+      "age": 2,
+      "gender": "Male",
+      "patient_id": "temp_1755485324804",
+      "name": "Patient"
+    },
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  },
+  {
+    "timestamp": "2025-08-18T10:50:20.573930",
+    "symptoms": {
+      "fever": 0,
+      "cough": 0,
+      "fatigue": 0,
+      "shortness_of_breath": 0,
+      "headache": 0,
+      "sore_throat": 0
+    },
+    "patient_data": {
+      "age": 15,
+      "gender": "Male",
+      "patient_id": "temp_1755485419949",
+      "name": "Patient"
+    },
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  },
+  {
+    "timestamp": "2025-08-18T10:51:01.351882",
+    "symptoms": {
+      "fever": 0,
+      "cough": 0,
+      "fatigue": 0,
+      "shortness_of_breath": 0,
+      "headache": 0,
+      "sore_throat": 0
+    },
+    "patient_data": {
+      "age": 15,
+      "gender": "Female",
+      "patient_id": "temp_1755485460893",
+      "name": "Patient"
+    },
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  },
+  {
+    "timestamp": "2025-08-18T10:52:44.154527",
+    "symptoms": {
+      "fever": 1,
+      "cough": 0,
+      "fatigue": 0,
+      "shortness_of_breath": 0,
+      "headache": 0,
+      "sore_throat": 0
+    },
+    "patient_data": {
+      "age": 47,
+      "gender": "Male",
+      "patient_id": "temp_1755485563523",
+      "name": "Patient"
+    },
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  },
+  {
+    "timestamp": "2025-08-18T10:54:48.995342",
+    "symptoms": {
+      "fever": 0,
+      "cough": 0,
+      "fatigue": 0,
+      "shortness_of_breath": 0,
+      "headache": 0,
+      "sore_throat": 0
+    },
+    "patient_data": {
+      "age": 47,
+      "gender": "Male",
+      "patient_id": "temp_1755485688366",
+      "name": "Patient"
+    },
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  },
+  {
+    "timestamp": "2025-08-18T11:01:27.756390",
+    "symptoms": {
+      "fever": 1,
+      "cough": 1,
+      "fatigue": 0,
+      "shortness_of_breath": 0,
+      "headache": 0,
+      "sore_throat": 0
+    },
+    "patient_data": {},
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  },
+  {
+    "timestamp": "2025-08-18T11:03:05.343751",
+    "symptoms": {
+      "fever": 1,
+      "cough": 1,
+      "fatigue": 0,
+      "shortness_of_breath": 0,
+      "headache": 0,
+      "sore_throat": 0
+    },
+    "patient_data": {},
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  },
+  {
+    "timestamp": "2025-08-18T11:03:54.927342",
+    "symptoms": {
+      "fever": 1,
+      "cough": 1,
+      "fatigue": 0,
+      "shortness_of_breath": 0,
+      "headache": 0,
+      "sore_throat": 0
+    },
+    "patient_data": {},
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  },
+  {
+    "timestamp": "2025-08-18T11:06:22.368363",
+    "symptoms": {
+      "fever": 1,
+      "cough": 1,
+      "fatigue": 0,
+      "shortness_of_breath": 0,
+      "headache": 0,
+      "sore_throat": 0
+    },
+    "patient_data": {},
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  },
+  {
+    "timestamp": "2025-08-18T11:07:28.075701",
+    "symptoms": {
+      "fever": 1,
+      "cough": 1,
+      "fatigue": 0,
+      "shortness_of_breath": 0,
+      "headache": 0,
+      "sore_throat": 0
+    },
+    "patient_data": {},
+    "reason": "low_confidence",
+    "requires_human_review": true,
+    "status": "pending"
+  }
+]

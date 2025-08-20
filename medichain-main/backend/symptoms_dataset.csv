@@ -1,0 +1,54 @@
+fever,cough,fatigue,shortness_of_breath,headache,sore_throat,diagnosis
+1,1,1,0,1,1,Flu
+1,0,1,1,0,0,Pneumonia
+0,1,0,0,1,1,Common Cold
+1,1,1,1,0,0,COVID-19
+0,0,1,0,1,0,Migraine
+1,0,0,0,1,1,Tonsillitis
+0,1,1,0,0,1,Bronchitis
+1,1,0,1,1,0,Asthma
+0,0,0,0,1,0,Headache
+1,1,1,0,0,1,Flu
+0,1,0,0,0,1,Cold
+1,0,1,1,1,0,Pneumonia
+1,1,0,1,0,0,COVID-19
+0,1,1,0,1,0,Sinusitis
+1,0,0,0,0,1,Strep Throat
+0,0,1,1,0,0,Anemia
+1,1,1,1,1,1,Severe Infection
+0,1,0,0,0,0,Allergies
+1,0,1,0,1,0,Flu
+0,1,1,0,0,0,Bronchitis
+1,1,0,0,1,1,Tonsillitis
+0,0,0,1,0,1,Asthma Attack
+1,1,1,0,0,0,COVID-19
+0,1,0,0,1,1,Sore Throat
+1,0,0,1,0,0,Pneumonia
+0,1,1,1,0,1,Bronchitis
+1,1,0,0,0,1,Flu
+0,0,1,0,0,0,Fatigue
+1,1,1,1,0,0,Severe COVID
+0,1,0,1,1,0,Asthma
+1,0,1,0,0,1,Flu
+0,1,1,0,0,0,Common Cold
+1,1,0,0,1,0,Migraine
+0,0,0,0,0,1,Throat Infection
+1,1,1,0,1,1,Flu with Complications
+0,1,0,0,1,0,Sinus Headache
+1,0,0,0,1,1,Tonsillitis
+0,1,1,1,0,0,Bronchitis
+1,1,0,1,0,1,COVID-19
+0,0,1,0,1,0,Headache
+1,1,1,1,1,0,Critical Condition
+0,1,0,0,0,1,Allergic Reaction
+1,0,1,0,0,0,Flu
+0,1,1,0,1,0,Sinus Infection
+1,1,0,0,0,0,Common Cold
+0,0,0,1,0,1,Breathing Issues
+1,1,1,0,1,0,Flu
+0,1,0,1,1,1,Asthma Exacerbation
+1,0,1,0,0,1,Flu
+0,1,1,0,0,0,Common Cold
+1,1,0,1,0,0,Pneumonia
+0,0,1,0,1,0,Headache
+1,1,1,1,1,1,Critical Illness

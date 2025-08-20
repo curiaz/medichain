@@ -1,0 +1,836 @@
+/* Modern Dashboard Styles */
+.dashboard-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 25%, #81d4fa 50%, #4fc3f7 75%, #29b6f6 100%);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 100px;
+  box-sizing: border-box;
+}
+
+.background-crosses {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cross {
+  position: absolute;
+  color: rgba(2, 136, 209, 0.15);
+  font-weight: bold;
+  animation: floating 4s ease-in-out infinite;
+  user-select: none;
+}
+
+@keyframes floating {
+  0%, 100% {
+    opacity: 0.1;
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    opacity: 0.25;
+    transform: scale(1.05) rotate(90deg);
+  }
+  50% {
+    opacity: 0.15;
+    transform: scale(0.95) rotate(180deg);
+  }
+  75% {
+    opacity: 0.3;
+    transform: scale(1.1) rotate(270deg);
+  }
+}
+
+/* Enhanced cross positions with better distribution */
+.cross-1 { top: 80px; left: 40px; font-size: 60px; animation-delay: 0s; }
+.cross-2 { top: 128px; right: 80px; font-size: 50px; animation-delay: 0.5s; }
+.cross-3 { bottom: 128px; left: 80px; font-size: 70px; animation-delay: 1s; }
+.cross-4 { bottom: 80px; right: 128px; font-size: 40px; animation-delay: 1.5s; }
+.cross-5 { top: 240px; left: 25%; font-size: 50px; animation-delay: 2s; }
+.cross-6 { top: 128px; right: 33%; font-size: 60px; animation-delay: 2.5s; }
+.cross-7 { top: 33%; left: 50%; font-size: 40px; animation-delay: 0.3s; }
+.cross-8 { bottom: 33%; right: 50%; font-size: 30px; animation-delay: 1.2s; }
+.cross-9 { top: 50%; left: 64px; font-size: 50px; animation-delay: 1.8s; }
+.cross-10 { bottom: 50%; right: 64px; font-size: 40px; animation-delay: 2.2s; }
+.cross-11 { top: 64px; left: 50%; font-size: 30px; animation-delay: 0.8s; }
+.cross-12 { bottom: 64px; left: 50%; font-size: 40px; animation-delay: 1.6s; }
+.cross-13 { top: 160px; left: 15%; font-size: 35px; animation-delay: 0.4s; }
+.cross-14 { top: 300px; right: 20%; font-size: 45px; animation-delay: 1.3s; }
+.cross-15 { bottom: 200px; left: 30%; font-size: 55px; animation-delay: 2.1s; }
+.cross-16 { bottom: 160px; right: 25%; font-size: 25px; animation-delay: 0.9s; }
+.cross-17 { top: 25%; left: 10%; font-size: 38px; animation-delay: 1.7s; }
+.cross-18 { top: 60%; right: 15%; font-size: 42px; animation-delay: 2.3s; }
+.cross-19 { bottom: 25%; left: 20%; font-size: 32px; animation-delay: 0.6s; }
+.cross-20 { top: 40%; right: 35%; font-size: 48px; animation-delay: 1.4s; }
+.cross-21 { bottom: 40%; left: 40%; font-size: 28px; animation-delay: 2.4s; }
+.cross-22 { top: 200px; right: 45%; font-size: 36px; animation-delay: 0.7s; }
+.cross-23 { bottom: 300px; left: 60%; font-size: 44px; animation-delay: 1.9s; }
+.cross-24 { top: 75%; left: 75%; font-size: 33px; animation-delay: 2.6s; }
+
+.dashboard-main-content {
+  width: 100%;
+  max-width: 1400px;
+  padding: 0 32px 32px 32px;
+  box-sizing: border-box;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  position: relative;
+  z-index: 10;
+}
+
+.dashboard-header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 24px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dashboard-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-title {
+  font-size: 48px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #1e40af, #3b82f6, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+  letter-spacing: -1px;
+  position: relative;
+}
+
+.dashboard-title::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 60px;
+  height: 4px;
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  border-radius: 2px;
+}
+
+.user-welcome {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #64748b;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.user-welcome strong {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.user-role {
+  font-size: 14px;
+  color: #3b82f6;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(59, 130, 246, 0.1);
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.dashboard-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.new-patient-btn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.new-patient-btn:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.5);
+  transform: translateY(-3px);
+}
+
+.new-patient-btn:active {
+  transform: translateY(-1px);
+}
+
+.dashboard-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.stats-cards-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.stat-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+.stat-card:nth-child(2)::before {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.stat-card:nth-child(3)::before {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.stat-card:nth-child(4)::before {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.stat-icon {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.stat-card:nth-child(2) .stat-icon {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.stat-card:nth-child(3) .stat-icon {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
+
+.stat-card:nth-child(4) .stat-icon {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1;
+}
+
+.main-and-sidebar-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
+}
+
+.main-content-area {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  min-height: 500px;
+  padding: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-area {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.pending-approvals-card,
+.user-info-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.pending-approvals-card:hover,
+.user-info-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.card-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.approval-item {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.1));
+  border-left: 4px solid #f59e0b;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  color: #1e293b;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.approval-item:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.15));
+  transform: translateX(4px);
+}
+
+.approval-item.empty {
+  min-height: 50px;
+  color: #94a3b8;
+  font-style: italic;
+  background: rgba(148, 163, 184, 0.1);
+  border-left-color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.user-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  font-size: 14px;
+}
+
+.user-detail:last-child {
+  border-bottom: none;
+}
+
+.user-detail strong {
+  color: #475569;
+  font-weight: 600;
+}
+
+.content-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  padding: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.content-card h3 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.activity-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: rgba(248, 249, 250, 0.8);
+  border-radius: 12px;
+  border-left: 4px solid #3b82f6;
+  transition: all 0.3s ease;
+}
+
+.activity-item:hover {
+  background: rgba(59, 130, 246, 0.1);
+  transform: translateX(4px);
+}
+
+.activity-time {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.activity-text {
+  font-size: 14px;
+  color: #1e293b;
+  flex-grow: 1;
+  margin-left: 20px;
+  font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .dashboard-main-content {
+    max-width: 100%;
+    padding: 0 24px 24px 24px;
+  }
+  
+  .dashboard-header-section {
+    padding: 24px;
+  }
+  
+  .dashboard-title {
+    font-size: 40px;
+  }
+  
+  .stats-cards-row {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .dashboard-container {
+    padding-top: 120px;
+  }
+  
+  .main-and-sidebar-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  
+  .dashboard-header-section {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+    text-align: center;
+  }
+  
+  .dashboard-actions {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding-top: 140px;
+  }
+  
+  .dashboard-main-content {
+    padding: 0 20px 20px 20px;
+  }
+
+  .dashboard-header-section {
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .dashboard-title {
+    font-size: 32px;
+  }
+  
+  .user-welcome {
+    text-align: center;
+  }
+
+  .new-patient-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 16px 24px;
+  }
+
+  .stats-cards-row {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+  .stat-card {
+    padding: 20px;
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+  
+  .stat-icon {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .stat-value {
+    font-size: 28px;
+  }
+
+  .main-content-area,
+  .pending-approvals-card,
+  .user-info-card {
+    padding: 20px;
+  }
+  
+  .content-card {
+    padding: 20px;
+  }
+  
+  .content-card h3 {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-main-content {
+    padding: 0 16px 16px 16px;
+  }
+  
+  .dashboard-header-section {
+    padding: 16px;
+    border-radius: 16px;
+  }
+  
+  .dashboard-title {
+    font-size: 28px;
+  }
+  
+  .stats-cards-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .stat-card {
+    flex-direction: row;
+    text-align: left;
+    padding: 16px;
+  }
+  
+  .stat-icon {
+    width: 45px;
+    height: 45px;
+  }
+  
+  .stat-value {
+    font-size: 24px;
+  }
+  
+  .main-content-area,
+  .pending-approvals-card,
+  .user-info-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+  
+  .activity-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+  
+  .activity-time {
+    align-self: flex-start;
+    font-size: 12px;
+  }
+  
+  .activity-text {
+    margin-left: 0;
+  }
+  
+  .user-detail {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-container {
+    padding-top: 180px;
+  }
+  
+  .dashboard-main-content {
+    padding: 0 12px 12px 12px;
+  }
+  
+  .dashboard-header-section {
+    padding: 12px;
+  }
+  
+  .dashboard-title {
+    font-size: 24px;
+  }
+  
+  .dashboard-title::after {
+    width: 40px;
+    height: 3px;
+  }
+  
+  .user-welcome {
+    font-size: 14px;
+  }
+  
+  .user-role {
+    font-size: 12px;
+    padding: 3px 8px;
+  }
+  
+  .new-patient-btn {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+  
+  .stat-card {
+    padding: 12px;
+  }
+  
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .stat-value {
+    font-size: 20px;
+  }
+  
+  .stat-label {
+    font-size: 12px;
+  }
+  
+  .main-content-area,
+  .pending-approvals-card,
+  .user-info-card {
+    padding: 12px;
+  }
+  
+  .content-card {
+    padding: 12px;
+  }
+  
+  .content-card h3 {
+    font-size: 18px;
+  }
+  
+  .card-title {
+    font-size: 16px;
+  }
+  
+  .approval-item {
+    padding: 12px 16px;
+    font-size: 13px;
+  }
+  
+  /* Hide some background crosses on mobile for cleaner look */
+  .cross:nth-child(n+16) {
+    display: none;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .dashboard-title {
+    font-weight: 700;
+  }
+  
+  .stat-value {
+    font-weight: 700;
+  }
+}
+
+/* Landscape mobile devices */
+@media (max-width: 896px) and (orientation: landscape) {
+  .dashboard-container {
+    padding-top: 80px;
+  }
+  
+  .stats-cards-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .main-and-sidebar-grid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+/* Print styles */
+@media print {
+  .dashboard-container {
+    background: white;
+    padding-top: 0;
+  }
+  
+  .background-crosses {
+    display: none;
+  }
+  
+  .dashboard-header-section {
+    background: white;
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+  
+  .new-patient-btn {
+    display: none;
+  }
+  
+  .stat-card,
+  .main-content-area,
+  .pending-approvals-card,
+  .user-info-card {
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: none;
+  }
+  
+  .content-card {
+    background: white;
+    border: 1px solid #ccc;
+    box-shadow: none;
+  }
+}
+
+/* Responsive adjustments for Dashboard */
+@media (max-width: 1024px) {
+  .main-and-sidebar-grid {
+    grid-template-columns: 1fr; /* Stack main and sidebar on smaller screens */
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-main-content {
+    padding: 16px;
+  }
+
+  .dashboard-title {
+    font-size: 28px;
+  }
+
+  .new-patient-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+
+  .stats-cards-row {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Smaller cards on mobile */
+    gap: 16px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .stat-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .pending-approvals-card,
+  .empty-card {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-header-section {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .dashboard-title {
+    font-size: 24px;
+  }
+
+  .new-patient-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .stats-cards-row {
+    grid-template-columns: 1fr; /* Stack cards vertically on very small screens */
+  }
+}

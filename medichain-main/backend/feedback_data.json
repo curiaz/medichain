@@ -1,0 +1,58 @@
+[
+  {
+    "session_id": "session_20250818_092332",
+    "timestamp": "2025-08-18T09:25:58.770544",
+    "actual_diagnosis": "COVID-19",
+    "doctor_notes": "Patient tested positive for COVID-19 via PCR. AI prediction was incorrect.",
+    "treatment_outcome": "Patient recovered with supportive care and isolation",
+    "feedback_type": "professional"
+  },
+  {
+    "session_id": "session_20250818_092632",
+    "timestamp": "2025-08-18T09:26:32.167808",
+    "actual_diagnosis": "Pneumonia",
+    "doctor_notes": "Manual training data addition",
+    "treatment_outcome": "Training data",
+    "feedback_type": "professional"
+  },
+  {
+    "session_id": "session_20250818_092632",
+    "timestamp": "2025-08-18T09:26:32.171871",
+    "actual_diagnosis": "Sinusitis",
+    "doctor_notes": "Manual training data addition",
+    "treatment_outcome": "Training data",
+    "feedback_type": "professional"
+  },
+  {
+    "session_id": "session_20250818_092632",
+    "timestamp": "2025-08-18T09:26:32.176421",
+    "actual_diagnosis": "Strep Throat",
+    "doctor_notes": "Manual training data addition",
+    "treatment_outcome": "Training data",
+    "feedback_type": "professional"
+  },
+  {
+    "session_id": "session_1755485333234",
+    "timestamp": "2025-08-18T10:48:53.547499",
+    "actual_diagnosis": "Professional Consultation Required",
+    "doctor_notes": "",
+    "treatment_outcome": "Successful",
+    "feedback_type": "outcome"
+  },
+  {
+    "session_id": "session_1755485436044",
+    "timestamp": "2025-08-18T10:50:36.362779",
+    "actual_diagnosis": "Incorrect diagnosis",
+    "doctor_notes": "",
+    "treatment_outcome": "Requires revision",
+    "feedback_type": "outcome"
+  },
+  {
+    "session_id": "feedback_20250819_111722",
+    "timestamp": "2025-08-19T11:17:22.401260",
+    "actual_diagnosis": "Flu",
+    "doctor_notes": "",
+    "treatment_outcome": "",
+    "feedback_type": "outcome"
+  }
+]
