@@ -1,6 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Footer.css';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTwitter, faFacebookF, faLinkedinIn, faGithub } from '@fortawesome/free-brands-svg-icons';
 
 const Footer = () => {
   const navigate = useNavigate();
@@ -38,7 +40,7 @@ const Footer = () => {
                 className="social-link"
                 aria-label="Follow us on Twitter"
               >
-                <i className="fab fa-twitter"></i>
+                <FontAwesomeIcon icon={faTwitter} />
               </a>
               <a 
                 href="https://facebook.com" 
@@ -47,7 +49,7 @@ const Footer = () => {
                 className="social-link"
                 aria-label="Follow us on Facebook"
               >
-                <i className="fab fa-facebook-f"></i>
+                <FontAwesomeIcon icon={faFacebookF} />
               </a>
               <a 
                 href="https://linkedin.com" 
@@ -56,7 +58,7 @@ const Footer = () => {
                 className="social-link"
                 aria-label="Connect with us on LinkedIn"
               >
-                <i className="fab fa-linkedin-in"></i>
+                <FontAwesomeIcon icon={faLinkedinIn} />
               </a>
               <a 
                 href="https://github.com" 
@@ -65,7 +67,7 @@ const Footer = () => {
                 className="social-link"
                 aria-label="View our code on GitHub"
               >
-                <i className="fab fa-github"></i>
+                <FontAwesomeIcon icon={faGithub} />
               </a>
             </div>
           </div>

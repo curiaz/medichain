@@ -172,7 +172,7 @@ const LandingPage = () => {
               </a>
               <a
                 className="nav-link"
-                onClick={(e) => handleSmoothScroll(e, '#contact')}
+                onClick={() => navigate('/contact')}
               >
                 Contact
               </a>
@@ -253,42 +253,42 @@ const LandingPage = () => {
               <div className="feature-item-icon">🤖</div>
               <h3>AI-Driven Diagnosis</h3>
               <p>
-                Our advanced AI algorithms analyze symptoms and medical data to provide accurate, instant diagnostic recommendations, helping healthcare professionals make informed decisions faster than ever before.
+                Receive fast and reliable diagnostic results with our AI technology, which analyzes symptoms and medical data to support healthcare decisions.
               </p>
             </div>
             <div className="feature-item">
               <div className="feature-item-icon">⛓️</div>
               <h3>Blockchain Records</h3>
               <p>
-                Store patient health records on an immutable blockchain network, ensuring data integrity, transparency, and eliminating the risk of tampering or unauthorized modifications.
+                Patient health records are securely stored on blockchain, making them tamper-proof and always accessible for trusted medical use.
               </p>
             </div>
             <div className="feature-item">
               <div className="feature-item-icon">🔐</div>
               <h3>Advanced Encryption</h3>
               <p>
-                Protect sensitive medical information with military-grade AES and SHA-256 encryption protocols, ensuring that patient data remains secure and private at all times.
+                All sensitive medical information is protected by strong encryption, keeping patient data private and secure at every step.
               </p>
             </div>
             <div className="feature-item">
               <div className="feature-item-icon">⚡</div>
               <h3>Real-time Analytics</h3>
               <p>
-                Get instant insights and analytics on patient health trends, treatment outcomes, and diagnostic patterns to improve healthcare delivery and patient outcomes.
+                Instantly view health trends and analytics to help improve care and make informed decisions for better patient outcomes.
               </p>
             </div>
             <div className="feature-item">
               <div className="feature-item-icon">🌐</div>
               <h3>Interoperability</h3>
               <p>
-                Seamlessly integrate with existing healthcare systems and share secure patient data across different medical institutions and healthcare providers.
+                Effortlessly share and integrate patient data across healthcare systems, ensuring smooth collaboration between providers.
               </p>
             </div>
             <div className="feature-item">
               <div className="feature-item-icon">📱</div>
               <h3>Mobile-First Design</h3>
               <p>
-                Access your medical dashboard and patient records from anywhere with our responsive, mobile-optimized platform designed for healthcare professionals on the go.
+                Access your dashboard and records anywhere, on any device, with a platform designed for healthcare professionals on the move.
               </p>
             </div>
           </div>

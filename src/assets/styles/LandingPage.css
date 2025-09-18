@@ -453,7 +453,7 @@ body {
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: repeat(3, 1fr); /* 3 columns */
   gap: 40px;
   margin-bottom: 60px;
 }
@@ -461,16 +461,23 @@ body {
 .feature-item {
   background: white;
   border-radius: 20px;
-  padding: 40px;
+  padding: 28px 40px; /* shorter height, wider padding */
   text-align: center;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
   border: 1px solid rgba(255, 255, 255, 0.8);
+  min-height: 160px; /* shorter card */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .feature-item:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(33, 150, 243, 0.4);
 }
 
 .feature-item-icon {
@@ -481,22 +488,29 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 30px;
+  margin: 0 auto 18px;
   color: white;
   font-size: 32px;
   box-shadow: 0 10px 30px rgba(77, 208, 225, 0.3);
+  transition: none;
 }
 
-.feature-item h3 {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 15px;
+/* Remove icon hover effect */
+.feature-item:hover .feature-item-icon {
+  background: linear-gradient(135deg, #4dd0e1, #2196f3);
+  box-shadow: 0 10px 30px rgba(77, 208, 225, 0.3);
+  transform: none;
 }
 
+.feature-item h3,
 .feature-item p {
-  color: #666;
-  line-height: 1.6;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  width: 90%;
+  text-indent: 0;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 /* Footer */
@@ -549,12 +563,18 @@ body {
     flex-wrap: wrap;
   }
   .features-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr; /* 1 column for small screens */
     gap: 30px;
   }
   .medical-dashboard {
     max-width: 100%;
     padding: 30px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr); /* 2 columns for medium screens */
   }
 }
 
