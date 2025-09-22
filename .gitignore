@@ -1,1 +1,27 @@
+# Node
 node_modules
+build
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+.env.*
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+# Misc
+*.bak
+*.tmp

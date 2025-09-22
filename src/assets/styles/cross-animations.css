@@ -1,0 +1,72 @@
+/* Simplified Cross Animation System */
+.background-crosses {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: var(--z-background);
+  overflow: hidden;
+}
+
+.cross {
+  position: absolute;
+  color: rgba(33, 150, 243, 0.1);
+  font-size: 2rem;
+  font-weight: bold;
+  animation: float 8s infinite linear;
+  user-select: none;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+    opacity: 0.1;
+  }
+  50% {
+    transform: translateY(-20px) rotate(10deg);
+    opacity: 0.2;
+  }
+}
+
+/* Dynamic cross positioning using CSS Grid */
+.background-crosses {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  gap: 2rem;
+  padding: 2rem;
+}
+
+.cross:nth-child(odd) {
+  animation-delay: 0s;
+}
+
+.cross:nth-child(even) {
+  animation-delay: 2s;
+}
+
+.cross:nth-child(3n) {
+  animation-delay: 4s;
+}
+
+.cross:nth-child(4n) {
+  animation-delay: 1s;
+}
+
+.cross:nth-child(5n) {
+  animation-delay: 3s;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .background-crosses {
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+  }
+  
+  .cross {
+    font-size: 1.5rem;
+  }
+}

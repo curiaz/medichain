@@ -1,0 +1,367 @@
+/* Doctor Dashboard Specific Styles */
+
+/* Doctor Stats Cards */
+.doctor-stat {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+  color: white;
+}
+
+.doctor-stat .stat-icon {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.doctor-stat .stat-label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.doctor-stat .stat-value {
+  color: white;
+}
+
+/* Doctor Actions Grid */
+.doctor-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+/* Pending Reviews Card - Doctor Specific */
+.pending-reviews-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9));
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.pending-reviews-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+}
+
+.pending-reviews-card .card-title {
+  color: #333;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.review-item {
+  padding: 1.25rem;
+  border: 1px solid rgba(79, 172, 254, 0.2);
+  border-radius: 15px;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.review-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  transition: width 0.3s ease;
+}
+
+.review-item:hover {
+  transform: translateX(8px);
+  box-shadow: 0 8px 25px rgba(79, 172, 254, 0.2);
+  border-color: #4facfe;
+}
+
+.review-item:hover::before {
+  width: 6px;
+}
+
+.review-item:last-child {
+  margin-bottom: 0;
+}
+
+.patient-name {
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 0.5rem;
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.patient-name::before {
+  content: '👤';
+  font-size: 1rem;
+}
+
+.consultation-info {
+  color: #4a5568;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.consultation-time {
+  color: #718096;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.consultation-time::before {
+  content: '🕐';
+  font-size: 0.8rem;
+}
+
+.review-btn {
+  width: 100%;
+  padding: 0.875rem 1.25rem;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.75px;
+  position: relative;
+  overflow: hidden;
+}
+
+.review-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.review-btn:hover::before {
+  left: 100%;
+}
+
+.review-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(79, 172, 254, 0.4);
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+}
+
+.review-btn.urgent {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
+  box-shadow: 0 4px 20px rgba(255, 107, 107, 0.3);
+}
+
+.review-btn.urgent:hover {
+  background: linear-gradient(135deg, #ff5252 0%, #ff6b6b 100%);
+  box-shadow: 0 12px 35px rgba(255, 107, 107, 0.5);
+}
+
+.review-btn.urgent::after {
+  content: '⚠️';
+  margin-left: 0.5rem;
+}
+
+/* Doctor Information Card */
+.doctor-info-card {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+  border-radius: 20px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 10px 40px rgba(79, 172, 254, 0.3);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.doctor-info-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 50px rgba(79, 172, 254, 0.4);
+}
+
+.doctor-info-card .card-title {
+  color: white;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.doctor-info-card .user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.doctor-info-card .user-detail {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+}
+
+.doctor-info-card .user-detail:last-child {
+  border-bottom: none;
+}
+
+.doctor-info-card .user-detail strong {
+  color: white;
+  font-weight: 700;
+}
+
+/* Doctor Activity Status Styles */
+.activity-status.completed {
+  background: linear-gradient(135deg, #d4edda, #c3e6cb);
+  color: #155724;
+  border: 1px solid #c3e6cb;
+  font-weight: 600;
+}
+
+.activity-status.pending {
+  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+  color: #856404;
+  border: 1px solid #ffeaa7;
+  font-weight: 600;
+  animation: pulse 2s infinite;
+}
+
+.activity-status.modified {
+  background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+  font-weight: 600;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Doctor Action Cards - Enhanced */
+.doctor-actions-grid .action-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.doctor-actions-grid .action-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.doctor-actions-grid .action-card:hover::before {
+  transform: scaleX(1);
+}
+
+/* Statistics Enhancement for Doctors */
+.doctor-stat {
+  position: relative;
+  overflow: hidden;
+}
+
+.doctor-stat::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: rotate(45deg);
+  transition: all 0.5s ease;
+  opacity: 0;
+}
+
+.doctor-stat:hover::before {
+  animation: shine 0.5s ease;
+  opacity: 1;
+}
+
+@keyframes shine {
+  0% {
+    top: -50%;
+    right: -50%;
+  }
+  100% {
+    top: 50%;
+    right: 50%;
+  }
+}
+
+/* Doctor Responsive Design */
+@media (max-width: 768px) {
+  .doctor-actions-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .pending-reviews-card {
+    margin-bottom: 1rem;
+    padding: 1rem;
+  }
+  
+  .review-item {
+    padding: 1rem;
+  }
+  
+  .patient-name {
+    font-size: 1.1rem;
+  }
+  
+  .review-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .pending-reviews-card,
+  .doctor-info-card {
+    padding: 1rem;
+  }
+  
+  .review-item {
+    padding: 0.875rem;
+  }
+  
+  .consultation-info {
+    font-size: 0.9rem;
+  }
+  
+  .consultation-time {
+    font-size: 0.8rem;
+  }
+}

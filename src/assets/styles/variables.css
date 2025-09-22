@@ -1,0 +1,68 @@
+/* CSS Variables for MediChain - Centralized Constants */
+:root {
+  /* Primary Colors */
+  --primary-blue: #2196f3;
+  --primary-light-blue: #4dd0e1;
+  --primary-dark-blue: #0277bd;
+  --secondary-purple: #8b5cf6;
+  --secondary-pink: #e91e63;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #4dd0e1, #2196f3);
+  --gradient-secondary: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  --gradient-background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 30%, #81d4fa 70%, #4dd0e1 100%);
+
+  /* Text Colors */
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+
+  /* Background Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-card: rgba(255, 255, 255, 0.95);
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.1);
+
+  /* Animation */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+
+  /* Typography */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+
+  /* Z-index */
+  --z-background: -1;
+  --z-base: 0;
+  --z-raised: 10;
+  --z-overlay: 50;
+  --z-modal: 100;
+  --z-toast: 1000;
+}

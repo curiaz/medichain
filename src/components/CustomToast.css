@@ -1,0 +1,143 @@
+/* Custom Toast Styles - MediChain Theme */
+.custom-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  min-width: 300px;
+  max-width: 500px;
+  animation: slideIn 0.3s ease-out;
+  z-index: 9999;
+  position: relative;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.custom-toast-success {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.95), rgba(56, 142, 60, 0.95));
+  color: white;
+  border-left: 4px solid #4caf50;
+}
+
+.custom-toast-success svg {
+  color: #e8f5e8;
+  flex-shrink: 0;
+}
+
+.custom-toast-error {
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.95), rgba(211, 47, 47, 0.95));
+  color: white;
+  border-left: 4px solid #f44336;
+}
+
+.custom-toast-error svg {
+  color: #ffebee;
+  flex-shrink: 0;
+}
+
+.custom-toast-info {
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.95), rgba(25, 118, 210, 0.95));
+  color: white;
+  border-left: 4px solid #2196f3;
+}
+
+.custom-toast-info svg {
+  color: #e3f2fd;
+  flex-shrink: 0;
+}
+
+/* Toast container styling */
+.Toastify__toast-container {
+  padding: 0;
+  z-index: 9999;
+  position: fixed;
+}
+
+.Toastify__toast {
+  margin-bottom: 8px;
+  padding: 0;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+  border: none;
+}
+
+.Toastify__toast-body {
+  padding: 0;
+  margin: 0;
+}
+
+.Toastify__progress-bar {
+  height: 3px;
+  border-radius: 0 0 12px 12px;
+}
+
+.Toastify__progress-bar--success {
+  background: #4caf50;
+}
+
+.Toastify__progress-bar--error {
+  background: #f44336;
+}
+
+.Toastify__progress-bar--info {
+  background: #2196f3;
+}
+
+/* Close button styling */
+.Toastify__close-button {
+  color: white;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+  align-self: center;
+}
+
+.Toastify__close-button:hover {
+  opacity: 1;
+}
+
+/* Ensure toast is visible above all content */
+.Toastify__toast-container--top-right {
+  top: 1em;
+  right: 1em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .custom-toast {
+    min-width: 280px;
+    max-width: calc(100vw - 40px);
+    margin: 0 20px;
+    font-size: 13px;
+    padding: 14px 16px;
+  }
+  
+  .Toastify__toast-container--top-right {
+    top: 0.5em;
+    right: 0.5em;
+  }
+}
+
+@media (max-width: 480px) {
+  .custom-toast {
+    min-width: 260px;
+    font-size: 12px;
+    padding: 12px 14px;
+  }
+}
