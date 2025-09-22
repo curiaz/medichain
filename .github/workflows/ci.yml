@@ -35,10 +35,11 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install "black[jupyter]"
 
     - name: Run backend tests
       run: |
-        python -m pytest tests/ -v --cov=. --cov-report=xml
+        python -m pytest tests/ -v --cov=app --cov-report=xml
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
@@ -92,19 +93,19 @@ jobs:
     - name: Install linting tools
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 black isort
+        pip install flake8 black isort "black[jupyter]"
 
     - name: Run linting
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 app --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Check code formatting
       run: |
-        black --check --diff .
-        isort --check-only --diff .
+        black --check --diff app
+        isort --check-only --diff app
 
   lint-frontend:
     runs-on: ubuntu-latest
@@ -141,7 +142,7 @@ jobs:
         output: 'trivy-results.sarif'
 
     - name: Upload Trivy scan results
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v4
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
@@ -166,7 +167,7 @@ jobs:
       run: npm run build
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       with:
         name: frontend-build
         path: build/
