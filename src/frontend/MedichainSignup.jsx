@@ -48,12 +48,20 @@ const MedichainSignup = () => {
   const validateForm = () => {
     const { firstName, lastName, email, password, confirmPassword } = formData
     
-    // Debug: Log form data to see what's actually there
-    console.log('Form data:', formData)
-    console.log('firstName:', firstName, 'lastName:', lastName, 'email:', email, 'password:', password, 'confirmPassword:', confirmPassword)
+    if (!firstName?.trim()) {
+      showToast.error("Please enter your first name")
+      return false
+    }
     
-    // COMPLETELY BYPASS VALIDATION FOR TESTING
-    return true;
+    if (!lastName?.trim()) {
+      showToast.error("Please enter your last name")
+      return false
+    }
+    
+    if (!email?.trim()) {
+      showToast.error("Please enter your email")
+      return false
+    }
     
     if (!password?.trim()) {
       showToast.error("Please enter a password")
@@ -320,7 +328,6 @@ const MedichainSignup = () => {
             </div>
           </div>
 
-          {/* Doctor Image Section */}
           <div className="doctor-image">
             <div className="doctor-placeholder">
               <div className="doctor-icon">
@@ -349,7 +356,6 @@ const MedichainSignup = () => {
         </div>
       </div>
 
-      {/* Footer */}
       <div className="footer">
         <div className="footer-content">
           <div className="footer-main">
@@ -364,7 +370,7 @@ const MedichainSignup = () => {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default MedichainSignup
+export default MedichainSignup;

@@ -47,14 +47,6 @@ const MedichainSignup = () => {
 
   const validateForm = () => {
     const { firstName, lastName, email, password, confirmPassword } = formData
-    
-    // Debug: Log form data to see what's actually there
-    console.log('Form data:', formData)
-    console.log('firstName:', firstName, 'lastName:', lastName, 'email:', email, 'password:', password, 'confirmPassword:', confirmPassword)
-    
-    // COMPLETELY BYPASS VALIDATION FOR TESTING
-    return true;
-    
     if (!password?.trim()) {
       showToast.error("Please enter a password")
       return false

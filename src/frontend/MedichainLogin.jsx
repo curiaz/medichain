@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import "./MedichainLogin.css"
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { Eye, EyeOff, Lock, Mail, Plus, ChevronRight, AlertCircle, CheckCircle } from "lucide-react"
+import { Eye, EyeOff, Lock, Mail, Plus, ChevronRight, AlertCircle } from "lucide-react"
 import MedichainLogo from "../components/MedichainLogo"
 import LoadingSpinner from "../components/LoadingSpinner"
 import RoleSelectionModal from "../components/RoleSelectionModal"
@@ -146,9 +146,7 @@ const MedichainLogin = () => {
     }
   }
 
-  const handleForgotPassword = () => {
-    navigate("/reset-password")
-  }
+
 
   // Show loading spinner if checking authentication
   if (loading) {

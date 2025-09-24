@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react"
 import Header from "./Header"
-import { Plus, Users, Clock, Activity, CheckCircle, AlertCircle, UserCheck, Brain, Stethoscope } from "lucide-react"
+import { Plus, Activity, AlertCircle, Brain, Stethoscope } from "lucide-react"
+import { Users } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import "../assets/styles/ModernDashboard.css"

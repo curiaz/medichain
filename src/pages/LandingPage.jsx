@@ -152,30 +152,34 @@ const LandingPage = () => {
               <div className="logo-text">MEDICHAIN</div>
             </div>
             <nav className="nav-links">
-              <a
+              <button
                 className="nav-link"
                 onClick={(e) => handleSmoothScroll(e, '#features')}
+                type="button"
               >
                 Features
-              </a>
-              <a
+              </button>
+              <button
                 className="nav-link"
                 onClick={(e) => handleSmoothScroll(e, '#about')}
+                type="button"
               >
                 About
-              </a>
-              <a
+              </button>
+              <button
                 className="nav-link"
                 onClick={(e) => handleSmoothScroll(e, '#security')}
+                type="button"
               >
                 Security
-              </a>
-              <a
+              </button>
+              <button
                 className="nav-link"
                 onClick={(e) => handleSmoothScroll(e, '#contact')}
+                type="button"
               >
                 Contact
-              </a>
+              </button>
             </nav>
             <div className="cta-buttons">
               <button

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Brain, User, Activity, FileText, RefreshCw, Plus, AlertCircle, ThumbsUp, ThumbsDown, Info, LogIn, UserPlus } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import AIProgressBar from '../components/AIProgressBar';
+import Header from './Header';
 import { showToast } from '../components/CustomToast';
 import { aiService } from '../services/aiService';
 import { useAuth } from '../context/AuthContext';

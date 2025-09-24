@@ -1,4 +1,4 @@
-import React from 'react';
+// Removed unused React import
 import './CustomToast.css';
 
 // Simple toast implementation without external libraries
@@ -102,4 +102,4 @@ export const showToast = {
   info: (message) => createToast(message, 'info', 3000)
 };
 
-export default { showToast };
+export default showToast;
