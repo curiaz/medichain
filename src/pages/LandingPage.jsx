@@ -106,14 +106,15 @@ const LandingPage = () => {
       });
     }, observerOptions);
 
-    if (statsRef.current) {
-      statsObserver.observe(statsRef.current);
+    const currentStatsRef = statsRef.current;
+    if (currentStatsRef) {
+      statsObserver.observe(currentStatsRef);
     }
 
     return () => {
       isCleanedUp = true;
-      if (statsRef.current) {
-        statsObserver.unobserve(statsRef.current);
+      if (currentStatsRef) {
+        statsObserver.unobserve(currentStatsRef);
       }
       timers.forEach(timer => {
         clearInterval(timer);
