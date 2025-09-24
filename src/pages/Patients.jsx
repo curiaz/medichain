@@ -146,7 +146,7 @@ const Patients = () => {
               <Search className="search-icon" size={18} />
             </div>
             
-            {user && (user.role === 'doctor' || user.role === 'admin') && (
+            {user && user.profile && (user.profile.role === 'doctor' || user.profile.role === 'admin') && (
               <button 
                 className="new-patient-btn"
                 onClick={handleNewPatient}

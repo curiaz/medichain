@@ -24,9 +24,9 @@ const HealthRecord = () => {
         <div className="dashboard-header-section">
           <div className="dashboard-title-section">
             <h1 className="dashboard-title">MY HEALTH RECORD</h1>
-            {user && (
+            {user && user.profile && (
               <div className="user-welcome">
-                <span>Health record for <strong>{user.first_name ? `${user.first_name} ${user.last_name}` : user.name}</strong></span>
+                <span>Health record for <strong>{user.profile.first_name ? `${user.profile.first_name} ${user.profile.last_name}` : user.profile.name}</strong></span>
               </div>
             )}
           </div>

@@ -67,9 +67,9 @@ const PatientDashboard = () => {
         <div className="dashboard-header-section">
           <div className="dashboard-title-section">
             <h1 className="dashboard-title">PATIENT DASHBOARD</h1>
-            {user && (
+            {user && user.profile && (
               <div className="user-welcome">
-                <span>Welcome back, <strong>{user.first_name || user.name}</strong></span>
+                <span>Welcome back, <strong>{user.profile.first_name || user.profile.name}</strong></span>
                 <span className="user-role">Patient Portal</span>
               </div>
             )}
@@ -210,19 +210,19 @@ const PatientDashboard = () => {
                   <UserCheck size={20} />
                   My Information
                 </h3>
-                {user ? (
+                {user && user.profile ? (
                   <div className="user-details">
                     <div className="user-detail">
-                      <strong>Name:</strong> {user.first_name ? `${user.first_name} ${user.last_name}` : (user.name || 'N/A')}
+                      <strong>Name:</strong> {user.profile.first_name ? `${user.profile.first_name} ${user.profile.last_name}` : (user.profile.name || 'N/A')}
                     </div>
                     <div className="user-detail">
-                      <strong>Email:</strong> {user.email || 'N/A'}
+                      <strong>Email:</strong> {user.profile.email || user.email || 'N/A'}
                     </div>
                     <div className="user-detail">
-                      <strong>Role:</strong> {user.role || 'N/A'}
+                      <strong>Role:</strong> {user.profile.role ? user.profile.role.charAt(0).toUpperCase() + user.profile.role.slice(1) : 'N/A'}
                     </div>
                     <div className="user-detail">
-                      <strong>Member since:</strong> {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Today'}
+                      <strong>Member since:</strong> {user.profile.created_at ? new Date(user.profile.created_at).toLocaleDateString() : 'Today'}
                     </div>
                   </div>
                 ) : (

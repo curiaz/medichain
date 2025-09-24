@@ -68,9 +68,9 @@ const DoctorDashboard = () => {
         <div className="dashboard-header-section">
           <div className="dashboard-title-section">
             <h1 className="dashboard-title">DOCTOR DASHBOARD</h1>
-            {user && (
+            {user && user.profile && (
               <div className="user-welcome">
-                <span>Welcome back, <strong>Dr. {user.first_name || user.name}</strong></span>
+                <span>Welcome back, <strong>Dr. {user.profile.first_name || user.profile.name}</strong></span>
                 <span className="user-role">Medical Professional</span>
               </div>
             )}
@@ -218,19 +218,19 @@ const DoctorDashboard = () => {
                   <Stethoscope size={20} />
                   Doctor Information
                 </h3>
-                {user ? (
+                {user && user.profile ? (
                   <div className="user-details">
                     <div className="user-detail">
-                      <strong>Name:</strong> Dr. {user.first_name ? `${user.first_name} ${user.last_name}` : (user.name || 'N/A')}
+                      <strong>Name:</strong> Dr. {user.profile.first_name ? `${user.profile.first_name} ${user.profile.last_name}` : (user.profile.name || 'N/A')}
                     </div>
                     <div className="user-detail">
-                      <strong>Email:</strong> {user.email || 'N/A'}
+                      <strong>Email:</strong> {user.profile.email || user.email || 'N/A'}
                     </div>
                     <div className="user-detail">
-                      <strong>Role:</strong> {user.role || 'N/A'}
+                      <strong>Role:</strong> {user.profile.role ? user.profile.role.charAt(0).toUpperCase() + user.profile.role.slice(1) : 'N/A'}
                     </div>
                     <div className="user-detail">
-                      <strong>License:</strong> MD-{user.id ? String(user.id).slice(-6).toUpperCase() : 'XXXXXX'}
+                      <strong>License:</strong> {user.doctor_profile?.license_number || `MD-${user.uid ? String(user.uid).slice(-6).toUpperCase() : 'XXXXXX'}`}
                     </div>
                   </div>
                 ) : (

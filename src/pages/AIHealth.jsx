@@ -201,8 +201,8 @@ const AIHealth = () => {
         patient_data: {
           age: parseInt(patientAge),
           gender: patientGender,
-          patient_id: user ? user.id : `guest_${Date.now()}`,
-          name: user ? `${user.first_name} ${user.last_name}` : 'Guest'
+          patient_id: user ? (user.profile?.id || user.uid) : `guest_${Date.now()}`,
+          name: user && user.profile ? `${user.profile.first_name} ${user.profile.last_name}` : 'Guest'
         },
         doctor_id: null, // No doctor for public access
         include_recommendations: true,
@@ -760,7 +760,7 @@ const AIHealth = () => {
             </div>
             <div className="ai-system-item">
               <ShieldIcon />
-              {user ? `Logged in as ${user.first_name}` : 'Guest Mode'}
+              {user && user.profile ? `Logged in as ${user.profile.first_name}` : 'Guest Mode'}
             </div>
             <div className="ai-system-item">
               <DatabaseIcon />
