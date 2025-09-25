@@ -713,14 +713,15 @@
   font-weight: 400;
 }
 
-.feature-list {
+/* Login Features Section */
+.login-feature-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
   text-align: left;
 }
 
-.feature-item {
+.login-feature-item {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -731,11 +732,11 @@
   transition: color 0.2s ease;
 }
 
-.feature-item:hover {
+.login-feature-item:hover {
   color: #333;
 }
 
-.feature-item svg {
+.login-feature-item svg {
   color: #0288d1;
   width: 18px;
   height: 18px;
@@ -874,16 +875,16 @@
     margin-bottom: 24px;
   }
   
-  .feature-list {
+  .login-feature-list {
     gap: 12px;
   }
   
-  .feature-item {
+  .login-feature-item {
     font-size: 14px;
     gap: 10px;
   }
   
-  .feature-item svg {
+  .login-feature-item svg {
     width: 16px;
     height: 16px;
   }

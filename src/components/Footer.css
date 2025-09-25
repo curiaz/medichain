@@ -1,6 +1,6 @@
 /* Optimized Footer Styles */
 .footer {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e3f2fd 100%);
+  background: linear-gradient(135deg, #f8f9fa 15%, #e3f2fd 100%);
   color: #333333;
   padding: 25px 0 15px; /* Reduced padding */
   margin-top: auto;
