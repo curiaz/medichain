@@ -332,16 +332,16 @@ const MedichainLogin = () => {
               <p>
                 Securely access AI-generated diagnoses, prescriptions, and encrypted health records stored on the blockchain.
               </p>
-              <div className="feature-list">
-                <div className="feature-item">
+              <div className="login-feature-list">
+                <div className="login-feature-item">
                   <Plus size={16} />
                   <span>AI-Powered Diagnostics</span>
                 </div>
-                <div className="feature-item">
+                <div className="login-feature-item">
                   <Plus size={16} />
                   <span>Blockchain Security</span>
                 </div>
-                <div className="feature-item">
+                <div className="login-feature-item">
                   <Plus size={16} />
                   <span>End-to-End Encryption</span>
                 </div>

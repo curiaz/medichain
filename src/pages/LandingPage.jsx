@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faJs, faPython, faCss3Alt } from '@fortawesome/free-brands-svg-icons';
+import { faCube } from '@fortawesome/free-solid-svg-icons';
 import RoleSelectionModal from '../components/RoleSelectionModal';
 import Footer from '../components/Footer';
 import '../assets/styles/LandingPage.css';
@@ -36,16 +39,29 @@ const LandingPage = () => {
     const handleScroll = () => {
       if (window.scrollY > 100) {
         setHeaderStyle({
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
           background: 'rgba(255, 255, 255, 0.98)',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+          zIndex: 1000,
+          transition: 'all 0.3s ease',
         });
       } else {
         setHeaderStyle({
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
           background: 'rgba(255, 255, 255, 0.95)',
           boxShadow: 'none',
+          zIndex: 1000,
+          transition: 'all 0.3s ease',
         });
       }
     };
+
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -142,58 +158,56 @@ const LandingPage = () => {
       <div className="floating-cross">+</div>
       <div className="floating-cross">+</div>
 
+      {/* Header */}
+      <header className="header" style={headerStyle}>
+        <div className="nav-container">
+          <div
+            className="logo-container"
+            onClick={(e) => handleSmoothScroll(e, '.hero')} // Scroll to the top (hero section)
+            style={{ cursor: 'pointer' }}
+          >
+            <div className="logo-icon">+</div>
+            <div className="logo-text">MEDICHAIN</div>
+          </div>
+          <nav className="nav-links">
+            <a
+              className="nav-link"
+              onClick={(e) => handleSmoothScroll(e, '#about')}
+            >
+              About
+            </a>
+            <a
+              className="nav-link"
+              onClick={(e) => handleSmoothScroll(e, '#features')}
+            >
+              Features
+            </a>
+            <a
+              className="nav-link"
+              onClick={(e) => handleSmoothScroll(e, '#contact')} // Scroll to the Contact Us section
+            >
+              Contact Us
+            </a>
+          </nav>
+          <div className="cta-buttons">
+            <button
+              className="btn btn-secondary"
+              onClick={() => navigate('/login')}
+            >
+              Log In
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleGetStarted}
+            >
+              Get Started
+            </button>
+          </div>
+        </div>
+      </header>
+
       {/* Hero Section */}
       <section className="hero">
-        {/* Header */}
-        <header className="header" style={headerStyle}>
-          <div className="nav-container">
-            <div className="logo-container">
-              <div className="logo-icon">+</div>
-              <div className="logo-text">MEDICHAIN</div>
-            </div>
-            <nav className="nav-links">
-              <a
-                className="nav-link"
-                onClick={(e) => handleSmoothScroll(e, '#features')}
-              >
-                Features
-              </a>
-              <a
-                className="nav-link"
-                onClick={(e) => handleSmoothScroll(e, '#about')}
-              >
-                About
-              </a>
-              <a
-                className="nav-link"
-                onClick={(e) => handleSmoothScroll(e, '#security')}
-              >
-                Security
-              </a>
-              <a
-                className="nav-link"
-                onClick={() => navigate('/contact')}
-              >
-                Contact
-              </a>
-            </nav>
-            <div className="cta-buttons">
-              <button
-                className="btn btn-secondary"
-                onClick={() => navigate('/login')}
-              >
-                Log In
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleGetStarted}
-              >
-                Get Started
-              </button>
-            </div>
-          </div>
-        </header>
-
         {/* Hero Content */}
         <div className="hero-content">
           <div className="hero-text">
@@ -211,12 +225,6 @@ const LandingPage = () => {
                 onClick={() => navigate('/ai-health')}
               >
                 Try AI Health Assistant
-              </button>
-              <button
-                className="btn btn-secondary btn-large"
-                onClick={(e) => handleSmoothScroll(e, '#features')}
-              >
-                Learn More
               </button>
             </div>
             <div className="hero-stats" ref={statsRef}>
@@ -237,8 +245,46 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* About Section */}
+      <section className="about" id="about">
+        <div className="container about-container">
+          {/* Description Section */}
+          <div className="about-description-section">
+            <h2 className="about-title">About MediChain</h2>
+            <p className="about-description">
+              MediChain is a groundbreaking healthcare platform that combines the power of artificial intelligence and blockchain technology. Our mission is to revolutionize the healthcare industry by providing secure, efficient, and intelligent solutions for managing patient health records and delivering accurate diagnoses.
+            </p>
+            <p className="about-description">
+              With MediChain, healthcare professionals can leverage AI-driven tools to analyze symptoms and medical data, enabling faster and more reliable diagnostic recommendations. This ensures better decision-making and improved patient outcomes, saving valuable time and resources.
+            </p>
+          </div>
+
+          {/* Built On Section */}
+          <div className="about-built-on-section">
+            <h2 className="about-title">What MediChain is Built On</h2>
+            <p className="about-description">
+              MediChain is powered by cutting-edge technologies, including artificial intelligence for accurate diagnostics, blockchain for secure and immutable health records, and advanced encryption protocols to ensure data privacy and security.
+            </p>
+            <div className="tech-logos">
+              <div className="tech-logo-link" aria-label="JavaScript">
+                <FontAwesomeIcon icon={faJs} className="tech-logo" title="JavaScript" />
+              </div>
+              <div className="tech-logo-link" aria-label="Tailwind CSS">
+                <FontAwesomeIcon icon={faCss3Alt} className="tech-logo" title="Tailwind CSS" />
+              </div>
+              <div className="tech-logo-link" aria-label="Python">
+                <FontAwesomeIcon icon={faPython} className="tech-logo" title="Python" />
+              </div>
+              <div className="tech-logo-link" aria-label="Blockchain">
+                <FontAwesomeIcon icon={faCube} className="tech-logo" title="Blockchain" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
-      <section className="features" id="features">
+      <section className="landing_features" id="features">
         <div className="container">
           <div className="section-header">
             <div className="section-badge">✨ Revolutionary Technology</div>
@@ -292,6 +338,26 @@ const LandingPage = () => {
               </p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Contact Us Section */}
+      <section className="contact" id="contact">
+        <div className="container contact-container">
+          <h2 className="contact-title">Contact Us</h2>
+          <div className="contact-info">
+            <p><strong>Email:</strong> support@medichain.com</p>
+            <p><strong>Phone:</strong> +1 (234) 567-890</p>
+            <p><strong>Address:</strong> Taguig City University</p>
+          </div>
+          <form className="contact-form">
+            <input type="text" name="name" placeholder="Your Name" required />
+            <input type="email" name="email" placeholder="Your Email" required />
+            <input type="tel" name="phone" placeholder="Your Phone Number" required />
+            <input type="text" name="subject" placeholder="Subject" required />
+            <textarea name="message" placeholder="Your Message" rows="5" required></textarea>
+            <button type="submit" className="btn btn-primary">Submit</button>
+          </form>
         </div>
       </section>
 
