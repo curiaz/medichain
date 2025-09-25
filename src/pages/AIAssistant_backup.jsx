@@ -7,6 +7,7 @@ import Header from './Header';
 import { showToast } from '../components/CustomToast';
 import { aiService } from '../services/aiService';
 import { useAuth } from '../context/AuthContext';
+import { SupabaseService } from '../config/supabase';
 import '../assets/styles/LandingPage.css';
 import '../assets/styles/AIHealth.css';
 
@@ -151,6 +152,40 @@ const AIAssistant = () => {
       
       if (result.success) {
         setDiagnosis(result.data);
+        
+        // Save diagnosis to database if user is authenticated
+        if (user?.uid) {
+          try {
+            const diagnosisData = {
+              user_firebase_uid: user.uid,
+              symptoms: symptoms.trim(),
+              age: parseInt(patientAge),
+              gender: patientGender,
+              diagnosis: result.data.diagnosis,
+              confidence_score: result.data.confidence,
+              prescription: result.data.prescription,
+              recommendations: result.data.recommendations,
+              session_type: 'authenticated',
+              ai_model_version: result.data.metadata?.model_version || '1.0',
+              created_at: new Date().toISOString(),
+              // Assign to a doctor if available (for now, this can be null)
+              assigned_doctor_uid: null,
+              doctor_review_status: null
+            };
+
+            const saveResult = await SupabaseService.saveAIDiagnosis(diagnosisData);
+            
+            if (saveResult.success) {
+              console.log('Diagnosis saved to database:', saveResult.data);
+            } else {
+              console.warn('Failed to save diagnosis to database:', saveResult.error);
+            }
+          } catch (dbError) {
+            console.error('Database save error:', dbError);
+            // Don't show error to user as diagnosis was successful
+          }
+        }
+        
         showToast.success('AI diagnosis completed successfully');
       } else {
         throw new Error(result.error || 'Failed to get diagnosis');

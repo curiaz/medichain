@@ -3,6 +3,7 @@ import { Calendar, Brain, User, Clock, FileText, Search, Eye, Activity } from 'l
 import { useAuth } from '../context/AuthContext';
 import { showToast } from '../components/CustomToast';
 import LoadingSpinner from '../components/LoadingSpinner';
+import DatabaseService from '../services/databaseService';
 
 const PatientAIHistory = () => {
   const [selectedPatient, setSelectedPatient] = useState('');
@@ -15,21 +16,25 @@ const PatientAIHistory = () => {
 
   useEffect(() => {
     loadPatientList();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadPatientList = async () => {
     try {
-      // This would typically fetch from your backend API
-      // For now, using mock data
-      const mockPatients = [
-        { id: '1', name: 'John Doe', email: 'john@example.com', last_consultation: '2024-01-15' },
-        { id: '2', name: 'Jane Smith', email: 'jane@example.com', last_consultation: '2024-01-14' },
-        { id: '3', name: 'Mike Johnson', email: 'mike@example.com', last_consultation: '2024-01-13' },
-      ];
-      setPatientList(mockPatients);
+      setLoading(true);
+      // Get patients assigned to this doctor from database
+      const result = await DatabaseService.getPatientList(user.uid);
+      
+      if (result.success) {
+        setPatientList(result.data);
+      } else {
+        console.error('Error loading patient list:', result.error);
+        showToast.error('Failed to load patient list');
+      }
     } catch (error) {
       console.error('Error loading patient list:', error);
       showToast.error('Failed to load patient list');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -38,63 +43,23 @@ const PatientAIHistory = () => {
     
     setLoading(true);
     try {
-      // This would typically fetch from your backend API
-      // For now, using mock data
-      const mockHistory = [
-        {
-          id: '1',
-          patient_id: patientId,
-          timestamp: '2024-01-15T10:30:00Z',
-          symptoms: 'Persistent headache, fatigue, difficulty concentrating',
-          age: 35,
-          gender: 'female',
-          diagnosis: 'Tension-type headache possibly related to stress',
-          confidence: 85,
-          prescription: 'Ibuprofen 400mg every 6-8 hours, stress management techniques',
-          recommendations: 'Ensure adequate sleep, stay hydrated, consider stress reduction activities',
-          doctor_review: null,
-          doctor_notes: '',
-          modified_prescription: null,
-          session_type: 'authenticated'
-        },
-        {
-          id: '2',
-          patient_id: patientId,
-          timestamp: '2024-01-10T14:15:00Z',
-          symptoms: 'Sore throat, mild fever, body aches',
-          age: 35,
-          gender: 'female',
-          diagnosis: 'Viral upper respiratory infection',
-          confidence: 92,
-          prescription: 'Rest, increased fluid intake, throat lozenges',
-          recommendations: 'Monitor temperature, return if symptoms worsen or persist beyond 7 days',
-          doctor_review: 'Reviewed',
-          doctor_notes: 'Patient recovered well. Advised to continue current treatment.',
-          modified_prescription: null,
-          session_type: 'authenticated'
-        },
-        {
-          id: '3',
-          patient_id: patientId,
-          timestamp: '2024-01-05T09:45:00Z',
-          symptoms: 'Intermittent chest pain, shortness of breath during exercise',
-          age: 35,
-          gender: 'female',
-          diagnosis: 'Exercise-induced chest discomfort, likely musculoskeletal',
-          confidence: 78,
-          prescription: 'Gradual increase in exercise intensity, proper warm-up routine',
-          recommendations: 'Schedule cardiac evaluation if symptoms persist or worsen',
-          doctor_review: 'Reviewed',
-          doctor_notes: 'Recommended ECG and stress test. Results normal. Cleared for exercise.',
-          modified_prescription: 'Cleared for normal activities. Continue gradual exercise progression.',
-          session_type: 'authenticated'
-        }
-      ];
+      // Get patient AI history from database
+      const result = await DatabaseService.getPatientAIHistory(patientId, user.uid);
       
-      setAiHistory(mockHistory);
+      if (result.success) {
+        setAiHistory(result.data);
+        if (result.data.length === 0) {
+          showToast.info('No AI consultation history found for this patient.');
+        }
+      } else {
+        console.error('Error loading AI history:', result.error);
+        showToast.error('Failed to load patient AI history');
+        setAiHistory([]);
+      }
     } catch (error) {
       console.error('Error loading AI history:', error);
       showToast.error('Failed to load patient AI history');
+      setAiHistory([]);
     } finally {
       setLoading(false);
     }
@@ -112,31 +77,42 @@ const PatientAIHistory = () => {
 
   const submitDoctorReview = async (consultationId, notes, modifiedPrescription) => {
     try {
-      // This would typically send to your backend API
-      const updatedHistory = aiHistory.map(consultation => {
-        if (consultation.id === consultationId) {
-          return {
-            ...consultation,
-            doctor_review: 'Reviewed',
-            doctor_notes: notes,
-            modified_prescription: modifiedPrescription,
-            reviewed_by: user.id,
-            reviewed_at: new Date().toISOString()
-          };
-        }
-        return consultation;
+      // Update doctor review in database
+      const result = await DatabaseService.updateDoctorReview(consultationId, {
+        status: 'Reviewed',
+        notes: notes,
+        modifiedPrescription: modifiedPrescription
       });
-      
-      setAiHistory(updatedHistory);
-      showToast.success('Doctor review submitted successfully');
-      
-      // Update selected consultation
-      const updatedConsultation = updatedHistory.find(c => c.id === consultationId);
-      setSelectedConsultation(updatedConsultation);
+
+      if (result.success) {
+        // Update local state with database response
+        const updatedHistory = aiHistory.map(consultation => {
+          if (consultation.id === consultationId) {
+            return {
+              ...consultation,
+              doctor_review: 'Reviewed',
+              doctor_notes: notes,
+              modified_prescription: modifiedPrescription,
+              reviewed_by: user.uid,
+              reviewed_at: new Date().toISOString()
+            };
+          }
+          return consultation;
+        });
+        
+        setAiHistory(updatedHistory);
+        showToast.success('Doctor review submitted successfully');
+        
+        // Update selected consultation
+        const updatedConsultation = updatedHistory.find(c => c.id === consultationId);
+        setSelectedConsultation(updatedConsultation);
+      } else {
+        throw new Error(result.error);
+      }
       
     } catch (error) {
       console.error('Error submitting review:', error);
-      showToast.error('Failed to submit doctor review');
+      showToast.error('Failed to submit doctor review: ' + error.message);
     }
   };
 

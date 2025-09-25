@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react"
 import Header from "./Header"
-import { Plus, Activity, AlertCircle, Brain, Stethoscope } from "lucide-react"
+import { Plus, Activity, AlertCircle, Brain, Stethoscope, RefreshCw } from "lucide-react"
 import { Users } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
+import DatabaseService from "../services/databaseService"
 import "../assets/styles/ModernDashboard.css"
 import "../assets/styles/DoctorDashboard.css"
 
@@ -23,20 +24,36 @@ const DoctorDashboard = () => {
     aiConsultations: 0,
     recentActivity: 0
   })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    // Load doctor dashboard stats
-    loadDoctorStats()
-  }, [])
+    // Load doctor dashboard stats when component mounts or user changes
+    if (user?.uid) {
+      loadDoctorStats()
+    }
+  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loadDoctorStats = () => {
-    // Placeholder stats - in real app, this would fetch from API
-    setStats({
-      totalPatients: 24,
-      pendingReviews: 3,
-      aiConsultations: 12,
-      recentActivity: 8
-    })
+  const loadDoctorStats = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const result = await DatabaseService.getDoctorStats(user.uid)
+      
+      if (result.success) {
+        setStats(result.data)
+      } else {
+        console.warn('Failed to load doctor stats:', result.error)
+        setError('Failed to load dashboard statistics')
+        // Keep existing stats as fallback
+      }
+    } catch (err) {
+      console.error('Error loading doctor stats:', err)
+      setError('Error connecting to database')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleNewPatient = () => {
@@ -74,11 +91,21 @@ const DoctorDashboard = () => {
                 <span className="user-role">Medical Professional</span>
               </div>
             )}
+            {error && (
+              <div className="error-message" style={{ color: '#e74c3c', fontSize: '0.9rem', marginTop: '8px' }}>
+                {error} - Using offline data
+              </div>
+            )}
           </div>
           <div className="dashboard-actions">
             <button className="primary-action-btn" onClick={handleNewPatient}>
               <Plus size={20} /> New Patient
             </button>
+            {loading && (
+              <div className="loading-indicator" style={{ marginLeft: '10px', fontSize: '0.9rem', color: '#666' }}>
+                <RefreshCw size={16} className="spinning" /> Loading stats...
+              </div>
+            )}
           </div>
         </div>
 
