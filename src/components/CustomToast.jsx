@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-unused-vars
 import React from 'react';
 import './CustomToast.css';
 
@@ -102,4 +103,5 @@ export const showToast = {
   info: (message) => createToast(message, 'info', 3000)
 };
 
-export default { showToast };
+const toastExport = { showToast };
+export default toastExport;

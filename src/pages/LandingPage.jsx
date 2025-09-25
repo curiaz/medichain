@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faJs, faPython, faCss3Alt } from '@fortawesome/free-brands-svg-icons';
-import { faCube } from '@fortawesome/free-solid-svg-icons';
+import { faCube, faStethoscope } from '@fortawesome/free-solid-svg-icons';
 import RoleSelectionModal from '../components/RoleSelectionModal';
 import Footer from '../components/Footer';
 import '../assets/styles/LandingPage.css';
@@ -10,13 +10,6 @@ import '../assets/styles/LandingPage.css';
 const LandingPage = () => {
   const navigate = useNavigate();
   const [headerStyle, setHeaderStyle] = useState({});
-  const statsRef = useRef(null);
-  const [statsAnimated, setStatsAnimated] = useState(false);
-  const [statsValues, setStatsValues] = useState({
-    accuracy: 99.9,
-    patients: 10,
-    encryption: 256
-  });
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
 
   const handleGetStarted = () => {
@@ -66,78 +59,6 @@ const LandingPage = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => {
-    let timers = [];
-    let isCleanedUp = false;
-
-    const animateStats = () => {
-      if (isCleanedUp) return;
-
-      const stats = [
-        { key: 'accuracy', target: 99.9, suffix: '%' },
-        { key: 'patients', target: 10, suffix: 'K+' },
-        { key: 'encryption', target: 256, suffix: '-bit' },
-      ];
-
-      stats.forEach((stat) => {
-        let current = 0;
-        const increment = stat.target / 50;
-        const timer = setInterval(() => {
-          if (isCleanedUp) {
-            clearInterval(timer);
-            return;
-          }
-
-          current += increment;
-          if (current >= stat.target) {
-            setStatsValues(prev => ({
-              ...prev,
-              [stat.key]: stat.target
-            }));
-            clearInterval(timer);
-            timers = timers.filter(t => t !== timer);
-          } else {
-            setStatsValues(prev => ({
-              ...prev,
-              [stat.key]: Math.floor(current)
-            }));
-          }
-        }, 50);
-        
-        timers.push(timer);
-      });
-    };
-
-    const observerOptions = {
-      threshold: 0.5,
-      rootMargin: '0px 0px -50px 0px',
-    };
-
-    const statsObserver = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting && !statsAnimated && !isCleanedUp) {
-          setStatsAnimated(true);
-          animateStats();
-        }
-      });
-    }, observerOptions);
-
-    if (statsRef.current) {
-      statsObserver.observe(statsRef.current);
-    }
-
-    return () => {
-      isCleanedUp = true;
-      if (statsRef.current) {
-        statsObserver.unobserve(statsRef.current);
-      }
-      timers.forEach(timer => {
-        clearInterval(timer);
-      });
-      timers = [];
-    };
-  }, [statsAnimated]);
-
   const handleSmoothScroll = (e, targetId) => {
     e.preventDefault();
     const target = document.querySelector(targetId);
@@ -166,28 +87,33 @@ const LandingPage = () => {
             onClick={(e) => handleSmoothScroll(e, '.hero')} // Scroll to the top (hero section)
             style={{ cursor: 'pointer' }}
           >
-            <div className="logo-icon">+</div>
+            <div className="logo-icon">
+              <FontAwesomeIcon icon={faStethoscope} />
+            </div>
             <div className="logo-text">MEDICHAIN</div>
           </div>
           <nav className="nav-links">
-            <a
+            <button
               className="nav-link"
               onClick={(e) => handleSmoothScroll(e, '#about')}
+              type="button"
             >
               About
-            </a>
-            <a
+            </button>
+            <button
               className="nav-link"
               onClick={(e) => handleSmoothScroll(e, '#features')}
+              type="button"
             >
               Features
-            </a>
-            <a
+            </button>
+            <button
               className="nav-link"
-              onClick={(e) => handleSmoothScroll(e, '#contact')} // Scroll to the Contact Us section
+              onClick={(e) => handleSmoothScroll(e, '#contact')}
+              type="button"
             >
               Contact Us
-            </a>
+            </button>
           </nav>
           <div className="cta-buttons">
             <button
@@ -226,20 +152,6 @@ const LandingPage = () => {
               >
                 Try AI Health Assistant
               </button>
-            </div>
-            <div className="hero-stats" ref={statsRef}>
-              <div className="stat">
-                <span className="stat-number">{statsValues.accuracy}%</span>
-                <span className="stat-label">Accuracy Rate</span>
-              </div>
-              <div className="stat">
-                <span className="stat-number">{statsValues.patients}K+</span>
-                <span className="stat-label">Patients Served</span>
-              </div>
-              <div className="stat">
-                <span className="stat-number">{statsValues.encryption}-bit</span>
-                <span className="stat-label">Encryption</span>
-              </div>
             </div>
           </div>
         </div>

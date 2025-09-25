@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Brain, User, Clock, FileText, AlertCircle, Search, Eye, Activity } from 'lucide-react';
+import { Calendar, Brain, User, Clock, FileText, Search, Eye, Activity } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { showToast } from '../components/CustomToast';
 import LoadingSpinner from '../components/LoadingSpinner';

@@ -52,9 +52,6 @@ const MedichainSignup = () => {
     console.log('Form data:', formData)
     console.log('firstName:', firstName, 'lastName:', lastName, 'email:', email, 'password:', password, 'confirmPassword:', confirmPassword)
     
-    // COMPLETELY BYPASS VALIDATION FOR TESTING
-    return true;
-    
     if (!password?.trim()) {
       showToast.error("Please enter a password")
       return false

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Menu, X, User, LogOut, Home, Users, FileText, Calendar, Activity, Shield, ChevronDown, TrendingUp, Heart, Brain, Database } from 'lucide-react';
+import { Menu, X, User, LogOut, Home, Users, FileText, Calendar, Activity, ChevronDown, TrendingUp, Heart, Brain, Database } from 'lucide-react';
 
 const DashboardLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
