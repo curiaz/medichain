@@ -330,16 +330,16 @@ const MedichainSignup = () => {
               <p>
                 Create your account to access secure healthcare records and AI-powered medical services.
               </p>
-              <div className="feature-list">
-                <div className="feature-item">
+              <div className="login-feature-list">
+                <div className="login-feature-item">
                   <Plus size={16} />
                   <span>Secure Account Creation</span>
                 </div>
-                <div className="feature-item">
+                <div className="login-feature-item">
                   <Plus size={16} />
                   <span>HIPAA Compliant</span>
                 </div>
-                <div className="feature-item">
+                <div className="login-feature-item">
                   <Plus size={16} />
                   <span>Encrypted Data Storage</span>
                 </div>
