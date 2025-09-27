@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react"
 import Header from "./Header"
-import { Plus, Activity, AlertCircle, Brain, Stethoscope, RefreshCw } from "lucide-react"
-import { Users } from "lucide-react"
+import { Plus, Users, Activity, AlertCircle, Brain, Stethoscope, RefreshCw } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"

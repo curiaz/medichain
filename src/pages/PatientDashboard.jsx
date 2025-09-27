@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 import Header from "./Header"
-import { Plus, Activity, Brain, FileText, Heart, Calendar, UserCheck, RefreshCw } from "lucide-react"
+import { Plus, Activity, Brain, FileText, Heart, Calendar, User, RefreshCw } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"
@@ -234,7 +234,7 @@ const PatientDashboard = () => {
 
               <div className="user-info-card">
                 <h3 className="card-title">
-                  <UserCheck size={20} />
+                  <User size={20} />
                   My Information
                 </h3>
                 {user && user.profile ? (
