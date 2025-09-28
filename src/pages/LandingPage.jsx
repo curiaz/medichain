@@ -2,15 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faJs, faPython, faCss3Alt } from '@fortawesome/free-brands-svg-icons';
-import { faCube, faStethoscope } from '@fortawesome/free-solid-svg-icons';
+import { faCube } from '@fortawesome/free-solid-svg-icons';
 import RoleSelectionModal from '../components/RoleSelectionModal';
 import Footer from '../components/Footer';
+import medichainLogo from '../assets/medichain_logo.png';
 import '../assets/styles/LandingPage.css';
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const [headerStyle, setHeaderStyle] = useState({});
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    subject: '',
+    message: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState('');
 
   const handleGetStarted = () => {
     setIsRoleModalOpen(true);
@@ -26,6 +36,49 @@ const LandingPage = () => {
 
   const closeRoleModal = () => {
     setIsRoleModalOpen(false);
+  };
+
+  const handleContactInputChange = (e) => {
+    const { name, value } = e.target;
+    setContactForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitMessage('');
+
+    try {
+      const response = await fetch('http://localhost:5000/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contactForm)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSubmitMessage('Thank you! Your message has been sent successfully.');
+        setContactForm({
+          name: '',
+          email: '',
+          phone: '',
+          subject: '',
+          message: ''
+        });
+      } else {
+        setSubmitMessage('Error: ' + (result.error || 'Failed to send message'));
+      }
+    } catch (error) {
+      setSubmitMessage('Error: Failed to send message. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -88,7 +141,7 @@ const LandingPage = () => {
             style={{ cursor: 'pointer' }}
           >
             <div className="logo-icon">
-              <FontAwesomeIcon icon={faStethoscope} />
+              <img src={medichainLogo} alt="MediChain Logo" className="logo-image" />
             </div>
             <div className="logo-text">MEDICHAIN</div>
           </div>
@@ -126,7 +179,7 @@ const LandingPage = () => {
               className="btn btn-primary"
               onClick={handleGetStarted}
             >
-              Get Started
+              Sign Up
             </button>
           </div>
         </div>
@@ -147,11 +200,14 @@ const LandingPage = () => {
             </p>
             <div className="hero-buttons">
               <button
-                className="btn btn-primary btn-large"
+                className="btn btn-primary btn-extra-large"
                 onClick={() => navigate('/ai-health')}
               >
-                Try AI Health Assistant
+                Try AI Diagnosis & Prescription
               </button>
+              <p className="ai-disclaimer">
+                Note: This is only a predicted condition. Please seek professional medical advice for accurate diagnosis.
+              </p>
             </div>
           </div>
         </div>
@@ -262,13 +318,61 @@ const LandingPage = () => {
             <p><strong>Phone:</strong> +1 (234) 567-890</p>
             <p><strong>Address:</strong> Taguig City University</p>
           </div>
-          <form className="contact-form">
-            <input type="text" name="name" placeholder="Your Name" required />
-            <input type="email" name="email" placeholder="Your Email" required />
-            <input type="tel" name="phone" placeholder="Your Phone Number" required />
-            <input type="text" name="subject" placeholder="Subject" required />
-            <textarea name="message" placeholder="Your Message" rows="5" required></textarea>
-            <button type="submit" className="btn btn-primary">Submit</button>
+          <form className="contact-form" onSubmit={handleContactSubmit}>
+            <input 
+              type="text" 
+              name="name" 
+              placeholder="Your Name" 
+              value={contactForm.name}
+              onChange={handleContactInputChange}
+              required 
+            />
+            <input 
+              type="email" 
+              name="email" 
+              placeholder="Your Email" 
+              value={contactForm.email}
+              onChange={handleContactInputChange}
+              required 
+            />
+            <input 
+              type="tel" 
+              name="phone" 
+              placeholder="Your Phone Number" 
+              value={contactForm.phone}
+              onChange={handleContactInputChange}
+            />
+            <input 
+              type="text" 
+              name="subject" 
+              placeholder="Subject" 
+              value={contactForm.subject}
+              onChange={handleContactInputChange}
+              required 
+            />
+            <textarea 
+              name="message" 
+              placeholder="Your Message" 
+              rows="5" 
+              value={contactForm.message}
+              onChange={handleContactInputChange}
+              required
+              className="contact-message-textarea"
+            ></textarea>
+            <button 
+              type="submit" 
+              className="btn btn-primary" 
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Sending...' : 'Submit'}
+            </button>
+            {submitMessage && (
+              <div className={`submit-message ${
+                submitMessage.includes('Error') ? 'error' : 'success'
+              }`}>
+                {submitMessage}
+              </div>
+            )}
           </form>
         </div>
       </section>

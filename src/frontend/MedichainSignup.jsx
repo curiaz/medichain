@@ -53,6 +53,11 @@ const MedichainSignup = () => {
       return false
     }
     
+    if (!lastName?.trim()) {
+      showToast.error("Please enter your last name")
+      return false
+    }
+    
     if (!password?.trim()) {
       showToast.error("Please enter a password")
       return false
