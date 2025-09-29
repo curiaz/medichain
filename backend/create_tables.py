@@ -1,25 +1,28 @@
 """
 Create database tables using Supabase REST API
 """
+
 import os
+
 import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
 
 def create_tables():
     """Create tables using Supabase REST API"""
-    
+
     # Headers for Supabase REST API
     headers = {
-        'apikey': SUPABASE_KEY,
-        'Authorization': f'Bearer {SUPABASE_KEY}',
-        'Content-Type': 'application/json'
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
     }
-    
+
     # SQL commands to create tables
     sql_commands = [
         """
@@ -46,9 +49,9 @@ def create_tables():
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
-        """
+        """,
     ]
-    
+
     # Execute SQL commands
     for sql in sql_commands:
         try:
@@ -59,9 +62,10 @@ def create_tables():
             print("Note: You may need to run this SQL manually in Supabase dashboard:")
             print(sql)
             print("-" * 50)
-            
+
         except Exception as e:
             print(f"Error executing SQL: {e}")
+
 
 if __name__ == "__main__":
     create_tables()

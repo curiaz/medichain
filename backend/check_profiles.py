@@ -2,16 +2,22 @@
 """
 Check user profiles in database
 """
-import sys
 import os
+import sys
+
 sys.path.append(os.path.dirname(__file__))
 
 from db.supabase_client import SupabaseClient
 
+
 def main():
     supabase = SupabaseClient()
     try:
-        response = supabase.service_client.table('user_profiles').select('firebase_uid, email, first_name, last_name, role').execute()
+        response = (
+            supabase.service_client.table("user_profiles")
+            .select("firebase_uid, email, first_name, last_name, role")
+            .execute()
+        )
 
         print("📊 All user profiles in database:")
         print(f"Found {len(response.data)} profiles")
@@ -27,6 +33,7 @@ def main():
 
     except Exception as e:
         print(f"❌ Error: {e}")
+
 
 if __name__ == "__main__":
     main()

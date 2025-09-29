@@ -2,14 +2,17 @@
 Drop existing tables script for MediChain
 Drops all existing tables to prepare for fresh schema setup
 """
+
 import os
 import sys
+
 from dotenv import load_dotenv
 
 # Add the parent directory to the path so we can import our modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from db.supabase_client import SupabaseClient
+
 
 def drop_existing_tables():
     """Drop all existing tables in the database"""
@@ -19,12 +22,12 @@ def drop_existing_tables():
 
         # List of tables to drop (in reverse dependency order)
         tables_to_drop = [
-            'appointments',
-            'ai_diagnoses',
-            'prescriptions',
-            'medical_records',
-            'doctor_profiles',
-            'user_profiles'
+            "appointments",
+            "ai_diagnoses",
+            "prescriptions",
+            "medical_records",
+            "doctor_profiles",
+            "user_profiles",
         ]
 
         print("Dropping existing tables...")
@@ -33,7 +36,9 @@ def drop_existing_tables():
         for table in tables_to_drop:
             try:
                 # Use service client to bypass RLS
-                supabase.service_client.table(table).delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
+                supabase.service_client.table(table).delete().neq(
+                    "id", "00000000-0000-0000-0000-000000000000"
+                ).execute()
                 print(f"✓ Cleared data from {table}")
             except Exception as e:
                 print(f"Note: {table} may not exist or is already empty: {e}")
@@ -44,6 +49,7 @@ def drop_existing_tables():
     except Exception as e:
         print(f"Error dropping tables: {e}")
         print("Make sure your SUPABASE_SERVICE_KEY is set in the .env file")
+
 
 if __name__ == "__main__":
     drop_existing_tables()

@@ -2,66 +2,77 @@
 Doctor Verification System
 Handles doctor signup, verification, and approval workflow
 """
-from flask import Blueprint, request, jsonify
-from werkzeug.utils import secure_filename
-import os
-import uuid
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email import encoders
-from datetime import datetime, timedelta
-import secrets
+
 import hashlib
+import os
+import secrets
+import smtplib
+import uuid
+from datetime import datetime, timedelta
+from email import encoders
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+from flask import Blueprint, jsonify, request
+from werkzeug.utils import secure_filename
+
 from auth.firebase_auth import firebase_auth_service
 from db.supabase_client import SupabaseClient
 
-doctor_verification_bp = Blueprint('doctor_verification', __name__, url_prefix='/api/auth')
+doctor_verification_bp = Blueprint(
+    "doctor_verification", __name__, url_prefix="/api/auth"
+)
 supabase = SupabaseClient()
 
 # Configuration
-UPLOAD_FOLDER = 'uploads/doctor_verification'
-ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
+UPLOAD_FOLDER = "uploads/doctor_verification"
+ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 # Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+
 def allowed_file(filename):
     """Check if file extension is allowed"""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 def generate_verification_token():
     """Generate a secure verification token"""
     return secrets.token_urlsafe(32)
 
-def send_admin_notification_email(doctor_data, file_path, doctor_id, verification_token):
+
+def send_admin_notification_email(
+    doctor_data, file_path, doctor_id, verification_token
+):
     """Send email to admin with doctor verification request"""
     try:
         # Email configuration
         smtp_server = "smtp.gmail.com"
         smtp_port = 587
-        sender_email = os.getenv('ADMIN_EMAIL', 'medichain173@gmail.com')
-        sender_password = os.getenv('ADMIN_EMAIL_PASSWORD')
-        admin_email = os.getenv('ADMIN_NOTIFICATION_EMAIL', 'medichain173@gmail.com')
-        
+        sender_email = os.getenv("ADMIN_EMAIL", "medichain173@gmail.com")
+        sender_password = os.getenv("ADMIN_EMAIL_PASSWORD")
+        admin_email = os.getenv("ADMIN_NOTIFICATION_EMAIL", "medichain173@gmail.com")
+
         if not sender_password:
             print("Warning: Admin email password not configured")
             return False
-        
+
         # Create message
         msg = MIMEMultipart()
-        msg['From'] = sender_email
-        msg['To'] = admin_email
-        msg['Subject'] = f"Doctor Verification Request - {doctor_data['firstName']} {doctor_data['lastName']}"
-        
+        msg["From"] = sender_email
+        msg["To"] = admin_email
+        msg["Subject"] = (
+            f"Doctor Verification Request - {doctor_data['firstName']} {doctor_data['lastName']}"
+        )
+
         # Create HTML email body with styled buttons
-        base_url = os.getenv('BASE_URL', 'http://localhost:5000')
+        base_url = os.getenv("BASE_URL", "http://localhost:5000")
         approve_url = f"{base_url}/api/auth/verify/approve?doctorId={doctor_id}&token={verification_token}"
         decline_url = f"{base_url}/api/auth/verify/decline?doctorId={doctor_id}&token={verification_token}"
-        
+
         html_body = f"""
         <!DOCTYPE html>
         <html>
@@ -185,23 +196,20 @@ def send_admin_notification_email(doctor_data, file_path, doctor_id, verificatio
         </body>
         </html>
         """
-        
-        msg.attach(MIMEText(html_body, 'html'))
-        
+
+        msg.attach(MIMEText(html_body, "html"))
+
         # Attach verification document
         if os.path.exists(file_path):
             with open(file_path, "rb") as attachment:
-                part = MIMEBase('application', 'octet-stream')
+                part = MIMEBase("application", "octet-stream")
                 part.set_payload(attachment.read())
-                
+
             encoders.encode_base64(part)
             filename = os.path.basename(file_path)
-            part.add_header(
-                'Content-Disposition',
-                f'attachment; filename= {filename}'
-            )
+            part.add_header("Content-Disposition", f"attachment; filename= {filename}")
             msg.attach(part)
-        
+
         # Send email
         server = smtplib.SMTP(smtp_server, smtp_port)
         server.starttls()
@@ -209,30 +217,33 @@ def send_admin_notification_email(doctor_data, file_path, doctor_id, verificatio
         text = msg.as_string()
         server.sendmail(sender_email, admin_email, text)
         server.quit()
-        
+
         return True
-        
+
     except Exception as e:
         print(f"Error sending admin notification email: {str(e)}")
         return False
+
 
 def send_doctor_notification_email(doctor_email, doctor_name, status, message):
     """Send notification email to doctor about verification status"""
     try:
         smtp_server = "smtp.gmail.com"
         smtp_port = 587
-        sender_email = os.getenv('ADMIN_EMAIL', 'medichain173@gmail.com')
-        sender_password = os.getenv('ADMIN_EMAIL_PASSWORD')
-        
+        sender_email = os.getenv("ADMIN_EMAIL", "medichain173@gmail.com")
+        sender_password = os.getenv("ADMIN_EMAIL_PASSWORD")
+
         if not sender_password:
             return False
-        
+
         msg = MIMEMultipart()
-        msg['From'] = sender_email
-        msg['To'] = doctor_email
-        msg['Subject'] = f"MediChain Account {status.title()} - Welcome to Our Platform!"
-        
-        if status == 'approved':
+        msg["From"] = sender_email
+        msg["To"] = doctor_email
+        msg["Subject"] = (
+            f"MediChain Account {status.title()} - Welcome to Our Platform!"
+        )
+
+        if status == "approved":
             html_body = f"""
             <!DOCTYPE html>
             <html>
@@ -372,206 +383,262 @@ def send_doctor_notification_email(doctor_email, doctor_name, status, message):
             </body>
             </html>
             """
-        
-        msg.attach(MIMEText(html_body, 'html'))
-        
+
+        msg.attach(MIMEText(html_body, "html"))
+
         server = smtplib.SMTP(smtp_server, smtp_port)
         server.starttls()
         server.login(sender_email, sender_password)
         text = msg.as_string()
         server.sendmail(sender_email, doctor_email, text)
         server.quit()
-        
+
         return True
-        
+
     except Exception as e:
         print(f"Error sending doctor notification email: {str(e)}")
         return False
 
-@doctor_verification_bp.route('/doctor-signup', methods=['POST'])
+
+@doctor_verification_bp.route("/doctor-signup", methods=["POST"])
 def doctor_signup():
     """Handle doctor signup with verification document upload"""
     try:
         # Get form data
-        email = request.form.get('email')
-        password = request.form.get('password')
-        first_name = request.form.get('firstName')
-        last_name = request.form.get('lastName')
-        specialization = request.form.get('specialization')
-        
+        email = request.form.get("email")
+        password = request.form.get("password")
+        first_name = request.form.get("firstName")
+        last_name = request.form.get("lastName")
+        specialization = request.form.get("specialization")
+
         # Validate required fields
         if not all([email, password, first_name, last_name, specialization]):
-            return jsonify({
-                'success': False,
-                'error': 'All fields are required'
-            }), 400
-        
+            return jsonify({"success": False, "error": "All fields are required"}), 400
+
         # Check for verification file
-        if 'verificationFile' not in request.files:
-            return jsonify({
-                'success': False,
-                'error': 'Verification document is required'
-            }), 400
-        
-        file = request.files['verificationFile']
-        if file.filename == '':
-            return jsonify({
-                'success': False,
-                'error': 'No verification document selected'
-            }), 400
-        
+        if "verificationFile" not in request.files:
+            return (
+                jsonify(
+                    {"success": False, "error": "Verification document is required"}
+                ),
+                400,
+            )
+
+        file = request.files["verificationFile"]
+        if file.filename == "":
+            return (
+                jsonify(
+                    {"success": False, "error": "No verification document selected"}
+                ),
+                400,
+            )
+
         if not allowed_file(file.filename):
-            return jsonify({
-                'success': False,
-                'error': 'Invalid file type. Please upload PDF, JPG, or PNG'
-            }), 400
-        
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Invalid file type. Please upload PDF, JPG, or PNG",
+                    }
+                ),
+                400,
+            )
+
         # Generate unique identifiers
         doctor_id = str(uuid.uuid4())
         verification_token = generate_verification_token()
-        
+
         # Save verification file
         filename = secure_filename(file.filename)
-        file_extension = filename.rsplit('.', 1)[1].lower()
+        file_extension = filename.rsplit(".", 1)[1].lower()
         unique_filename = f"{doctor_id}_verification.{file_extension}"
         file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
         file.save(file_path)
-        
+
         # Create Firebase user (but with unverified status)
         firebase_result = firebase_auth_service.create_user_with_email_password(
             email, password
         )
-        
-        if not firebase_result['success']:
+
+        if not firebase_result["success"]:
             # Clean up uploaded file
             if os.path.exists(file_path):
                 os.remove(file_path)
-            return jsonify({
-                'success': False,
-                'error': firebase_result.get('error', 'Failed to create Firebase account')
-            }), 400
-        
-        firebase_uid = firebase_result['user']['uid']
-        
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": firebase_result.get(
+                            "error", "Failed to create Firebase account"
+                        ),
+                    }
+                ),
+                400,
+            )
+
+        firebase_uid = firebase_result["user"]["uid"]
+
         # Store doctor data in Supabase with pending status
         user_profile_data = {
-            'firebase_uid': firebase_uid,
-            'email': email,
-            'first_name': first_name,
-            'last_name': last_name,
-            'role': 'doctor',
-            'verification_status': 'pending',
-            'created_at': datetime.utcnow().isoformat()
+            "firebase_uid": firebase_uid,
+            "email": email,
+            "first_name": first_name,
+            "last_name": last_name,
+            "role": "doctor",
+            "verification_status": "pending",
+            "created_at": datetime.utcnow().isoformat(),
         }
-        
+
         doctor_profile_data = {
-            'firebase_uid': firebase_uid,
-            'doctor_id': doctor_id,
-            'specialization': specialization,
-            'verification_token': verification_token,
-            'verification_file_path': file_path,
-            'verification_status': 'pending',
-            'token_expires_at': (datetime.utcnow() + timedelta(hours=24)).isoformat(),
-            'created_at': datetime.utcnow().isoformat()
+            "firebase_uid": firebase_uid,
+            "doctor_id": doctor_id,
+            "specialization": specialization,
+            "verification_token": verification_token,
+            "verification_file_path": file_path,
+            "verification_status": "pending",
+            "token_expires_at": (datetime.utcnow() + timedelta(hours=24)).isoformat(),
+            "created_at": datetime.utcnow().isoformat(),
         }
-        
+
         # Insert into database
-        user_response = supabase.service_client.table('user_profiles').insert(user_profile_data).execute()
-        doctor_response = supabase.service_client.table('doctor_profiles').insert(doctor_profile_data).execute()
-        
+        user_response = (
+            supabase.service_client.table("user_profiles")
+            .insert(user_profile_data)
+            .execute()
+        )
+        doctor_response = (
+            supabase.service_client.table("doctor_profiles")
+            .insert(doctor_profile_data)
+            .execute()
+        )
+
         if not user_response.data or not doctor_response.data:
             # Clean up Firebase user and file
             firebase_auth_service.delete_user(firebase_uid)
             if os.path.exists(file_path):
                 os.remove(file_path)
-            return jsonify({
-                'success': False,
-                'error': 'Failed to save doctor profile'
-            }), 500
-        
+            return (
+                jsonify({"success": False, "error": "Failed to save doctor profile"}),
+                500,
+            )
+
         # Send notification email to admin
         doctor_data = {
-            'firstName': first_name,
-            'lastName': last_name,
-            'email': email,
-            'specialization': specialization
+            "firstName": first_name,
+            "lastName": last_name,
+            "email": email,
+            "specialization": specialization,
         }
-        
+
         email_sent = send_admin_notification_email(
             doctor_data, file_path, doctor_id, verification_token
         )
-        
-        return jsonify({
-            'success': True,
-            'message': 'Doctor registration submitted successfully! You will receive an email notification once your account is reviewed.',
-            'doctor_id': doctor_id,
-            'email_sent': email_sent
-        }), 201
-        
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": "Doctor registration submitted successfully! You will receive an email notification once your account is reviewed.",
+                    "doctor_id": doctor_id,
+                    "email_sent": email_sent,
+                }
+            ),
+            201,
+        )
+
     except Exception as e:
         print(f"Doctor signup error: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': 'An unexpected error occurred during registration'
-        }), 500
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "An unexpected error occurred during registration",
+                }
+            ),
+            500,
+        )
 
-@doctor_verification_bp.route('/verify/approve', methods=['GET'])
+
+@doctor_verification_bp.route("/verify/approve", methods=["GET"])
 def approve_doctor():
     """Approve doctor verification (admin link)"""
     try:
-        doctor_id = request.args.get('doctorId')
-        token = request.args.get('token')
-        
+        doctor_id = request.args.get("doctorId")
+        token = request.args.get("token")
+
         if not doctor_id or not token:
             return "Invalid verification link", 400
-        
+
         # Get doctor profile
-        response = supabase.service_client.table('doctor_profiles').select('*').eq('doctor_id', doctor_id).execute()
-        
+        response = (
+            supabase.service_client.table("doctor_profiles")
+            .select("*")
+            .eq("doctor_id", doctor_id)
+            .execute()
+        )
+
         if not response.data:
             return "Doctor not found", 404
-        
+
         doctor_profile = response.data[0]
-        
+
         # Validate token and expiration
-        if doctor_profile['verification_token'] != token:
+        if doctor_profile["verification_token"] != token:
             return "Invalid verification token", 403
-        
-        if doctor_profile['verification_status'] != 'pending':
+
+        if doctor_profile["verification_status"] != "pending":
             return "This verification link has already been used", 400
-        
-        token_expires = datetime.fromisoformat(doctor_profile['token_expires_at'].replace('Z', '+00:00'))
+
+        token_expires = datetime.fromisoformat(
+            doctor_profile["token_expires_at"].replace("Z", "+00:00")
+        )
         if datetime.utcnow().replace(tzinfo=token_expires.tzinfo) > token_expires:
             return "Verification link has expired", 400
-        
+
         # Update doctor status to approved
-        update_doctor = supabase.service_client.table('doctor_profiles').update({
-            'verification_status': 'approved',
-            'verified_at': datetime.utcnow().isoformat(),
-            'verification_token': None  # Invalidate token
-        }).eq('doctor_id', doctor_id).execute()
-        
+        update_doctor = (
+            supabase.service_client.table("doctor_profiles")
+            .update(
+                {
+                    "verification_status": "approved",
+                    "verified_at": datetime.utcnow().isoformat(),
+                    "verification_token": None,  # Invalidate token
+                }
+            )
+            .eq("doctor_id", doctor_id)
+            .execute()
+        )
+
         # Update user profile
-        update_user = supabase.service_client.table('user_profiles').update({
-            'verification_status': 'approved'
-        }).eq('firebase_uid', doctor_profile['firebase_uid']).execute()
-        
+        update_user = (
+            supabase.service_client.table("user_profiles")
+            .update({"verification_status": "approved"})
+            .eq("firebase_uid", doctor_profile["firebase_uid"])
+            .execute()
+        )
+
         # Get user email for notification
-        user_response = supabase.service_client.table('user_profiles').select('email, first_name, last_name').eq('firebase_uid', doctor_profile['firebase_uid']).execute()
-        
+        user_response = (
+            supabase.service_client.table("user_profiles")
+            .select("email, first_name, last_name")
+            .eq("firebase_uid", doctor_profile["firebase_uid"])
+            .execute()
+        )
+
         if user_response.data:
             user_data = user_response.data[0]
             doctor_name = f"{user_data['first_name']} {user_data['last_name']}"
-            
+
             # Send approval email to doctor
             send_doctor_notification_email(
-                user_data['email'],
+                user_data["email"],
                 doctor_name,
-                'approved',
-                'Your medical credentials have been verified. Welcome to MediChain!'
+                "approved",
+                "Your medical credentials have been verified. Welcome to MediChain!",
             )
-        
-        return """
+
+        return (
+            """
         <html>
         <head>
             <title>Doctor Approved - MediChain</title>
@@ -584,77 +651,106 @@ def approve_doctor():
         <body>
             <div class="container">
                 <div class="success">✅ Doctor Approved Successfully!</div>
-                <h2>Dr. """ + doctor_name + """ has been approved</h2>
+                <h2>Dr. """
+            + doctor_name
+            + """ has been approved</h2>
                 <p>The doctor will receive an email notification and can now access their MediChain account.</p>
             </div>
         </body>
         </html>
         """
-        
+        )
+
     except Exception as e:
         print(f"Approve doctor error: {str(e)}")
         return "Error processing approval", 500
 
-@doctor_verification_bp.route('/verify/decline', methods=['GET'])
+
+@doctor_verification_bp.route("/verify/decline", methods=["GET"])
 def decline_doctor():
     """Decline doctor verification (admin link)"""
     try:
-        doctor_id = request.args.get('doctorId')
-        token = request.args.get('token')
-        
+        doctor_id = request.args.get("doctorId")
+        token = request.args.get("token")
+
         if not doctor_id or not token:
             return "Invalid verification link", 400
-        
+
         # Get doctor profile
-        response = supabase.service_client.table('doctor_profiles').select('*').eq('doctor_id', doctor_id).execute()
-        
+        response = (
+            supabase.service_client.table("doctor_profiles")
+            .select("*")
+            .eq("doctor_id", doctor_id)
+            .execute()
+        )
+
         if not response.data:
             return "Doctor not found", 404
-        
+
         doctor_profile = response.data[0]
-        
+
         # Validate token and expiration
-        if doctor_profile['verification_token'] != token:
+        if doctor_profile["verification_token"] != token:
             return "Invalid verification token", 403
-        
-        if doctor_profile['verification_status'] != 'pending':
+
+        if doctor_profile["verification_status"] != "pending":
             return "This verification link has already been used", 400
-        
-        token_expires = datetime.fromisoformat(doctor_profile['token_expires_at'].replace('Z', '+00:00'))
+
+        token_expires = datetime.fromisoformat(
+            doctor_profile["token_expires_at"].replace("Z", "+00:00")
+        )
         if datetime.utcnow().replace(tzinfo=token_expires.tzinfo) > token_expires:
             return "Verification link has expired", 400
-        
+
         # Get user data before deletion
-        user_response = supabase.service_client.table('user_profiles').select('email, first_name, last_name').eq('firebase_uid', doctor_profile['firebase_uid']).execute()
-        
+        user_response = (
+            supabase.service_client.table("user_profiles")
+            .select("email, first_name, last_name")
+            .eq("firebase_uid", doctor_profile["firebase_uid"])
+            .execute()
+        )
+
         if user_response.data:
             user_data = user_response.data[0]
             doctor_name = f"{user_data['first_name']} {user_data['last_name']}"
-            
+
             # Send decline email to doctor
             send_doctor_notification_email(
-                user_data['email'],
+                user_data["email"],
                 doctor_name,
-                'declined',
-                'Unable to verify medical credentials. Please contact support for more information.'
+                "declined",
+                "Unable to verify medical credentials. Please contact support for more information.",
             )
-        
+
         # Update status to declined (don't delete, for audit trail)
-        update_doctor = supabase.service_client.table('doctor_profiles').update({
-            'verification_status': 'declined',
-            'declined_at': datetime.utcnow().isoformat(),
-            'verification_token': None  # Invalidate token
-        }).eq('doctor_id', doctor_id).execute()
-        
-        update_user = supabase.service_client.table('user_profiles').update({
-            'verification_status': 'declined'
-        }).eq('firebase_uid', doctor_profile['firebase_uid']).execute()
-        
+        update_doctor = (
+            supabase.service_client.table("doctor_profiles")
+            .update(
+                {
+                    "verification_status": "declined",
+                    "declined_at": datetime.utcnow().isoformat(),
+                    "verification_token": None,  # Invalidate token
+                }
+            )
+            .eq("doctor_id", doctor_id)
+            .execute()
+        )
+
+        update_user = (
+            supabase.service_client.table("user_profiles")
+            .update({"verification_status": "declined"})
+            .eq("firebase_uid", doctor_profile["firebase_uid"])
+            .execute()
+        )
+
         # Clean up verification file
-        if doctor_profile['verification_file_path'] and os.path.exists(doctor_profile['verification_file_path']):
-            os.remove(doctor_profile['verification_file_path'])
-        
-        return """
+        if doctor_profile["verification_file_path"] and os.path.exists(
+            doctor_profile["verification_file_path"]
+        ):
+            os.remove(doctor_profile["verification_file_path"])
+
+        return (
+            """
         <html>
         <head>
             <title>Doctor Declined - MediChain</title>
@@ -667,13 +763,16 @@ def decline_doctor():
         <body>
             <div class="container">
                 <div class="decline">❌ Doctor Application Declined</div>
-                <h2>Dr. """ + (doctor_name if 'doctor_name' in locals() else 'Unknown') + """ application has been declined</h2>
+                <h2>Dr. """
+            + (doctor_name if "doctor_name" in locals() else "Unknown")
+            + """ application has been declined</h2>
                 <p>The doctor will receive an email notification with information about the decision.</p>
             </div>
         </body>
         </html>
         """
-        
+        )
+
     except Exception as e:
         print(f"Decline doctor error: {str(e)}")
         return "Error processing decline", 500
