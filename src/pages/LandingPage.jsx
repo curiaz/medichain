@@ -21,6 +21,8 @@ const LandingPage = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState('');
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   const handleGetStarted = () => {
     setIsRoleModalOpen(true);
@@ -36,6 +38,27 @@ const LandingPage = () => {
 
   const closeRoleModal = () => {
     setIsRoleModalOpen(false);
+  };
+
+  const openPrivacyModal = () => setShowPrivacyModal(true);
+  const closePrivacyModal = () => {
+    const modal = document.querySelector('.landing-modal-content');
+    if (modal) {
+      modal.classList.add('modal-closing');
+      setTimeout(() => setShowPrivacyModal(false), 250);
+    } else {
+      setShowPrivacyModal(false);
+    }
+  };
+  const openTermsModal = () => setShowTermsModal(true);
+  const closeTermsModal = () => {
+    const modal = document.querySelector('.landing-modal-content');
+    if (modal) {
+      modal.classList.add('modal-closing');
+      setTimeout(() => setShowTermsModal(false), 250);
+    } else {
+      setShowTermsModal(false);
+    }
   };
 
   const handleContactInputChange = (e) => {
@@ -314,9 +337,9 @@ const LandingPage = () => {
         <div className="container contact-container">
           <h2 className="contact-title">Contact Us</h2>
           <div className="contact-info">
-            <p><strong>Email:</strong> support@medichain.com</p>
+            <p><strong>Email:</strong> <a href="mailto:medichain173@gmail.com" className="email-link">medichain173@gmail.com</a></p>
             <p><strong>Phone:</strong> +1 (234) 567-890</p>
-            <p><strong>Address:</strong> Taguig City University</p>
+            <p><strong>Address:</strong> <a href="https://www.facebook.com/TaguigCityUniversity" target="_blank" rel="noopener noreferrer" className="email-link">Taguig City University</a></p>
           </div>
           <form className="contact-form" onSubmit={handleContactSubmit}>
             <input 
@@ -378,7 +401,10 @@ const LandingPage = () => {
       </section>
 
       {/* Footer */}
-      <Footer />
+      <Footer 
+        onPrivacyClick={openPrivacyModal}
+        onTermsClick={openTermsModal}
+      />
 
       {/* Role Selection Modal */}
       <RoleSelectionModal 
@@ -386,6 +412,117 @@ const LandingPage = () => {
         onClose={closeRoleModal}
         onRoleSelect={handleRoleSelect}
       />
+
+      {/* Privacy Policy Modal */}
+      {showPrivacyModal && (
+        <div className="landing-modal-overlay" onClick={closePrivacyModal}>
+          <div className="landing-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="landing-modal-header">
+              <h2>Privacy Policy – MediChain</h2>
+              <button className="landing-modal-close" onClick={closePrivacyModal}>
+                ×
+              </button>
+            </div>
+            <div className="landing-modal-body">
+              <p><strong>Effective Date:</strong> September 29, 2025</p>
+              <br />
+              <p>At MediChain, we value your trust. This Privacy Policy explains how we collect, use, and protect your information when you use our system.</p>
+              <br />
+              <h3>Information We Collect</h3>
+              <ul>
+                <li>Personal details (name, contact info, date of birth).</li>
+                <li>Medical records and health-related data you choose to share.</li>
+                <li>Login credentials and activity logs.</li>
+              </ul>
+              <br />
+              <h3>How We Use Your Information</h3>
+              <ul>
+                <li>To provide healthcare services through verified doctors.</li>
+                <li>To maintain secure medical records for your access.</li>
+                <li>To improve our system's reliability and features.</li>
+              </ul>
+              <br />
+              <h3>Data Protection</h3>
+              <ul>
+                <li>All data is stored securely with encryption.</li>
+                <li>Access is limited to authorized personnel only.</li>
+                <li>We follow industry standards for protecting health information.</li>
+              </ul>
+              <br />
+              <h3>Sharing of Information</h3>
+              <ul>
+                <li>We do not sell or rent your personal data.</li>
+                <li>Data may be shared only with verified healthcare providers you connect with.</li>
+                <li>We may disclose information if required by law.</li>
+              </ul>
+              <br />
+              <h3>Your Rights</h3>
+              <ul>
+                <li>You can access, update, or request deletion of your account.</li>
+                <li>You may withdraw consent at any time.</li>
+              </ul>
+              <br />
+              <h3>Contact Us</h3>
+              <p>For questions, email us at: <a href="mailto:medichain173@gmail.com" className="landing-modal-email-link">medichain173@gmail.com</a></p>
+              <br />
+              <p>By using MediChain, you agree to this Privacy Policy.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Terms of Service Modal */}
+      {showTermsModal && (
+        <div className="landing-modal-overlay" onClick={closeTermsModal}>
+          <div className="landing-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="landing-modal-header">
+              <h2>Terms of Service – MediChain</h2>
+              <button className="landing-modal-close" onClick={closeTermsModal}>
+                ×
+              </button>
+            </div>
+            <div className="landing-modal-body">
+              <p><strong>Effective Date:</strong> September 29, 2025</p>
+              <br />
+              <p>Welcome to MediChain! By using our platform, you agree to these terms:</p>
+              <br />
+              <h3>Eligibility</h3>
+              <p>You must be at least 18 years old or have guardian consent to use MediChain.</p>
+              <br />
+              <h3>Use of Service</h3>
+              <ul>
+                <li>MediChain connects users with verified doctors.</li>
+                <li>Users are responsible for the accuracy of the information they provide.</li>
+                <li>Accounts must not be shared or misused.</li>
+              </ul>
+              <br />
+              <h3>No Emergency Services</h3>
+              <p>MediChain is <strong>not for emergencies</strong>. In urgent cases, call your local emergency hotline.</p>
+              <br />
+              <h3>Doctor Verification</h3>
+              <p>We verify doctors before approving their accounts, but MediChain is not responsible for medical outcomes.</p>
+              <br />
+              <h3>User Responsibilities</h3>
+              <ul>
+                <li>Provide truthful information.</li>
+                <li>Respect other users and healthcare providers.</li>
+                <li>Do not misuse the platform for unlawful activities.</li>
+              </ul>
+              <br />
+              <h3>Limitation of Liability</h3>
+              <p>MediChain provides a platform for healthcare access. We are not liable for medical advice, diagnosis, or treatment provided by doctors through the system.</p>
+              <br />
+              <h3>Modifications</h3>
+              <p>We may update these Terms at any time. Continued use of MediChain means you accept the new Terms.</p>
+              <br />
+              <h3>Contact Us</h3>
+              <p>For support, email us at: <a href="mailto:medichain173@gmail.com" className="landing-modal-email-link">medichain173@gmail.com</a></p>
+              <br />
+              <p>By using MediChain, you agree to these Terms of Service.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

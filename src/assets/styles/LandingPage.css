@@ -806,6 +806,37 @@ body {
   margin-top: 10px;
 }
 
+/* Feature Highlight Animation */
+.feature-highlight {
+  animation: highlightPulse 1.5s ease-in-out;
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.6) !important;
+  border: 2px solid rgba(59, 130, 246, 0.8) !important;
+}
+
+@keyframes highlightPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+  25% {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(59, 130, 246, 0.8);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 30px rgba(59, 130, 246, 1);
+  }
+  75% {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(59, 130, 246, 0.8);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+}
+
 /* Footer */
 .footer {
   background: #333;
@@ -1019,6 +1050,21 @@ body {
 .contact-info p {
   margin: 8px 0;
   line-height: 1.6;
+}
+
+.email-link {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+  border-radius: 4px;
+  padding: 2px 4px;
+  transition: all 0.3s ease;
+}
+
+.email-link:hover {
+  color: #1d4ed8;
+  background-color: rgba(37, 99, 235, 0.1);
+  text-decoration: underline;
 }
 
 .contact-form {
@@ -1316,5 +1362,247 @@ body {
     font-size: 11px;
     margin-top: 10px;
     max-width: 350px;
+  }
+}
+
+/* Landing Page Modal Styles */
+.landing-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  z-index: 9999;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  backdrop-filter: blur(2px);
+}
+
+.landing-modal-content {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 900px;
+  min-width: 320px;
+  margin-top: 40px;
+  margin-bottom: 40px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+  animation: landingModalFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.landing-modal-content.modal-closing {
+  animation: landingModalFadeOut 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes landingModalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes landingModalFadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+}
+
+.landing-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 25px 30px;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: 16px 16px 0 0;
+}
+
+.landing-modal-header h2 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.75rem;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+}
+
+.landing-modal-close {
+  background: none;
+  border: none;
+  font-size: 2.5rem;
+  cursor: pointer;
+  color: #64748b;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  font-weight: 300;
+  line-height: 1;
+}
+
+.landing-modal-close:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+}
+
+.landing-modal-body {
+  padding: 30px;
+  line-height: 1.7;
+  color: #374151;
+  font-size: 1rem;
+  max-height: 70vh;
+  overflow-y: auto;
+  font-family: 'Inter', sans-serif;
+}
+
+.landing-modal-body h3 {
+  color: #1e293b;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 20px 0 12px 0;
+  padding-bottom: 8px;
+}
+
+.landing-modal-body p {
+  margin: 0 0 12px 0;
+  text-align: justify;
+}
+
+.landing-modal-body ul {
+  margin: 0 0 12px 25px;
+  padding: 0;
+}
+
+.landing-modal-body li {
+  margin: 8px 0;
+  text-align: justify;
+}
+
+.landing-modal-body br {
+  display: block;
+  margin: 16px 0;
+  content: "";
+}
+
+.landing-modal-body strong {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.landing-modal-email-link {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.landing-modal-email-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+  background: rgba(37, 99, 235, 0.1);
+}
+
+/* Custom scrollbar for modal body */
+.landing-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.landing-modal-body::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.landing-modal-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.landing-modal-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Mobile responsiveness for landing page modals */
+@media (max-width: 768px) {
+  .landing-modal-overlay {
+    padding: 10px;
+    align-items: flex-start;
+  }
+  
+  .landing-modal-content {
+    max-width: 100%;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    border-radius: 12px;
+  }
+  
+  .landing-modal-header {
+    padding: 20px;
+    border-radius: 12px 12px 0 0;
+  }
+  
+  .landing-modal-header h2 {
+    font-size: 1.4rem;
+  }
+  
+  .landing-modal-body {
+    padding: 20px;
+    font-size: 0.95rem;
+    max-height: 65vh;
+  }
+  
+  .landing-modal-close {
+    font-size: 2rem;
+    width: 35px;
+    height: 35px;
+  }
+  
+  .landing-modal-body h3 {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-modal-overlay {
+    padding: 5px;
+  }
+  
+  .landing-modal-content {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+  }
+  
+  .landing-modal-header {
+    padding: 15px;
+    border-radius: 8px 8px 0 0;
+  }
+  
+  .landing-modal-header h2 {
+    font-size: 1.2rem;
+  }
+  
+  .landing-modal-body {
+    padding: 15px;
+    font-size: 0.9rem;
   }
 }

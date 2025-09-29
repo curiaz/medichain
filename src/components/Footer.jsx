@@ -2,14 +2,38 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Footer.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTwitter, faFacebookF, faLinkedinIn, faGithub } from '@fortawesome/free-brands-svg-icons';
+import { faTwitter, faFacebookF, faGithub } from '@fortawesome/free-brands-svg-icons';
 
-const Footer = () => {
+const Footer = ({ onPrivacyClick, onTermsClick }) => {
   const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
 
   const handleNavigation = (path) => {
     navigate(path);
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const scrollToFeature = (featureName) => {
+    // Find all feature items
+    const featureItems = document.querySelectorAll('.feature-item');
+    const targetFeature = Array.from(featureItems).find(item => {
+      const heading = item.querySelector('h3');
+      return heading && heading.textContent.includes(featureName);
+    });
+    
+    if (targetFeature) {
+      // Scroll to the feature
+      targetFeature.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Add highlight animation
+      targetFeature.classList.add('feature-highlight');
+      setTimeout(() => {
+        targetFeature.classList.remove('feature-highlight');
+      }, 1500);
+    }
   };
 
   const handleNewsletterSubmit = (e) => {
@@ -34,16 +58,16 @@ const Footer = () => {
             </p>
             <div className="social-links">
               <a 
-                href="https://twitter.com" 
+                href="https://x.com/medichainn" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="social-link"
-                aria-label="Follow us on Twitter"
+                aria-label="Follow us on Twitter/X"
               >
                 <FontAwesomeIcon icon={faTwitter} />
               </a>
               <a 
-                href="https://facebook.com" 
+                href="https://www.facebook.com/profile.php?id=61581467434658" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="social-link"
@@ -52,16 +76,7 @@ const Footer = () => {
                 <FontAwesomeIcon icon={faFacebookF} />
               </a>
               <a 
-                href="https://linkedin.com" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="social-link"
-                aria-label="Connect with us on LinkedIn"
-              >
-                <FontAwesomeIcon icon={faLinkedinIn} />
-              </a>
-              <a 
-                href="https://github.com" 
+                href="https://github.com/curiaz/medichain" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="social-link"
@@ -78,9 +93,9 @@ const Footer = () => {
             <ul className="footer-links">
               <li>
                 <button 
-                  onClick={() => handleNavigation('/')} 
+                  onClick={scrollToTop} 
                   className="footer-link"
-                  aria-label="Go to Home page"
+                  aria-label="Scroll to top of page"
                 >
                   Home
                 </button>
@@ -121,38 +136,56 @@ const Footer = () => {
             <ul className="footer-links">
               <li>
                 <button 
-                  onClick={() => handleNavigation('/#features')} 
+                  onClick={() => scrollToFeature('AI-Driven Diagnosis')} 
                   className="footer-link"
-                  aria-label="Learn about AI Diagnostics"
+                  aria-label="View AI-Driven Diagnosis feature"
                 >
-                  AI Diagnostics
+                  AI-Driven Diagnosis
                 </button>
               </li>
               <li>
                 <button 
-                  onClick={() => handleNavigation('/#features')} 
+                  onClick={() => scrollToFeature('Blockchain Records')} 
                   className="footer-link"
-                  aria-label="Learn about Blockchain Records"
+                  aria-label="View Blockchain Records feature"
                 >
                   Blockchain Records
                 </button>
               </li>
               <li>
                 <button 
-                  onClick={() => handleNavigation('/#features')} 
+                  onClick={() => scrollToFeature('Advanced Encryption')} 
                   className="footer-link"
-                  aria-label="Learn about Secure Encryption"
+                  aria-label="View Advanced Encryption feature"
                 >
-                  Secure Encryption
+                  Advanced Encryption
                 </button>
               </li>
               <li>
                 <button 
-                  onClick={() => handleNavigation('/#features')} 
+                  onClick={() => scrollToFeature('Real-time Analytics')} 
                   className="footer-link"
-                  aria-label="Learn about Real-time Analytics"
+                  aria-label="View Real-time Analytics feature"
                 >
                   Real-time Analytics
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => scrollToFeature('Interoperability')} 
+                  className="footer-link"
+                  aria-label="View Interoperability feature"
+                >
+                  Interoperability
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => scrollToFeature('Mobile-First Design')} 
+                  className="footer-link"
+                  aria-label="View Mobile-First Design feature"
+                >
+                  Mobile-First Design
                 </button>
               </li>
             </ul>
@@ -164,11 +197,11 @@ const Footer = () => {
             <ul className="footer-links">
               <li>
                 <a 
-                  href="mailto:support@medichain.com" 
+                  href="mailto:medichain173@gmail.com" 
                   className="footer-link"
                   aria-label="Send us an email"
                 >
-                  support@medichain.com
+                  medichain173@gmail.com
                 </a>
               </li>
               <li>
@@ -181,7 +214,15 @@ const Footer = () => {
                 </a>
               </li>
               <li>
-                <span className="footer-link">Taguig City University</span>
+                <a 
+                  href="https://www.facebook.com/TaguigCityUniversity" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="footer-link"
+                  aria-label="Visit Taguig City University Facebook page"
+                >
+                  Taguig City University
+                </a>
               </li>
             </ul>
             
@@ -209,18 +250,18 @@ const Footer = () => {
         <div className="footer-bottom">
           <div className="footer-bottom-content">
             <p className="copyright">
-              © {currentYear} MediChain. All rights reserved. | Academic Project - Taguig City University
+              © {currentYear} MediChain. All rights reserved. | Academic Project - <a href="https://www.facebook.com/TaguigCityUniversity" target="_blank" rel="noopener noreferrer" className="university-link">Taguig City University</a>
             </p>
             <div className="footer-bottom-links">
               <button 
-                onClick={() => handleNavigation('/privacy')} 
+                onClick={onPrivacyClick} 
                 className="footer-bottom-link"
                 aria-label="View Privacy Policy"
               >
                 Privacy Policy
               </button>
               <button 
-                onClick={() => handleNavigation('/terms')} 
+                onClick={onTermsClick} 
                 className="footer-bottom-link"
                 aria-label="View Terms of Service"
               >
