@@ -105,7 +105,7 @@ jobs:
 
     - name: Check code formatting
       run: |
-        black --check --diff . --exclude="old_app_directory|\.venv|node_modules"
+        black --check --diff --line-length=127 . --exclude="old_app_directory|\.venv|node_modules"
         isort --check-only --diff . --skip=old_app_directory --skip=.venv --skip=node_modules
 
   lint-frontend:
