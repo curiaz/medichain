@@ -58,7 +58,7 @@ def send_admin_notification_email(doctor_data, file_path, doctor_id, verificatio
         msg['Subject'] = f"Doctor Verification Request - {doctor_data['firstName']} {doctor_data['lastName']}"
         
         # Create HTML email body with styled buttons
-        base_url = os.getenv('BASE_URL', 'https://medichain.vercel.app')
+        base_url = os.getenv('BASE_URL', 'http://localhost:5000')
         approve_url = f"{base_url}/api/auth/verify/approve?doctorId={doctor_id}&token={verification_token}"
         decline_url = f"{base_url}/api/auth/verify/decline?doctorId={doctor_id}&token={verification_token}"
         
