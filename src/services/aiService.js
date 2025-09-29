@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { API_CONFIG, buildURL } from '../config/api';
 
 // AI Diagnosis Service - connects to the enhanced AI system
 const AI_BASE_URL = process.env.REACT_APP_AI_URL || 'http://localhost:5001';

@@ -39,7 +39,7 @@ jobs:
 
     - name: Run backend tests
       run: |
-        python -m pytest tests/ -v --cov=app --cov-report=xml
+        python -m pytest tests/ -v --cov=. --cov-report=xml --cov-config=.coveragerc
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
@@ -99,14 +99,14 @@ jobs:
     - name: Run linting
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        flake8 app --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=old_app_directory,.venv,node_modules,__pycache__,.pytest_cache
         # exit-zero treats all errors as warnings
-        flake8 app --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=old_app_directory,.venv,node_modules,__pycache__,.pytest_cache
 
     - name: Check code formatting
       run: |
-        black --check --diff app
-        isort --check-only --diff app
+        black --check --diff . --exclude="old_app_directory|\.venv|node_modules"
+        isort --check-only --diff . --skip=old_app_directory --skip=.venv --skip=node_modules
 
   lint-frontend:
     runs-on: ubuntu-latest

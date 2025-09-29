@@ -6,7 +6,6 @@ import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight, Upload, FileText } f
 import LoadingSpinner from "../components/LoadingSpinner"
 import { showToast } from "../components/CustomToast"
 import medichainLogo from "../assets/medichain_logo.png"
-import { API_CONFIG, buildURL } from "../config/api"
 
 const MedichainSignup = () => {
   const navigate = useNavigate()
