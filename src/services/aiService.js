@@ -31,9 +31,7 @@ export const aiService = {
    */
   getDiagnosis: async (diagnosisData) => {
     try {
-      console.log("Sending diagnosis request:", diagnosisData);
       const response = await api.post('/diagnose', diagnosisData);
-      console.log("Received diagnosis response:", response.data);
       
       // Transform the AI response to match frontend expectations
       const aiData = response.data;
@@ -232,9 +230,7 @@ export const aiService = {
    */
   startConversation: async (data) => {
     try {
-      console.log("Starting AI conversation:", data);
-      const response = await axios.post('http://localhost:5000/api/ai/start-conversation', data);
-      console.log("Conversation started:", response.data);
+      const response = await axios.post('https://medichain.vercel.app/api/ai/start-conversation', data);
       return response.data;
     } catch (error) {
       console.error('Error starting conversation:', error);
@@ -252,9 +248,7 @@ export const aiService = {
    */
   continueConversation: async (data) => {
     try {
-      console.log("Continuing AI conversation:", data);
-      const response = await axios.post('http://localhost:5000/api/ai/continue-conversation', data);
-      console.log("Conversation continued:", response.data);
+      const response = await axios.post('https://medichain.vercel.app/api/ai/continue-conversation', data);
       return response.data;
     } catch (error) {
       console.error('Error continuing conversation:', error);

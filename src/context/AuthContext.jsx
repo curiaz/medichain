@@ -12,7 +12,7 @@ import axios from 'axios';
 const AuthContext = createContext();
 
 // API base URL - point to your Flask backend
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://medichain.vercel.app/api';
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -182,6 +182,28 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('medichain_user', JSON.stringify(updatedUser));
   };
 
+  // Check verification status function (for doctors)
+  const checkVerificationStatus = async () => {
+    if (!user || !isAuthenticated) return null;
+    
+    try {
+      const token = localStorage.getItem('medichain_token');
+      const response = await axios.get(`${API_URL}/auth/verify`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success && response.data.user) {
+        const updatedUser = response.data.user;
+        setUser(updatedUser);
+        localStorage.setItem('medichain_user', JSON.stringify(updatedUser));
+        return updatedUser;
+      }
+    } catch (error) {
+      console.error('Error checking verification status:', error);
+    }
+    return null;
+  };
+
   const clearError = () => {
     setError(null);
   };
@@ -195,6 +217,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     signup,
     updateUser,
+    checkVerificationStatus,
     clearError
   };
 

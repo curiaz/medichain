@@ -2,10 +2,10 @@ import { useState, useEffect } from "react"
 import "./MedichainLogin.css" // Reuse existing styles
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight } from "lucide-react"
-import MedichainLogo from "../components/MedichainLogo"
+import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight, Upload, FileText } from "lucide-react"
 import LoadingSpinner from "../components/LoadingSpinner"
 import { showToast } from "../components/CustomToast"
+import medichainLogo from "../assets/medichain_logo.png"
 
 const MedichainSignup = () => {
   const navigate = useNavigate()
@@ -18,7 +18,9 @@ const MedichainSignup = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    userType: "patient" // default
+    userType: "patient", // default
+    specialization: "", // for doctors
+    verificationFile: null // for doctor verification
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -38,15 +40,22 @@ const MedichainSignup = () => {
   }, [searchParams])
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    const { name, value, files } = e.target
+    if (name === 'verificationFile') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: files[0] || null
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }))
+    }
   }
 
   const validateForm = () => {
-    const { firstName, lastName, email, password, confirmPassword } = formData
+    const { firstName, lastName, email, password, confirmPassword, userType, specialization, verificationFile } = formData
     
     if (!firstName?.trim()) {
       showToast.error("Please enter your first name")
@@ -87,6 +96,32 @@ const MedichainSignup = () => {
       return false
     }
     
+    // Doctor-specific validation
+    if (userType === 'doctor') {
+      if (!specialization?.trim()) {
+        showToast.error("Please enter your medical specialization")
+        return false
+      }
+      
+      if (!verificationFile) {
+        showToast.error("Please upload your verification document (ID/Certificate)")
+        return false
+      }
+      
+      // Validate file type
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
+      if (!allowedTypes.includes(verificationFile.type)) {
+        showToast.error("Please upload a valid file (PDF, JPG, or PNG)")
+        return false
+      }
+      
+      // Validate file size (max 5MB)
+      if (verificationFile.size > 5 * 1024 * 1024) {
+        showToast.error("File size must be less than 5MB")
+        return false
+      }
+    }
+    
     return true
   }
 
@@ -109,30 +144,62 @@ const MedichainSignup = () => {
         password: formData.password,
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
-        userType: formData.userType
+        userType: formData.userType,
+        specialization: formData.specialization?.trim(),
+        hasVerificationFile: !!formData.verificationFile
       });
       
-      // Call signup with separate name fields
-      const result = await signup(
-        formData.email.trim(),
-        formData.password,
-        formData.firstName.trim(),
-        formData.lastName.trim(),
-        formData.userType
-      )
-      
-      if (result.success) {
-        showToast.success(result.message || "Account created successfully! Welcome to Medichain.")
-        // Navigate to dashboard since user is automatically logged in
-        navigate("/dashboard")
+      // Handle doctor signup with verification
+      if (formData.userType === 'doctor') {
+        // Create FormData for file upload
+        const signupData = new FormData();
+        signupData.append('email', formData.email.trim());
+        signupData.append('password', formData.password);
+        signupData.append('firstName', formData.firstName.trim());
+        signupData.append('lastName', formData.lastName.trim());
+        signupData.append('userType', formData.userType);
+        signupData.append('specialization', formData.specialization.trim());
+        signupData.append('verificationFile', formData.verificationFile);
+        
+        // Call doctor signup API endpoint
+        const response = await fetch('https://medichain.vercel.app/api/auth/doctor-signup', {
+          method: 'POST',
+          body: signupData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast.success(
+            result.message || 
+            "Doctor account submitted for verification! You'll receive an email once your account is reviewed."
+          );
+          navigate("/login");
+        } else {
+          showToast.error(result.error || "Doctor signup failed");
+        }
       } else {
-        showToast.error(result.error || "Signup failed")
+        // Regular patient signup
+        const result = await signup(
+          formData.email.trim(),
+          formData.password,
+          formData.firstName.trim(),
+          formData.lastName.trim(),
+          formData.userType
+        );
+        
+        if (result.success) {
+          showToast.success(result.message || "Account created successfully! Welcome to Medichain.");
+          navigate("/dashboard");
+        } else {
+          showToast.error(result.error || "Signup failed");
+        }
       }
     } catch (error) {
-      console.error("Signup error:", error)
-      showToast.error("An unexpected error occurred. Please try again.")
+      console.error("Signup error:", error);
+      showToast.error("An unexpected error occurred. Please try again.");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
@@ -151,7 +218,7 @@ const MedichainSignup = () => {
       <div className="header">
         <div className="logo-container" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
           <div className="logo-icon">
-            <MedichainLogo size={40} />
+            <img src={medichainLogo} alt="MediChain Logo" width={40} height={40} />
           </div>
           <h1>MEDICHAIN</h1>
         </div>
@@ -237,6 +304,52 @@ const MedichainSignup = () => {
                     </select>
                   </div>
                 </div>
+
+                {/* Doctor-specific fields */}
+                {formData.userType === 'doctor' && (
+                  <>
+                    <div className="input-group">
+                      <label htmlFor="specialization">Medical Specialization</label>
+                      <div className="input-wrapper">
+                        <User className="input-icon" size={20} />
+                        <input
+                          id="specialization"
+                          name="specialization"
+                          type="text"
+                          value={formData.specialization}
+                          onChange={handleInputChange}
+                          placeholder="e.g., Cardiology, Pediatrics, Internal Medicine"
+                          disabled={isSubmitting}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="input-group">
+                      <label htmlFor="verificationFile">Verification Document</label>
+                      <div className="input-wrapper file-upload-wrapper">
+                        <FileText className="input-icon" size={20} />
+                        <input
+                          id="verificationFile"
+                          name="verificationFile"
+                          type="file"
+                          onChange={handleInputChange}
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          disabled={isSubmitting}
+                          required
+                          style={{ display: 'none' }}
+                        />
+                        <label htmlFor="verificationFile" className="file-upload-label">
+                          <Upload size={16} />
+                          {formData.verificationFile ? formData.verificationFile.name : 'Upload ID/Certificate (PDF, JPG, PNG)'}
+                        </label>
+                      </div>
+                      <small className="file-help-text">
+                        Upload your medical license, ID, or certification document (Max 5MB)
+                      </small>
+                    </div>
+                  </>
+                )}
 
                 <div className="input-group">
                   <label htmlFor="password">Password</label>

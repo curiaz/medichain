@@ -4,6 +4,7 @@ import { Plus, Users, Activity, AlertCircle, Brain, Stethoscope, RefreshCw } fro
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"
+import VerificationStatus from "../components/VerificationStatus"
 import "../assets/styles/ModernDashboard.css"
 import "../assets/styles/DoctorDashboard.css"
 
@@ -90,6 +91,14 @@ const DoctorDashboard = () => {
                 <span className="user-role">Medical Professional</span>
               </div>
             )}
+            
+            {/* Doctor Verification Status */}
+            <VerificationStatus 
+              status={user?.profile?.verification_status || user?.doctor_profile?.verification_status}
+              userType={user?.profile?.role}
+              doctorProfile={user?.doctor_profile}
+            />
+            
             {error && (
               <div className="error-message" style={{ color: '#e74c3c', fontSize: '0.9rem', marginTop: '8px' }}>
                 {error} - Using offline data
