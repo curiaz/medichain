@@ -13,9 +13,7 @@ def check_triggers():
 
     try:
         # Check for triggers on user_profiles table
-        result = supabase.service_client.rpc(
-            "get_table_triggers", {"table_name": "user_profiles"}
-        )
+        result = supabase.service_client.rpc("get_table_triggers", {"table_name": "user_profiles"})
 
         if result.data:
             print("✅ Triggers found on user_profiles:")
@@ -25,9 +23,7 @@ def check_triggers():
             print("❌ No triggers found on user_profiles")
 
         # Check for triggers on doctor_profiles table
-        result2 = supabase.service_client.rpc(
-            "get_table_triggers", {"table_name": "doctor_profiles"}
-        )
+        result2 = supabase.service_client.rpc("get_table_triggers", {"table_name": "doctor_profiles"})
 
         if result2.data:
             print("✅ Triggers found on doctor_profiles:")
@@ -38,9 +34,7 @@ def check_triggers():
 
     except Exception as e:
         print(f"❌ Error checking triggers: {e}")
-        print(
-            "This might mean the triggers weren't applied or there's a permission issue"
-        )
+        print("This might mean the triggers weren't applied or there's a permission issue")
 
     # Alternative: Try to query the information_schema
     print("\n🔍 Checking information_schema for triggers...")

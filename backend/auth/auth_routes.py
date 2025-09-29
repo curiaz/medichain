@@ -4,7 +4,6 @@ Authentication routes for signup, login, password reset, and user management
 
 import re
 import secrets
-from datetime import datetime, timedelta
 
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, jsonify, request
@@ -62,9 +61,7 @@ def signup():
             return jsonify({"error": password_error}), 400
 
         # Check if user already exists
-        existing_user = (
-            supabase.client.table("users").select("*").eq("email", email).execute()
-        )
+        existing_user = supabase.client.table("users").select("*").eq("email", email).execute()
         if existing_user.data:
             return jsonify({"error": "Email already registered"}), 409
 
@@ -123,9 +120,7 @@ def login():
             return jsonify({"error": "Email and password are required"}), 400
 
         # Find user
-        response = (
-            supabase.client.table("users").select("*").eq("email", email).execute()
-        )
+        response = supabase.client.table("users").select("*").eq("email", email).execute()
 
         if not response.data:
             return jsonify({"error": "Invalid email or password"}), 401
@@ -170,10 +165,7 @@ def get_current_user():
         user_id = request.current_user["user_id"]
 
         response = (
-            supabase.client.table("users")
-            .select("id", "email", "full_name", "role", "created_at")
-            .eq("id", user_id)
-            .execute()
+            supabase.client.table("users").select("id", "email", "full_name", "role", "created_at").eq("id", user_id).execute()
         )
 
         if response.data:
@@ -196,9 +188,7 @@ def password_reset_request():
             return jsonify({"error": "Email is required"}), 400
 
         # Find user
-        response = (
-            supabase.client.table("users").select("*").eq("email", email).execute()
-        )
+        response = supabase.client.table("users").select("*").eq("email", email).execute()
 
         if not response.data:
             # Don't reveal if email exists or not

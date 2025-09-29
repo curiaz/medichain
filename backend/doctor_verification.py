@@ -3,7 +3,6 @@ Doctor Verification System
 Handles doctor signup, verification, and approval workflow
 """
 
-import hashlib
 import os
 import secrets
 import smtplib
@@ -20,9 +19,7 @@ from werkzeug.utils import secure_filename
 from auth.firebase_auth import firebase_auth_service
 from db.supabase_client import SupabaseClient
 
-doctor_verification_bp = Blueprint(
-    "doctor_verification", __name__, url_prefix="/api/auth"
-)
+doctor_verification_bp = Blueprint("doctor_verification", __name__, url_prefix="/api/auth")
 supabase = SupabaseClient()
 
 # Configuration
@@ -44,9 +41,7 @@ def generate_verification_token():
     return secrets.token_urlsafe(32)
 
 
-def send_admin_notification_email(
-    doctor_data, file_path, doctor_id, verification_token
-):
+def send_admin_notification_email(doctor_data, file_path, doctor_id, verification_token):
     """Send email to admin with doctor verification request"""
     try:
         # Email configuration
@@ -64,9 +59,7 @@ def send_admin_notification_email(
         msg = MIMEMultipart()
         msg["From"] = sender_email
         msg["To"] = admin_email
-        msg["Subject"] = (
-            f"Doctor Verification Request - {doctor_data['firstName']} {doctor_data['lastName']}"
-        )
+        msg["Subject"] = f"Doctor Verification Request - {doctor_data['firstName']} {doctor_data['lastName']}"
 
         # Create HTML email body with styled buttons
         base_url = os.getenv("BASE_URL", "http://localhost:5000")
@@ -160,10 +153,10 @@ def send_admin_notification_email(
                 <h1>🏥 MediChain Doctor Verification</h1>
                 <p>New doctor registration requires your approval</p>
             </div>
-            
+
             <div class="content">
                 <h2>Doctor Registration Details</h2>
-                
+
                 <div class="doctor-info">
                     <h3>👨‍⚕️ {doctor_data['firstName']} {doctor_data['lastName']}</h3>
                     <p><strong>Email:</strong> {doctor_data['email']}</p>
@@ -171,12 +164,12 @@ def send_admin_notification_email(
                     <p><strong>Registration Date:</strong> {datetime.now().strftime('%B %d, %Y at %I:%M %p')}</p>
                     <p><strong>Doctor ID:</strong> {doctor_id}</p>
                 </div>
-                
+
                 <div class="warning">
-                    <strong>⚠️ Important:</strong> Please review the attached verification document before making a decision. 
+                    <strong>⚠️ Important:</strong> Please review the attached verification document before making a decision.
                     This link will expire in 24 hours and can only be used once.
                 </div>
-                
+
                 <div class="action-buttons">
                     <a href="{approve_url}" class="btn btn-approve">
                         ✅ APPROVE DOCTOR
@@ -185,10 +178,10 @@ def send_admin_notification_email(
                         ❌ DECLINE APPLICATION
                     </a>
                 </div>
-                
+
                 <p><strong>Verification Document:</strong> See attached file</p>
             </div>
-            
+
             <div class="footer">
                 <p>© 2025 MediChain - AI-Driven Diagnosis & Blockchain Health Records</p>
                 <p>Taguig City University | BSCS Thesis Project</p>
@@ -239,9 +232,7 @@ def send_doctor_notification_email(doctor_email, doctor_name, status, message):
         msg = MIMEMultipart()
         msg["From"] = sender_email
         msg["To"] = doctor_email
-        msg["Subject"] = (
-            f"MediChain Account {status.title()} - Welcome to Our Platform!"
-        )
+        msg["Subject"] = f"MediChain Account {status.title()} - Welcome to Our Platform!"
 
         if status == "approved":
             html_body = f"""
@@ -295,14 +286,14 @@ def send_doctor_notification_email(doctor_email, doctor_name, status, message):
                     <h1>🎉 Welcome to MediChain, Dr. {doctor_name}!</h1>
                     <p>Your account has been approved</p>
                 </div>
-                
+
                 <div class="content">
                     <div class="success-badge">
                         <strong>✅ Account Approved Successfully!</strong>
                     </div>
-                    
+
                     <p>Congratulations! Your MediChain doctor account has been verified and approved.</p>
-                    
+
                     <p>You can now:</p>
                     <ul>
                         <li>Access your doctor dashboard</li>
@@ -310,13 +301,13 @@ def send_doctor_notification_email(doctor_email, doctor_name, status, message):
                         <li>Use AI-powered diagnostic tools</li>
                         <li>Access secure medical records</li>
                     </ul>
-                    
+
                     <div style="text-align: center;">
                         <a href="https://my-medichain.com/login" class="login-btn">
                             Login to Your Account
                         </a>
                     </div>
-                    
+
                     <p><strong>Note:</strong> {message}</p>
                 </div>
             </body>
@@ -364,20 +355,20 @@ def send_doctor_notification_email(doctor_email, doctor_name, status, message):
                     <h1>MediChain Application Update</h1>
                     <p>Regarding your doctor registration</p>
                 </div>
-                
+
                 <div class="content">
                     <div class="decline-badge">
                         <strong>Application Not Approved</strong>
                     </div>
-                    
+
                     <p>Dear Dr. {doctor_name},</p>
-                    
-                    <p>Thank you for your interest in joining MediChain. After reviewing your application, 
+
+                    <p>Thank you for your interest in joining MediChain. After reviewing your application,
                     we were unable to approve your account at this time.</p>
-                    
+
                     <p><strong>Reason:</strong> {message}</p>
-                    
-                    <p>You're welcome to reapply with updated documentation. If you have any questions, 
+
+                    <p>You're welcome to reapply with updated documentation. If you have any questions,
                     please contact our support team.</p>
                 </div>
             </body>
@@ -418,18 +409,14 @@ def doctor_signup():
         # Check for verification file
         if "verificationFile" not in request.files:
             return (
-                jsonify(
-                    {"success": False, "error": "Verification document is required"}
-                ),
+                jsonify({"success": False, "error": "Verification document is required"}),
                 400,
             )
 
         file = request.files["verificationFile"]
         if file.filename == "":
             return (
-                jsonify(
-                    {"success": False, "error": "No verification document selected"}
-                ),
+                jsonify({"success": False, "error": "No verification document selected"}),
                 400,
             )
 
@@ -456,9 +443,7 @@ def doctor_signup():
         file.save(file_path)
 
         # Create Firebase user (but with unverified status)
-        firebase_result = firebase_auth_service.create_user_with_email_password(
-            email, password
-        )
+        firebase_result = firebase_auth_service.create_user_with_email_password(email, password)
 
         if not firebase_result["success"]:
             # Clean up uploaded file
@@ -468,9 +453,7 @@ def doctor_signup():
                 jsonify(
                     {
                         "success": False,
-                        "error": firebase_result.get(
-                            "error", "Failed to create Firebase account"
-                        ),
+                        "error": firebase_result.get("error", "Failed to create Firebase account"),
                     }
                 ),
                 400,
@@ -501,16 +484,8 @@ def doctor_signup():
         }
 
         # Insert into database
-        user_response = (
-            supabase.service_client.table("user_profiles")
-            .insert(user_profile_data)
-            .execute()
-        )
-        doctor_response = (
-            supabase.service_client.table("doctor_profiles")
-            .insert(doctor_profile_data)
-            .execute()
-        )
+        user_response = supabase.service_client.table("user_profiles").insert(user_profile_data).execute()
+        doctor_response = supabase.service_client.table("doctor_profiles").insert(doctor_profile_data).execute()
 
         if not user_response.data or not doctor_response.data:
             # Clean up Firebase user and file
@@ -530,15 +505,16 @@ def doctor_signup():
             "specialization": specialization,
         }
 
-        email_sent = send_admin_notification_email(
-            doctor_data, file_path, doctor_id, verification_token
-        )
+        email_sent = send_admin_notification_email(doctor_data, file_path, doctor_id, verification_token)
 
         return (
             jsonify(
                 {
                     "success": True,
-                    "message": "Doctor registration submitted successfully! You will receive an email notification once your account is reviewed.",
+                    "message": (
+                        "Doctor registration submitted successfully! You will receive an "
+                        "email notification once your account is reviewed."
+                    ),
                     "doctor_id": doctor_id,
                     "email_sent": email_sent,
                 }
@@ -570,12 +546,7 @@ def approve_doctor():
             return "Invalid verification link", 400
 
         # Get doctor profile
-        response = (
-            supabase.service_client.table("doctor_profiles")
-            .select("*")
-            .eq("doctor_id", doctor_id)
-            .execute()
-        )
+        response = supabase.service_client.table("doctor_profiles").select("*").eq("doctor_id", doctor_id).execute()
 
         if not response.data:
             return "Doctor not found", 404
@@ -589,33 +560,23 @@ def approve_doctor():
         if doctor_profile["verification_status"] != "pending":
             return "This verification link has already been used", 400
 
-        token_expires = datetime.fromisoformat(
-            doctor_profile["token_expires_at"].replace("Z", "+00:00")
-        )
+        token_expires = datetime.fromisoformat(doctor_profile["token_expires_at"].replace("Z", "+00:00"))
         if datetime.utcnow().replace(tzinfo=token_expires.tzinfo) > token_expires:
             return "Verification link has expired", 400
 
         # Update doctor status to approved
-        update_doctor = (
-            supabase.service_client.table("doctor_profiles")
-            .update(
-                {
-                    "verification_status": "approved",
-                    "verified_at": datetime.utcnow().isoformat(),
-                    "verification_token": None,  # Invalidate token
-                }
-            )
-            .eq("doctor_id", doctor_id)
-            .execute()
-        )
+        supabase.service_client.table("doctor_profiles").update(
+            {
+                "verification_status": "approved",
+                "verified_at": datetime.utcnow().isoformat(),
+                "verification_token": None,  # Invalidate token
+            }
+        ).eq("doctor_id", doctor_id).execute()
 
         # Update user profile
-        update_user = (
-            supabase.service_client.table("user_profiles")
-            .update({"verification_status": "approved"})
-            .eq("firebase_uid", doctor_profile["firebase_uid"])
-            .execute()
-        )
+        supabase.service_client.table("user_profiles").update({"verification_status": "approved"}).eq(
+            "firebase_uid", doctor_profile["firebase_uid"]
+        ).execute()
 
         # Get user email for notification
         user_response = (
@@ -644,7 +605,14 @@ def approve_doctor():
             <title>Doctor Approved - MediChain</title>
             <style>
                 body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f0f8ff; }
-                .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
+                .container {
+                    background: white;
+                    padding: 40px;
+                    border-radius: 10px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                    max-width: 500px;
+                    margin: 0 auto;
+                }
                 .success { color: #4caf50; font-size: 24px; margin-bottom: 20px; }
             </style>
         </head>
@@ -677,12 +645,7 @@ def decline_doctor():
             return "Invalid verification link", 400
 
         # Get doctor profile
-        response = (
-            supabase.service_client.table("doctor_profiles")
-            .select("*")
-            .eq("doctor_id", doctor_id)
-            .execute()
-        )
+        response = supabase.service_client.table("doctor_profiles").select("*").eq("doctor_id", doctor_id).execute()
 
         if not response.data:
             return "Doctor not found", 404
@@ -696,9 +659,7 @@ def decline_doctor():
         if doctor_profile["verification_status"] != "pending":
             return "This verification link has already been used", 400
 
-        token_expires = datetime.fromisoformat(
-            doctor_profile["token_expires_at"].replace("Z", "+00:00")
-        )
+        token_expires = datetime.fromisoformat(doctor_profile["token_expires_at"].replace("Z", "+00:00"))
         if datetime.utcnow().replace(tzinfo=token_expires.tzinfo) > token_expires:
             return "Verification link has expired", 400
 
@@ -744,9 +705,7 @@ def decline_doctor():
         )
 
         # Clean up verification file
-        if doctor_profile["verification_file_path"] and os.path.exists(
-            doctor_profile["verification_file_path"]
-        ):
+        if doctor_profile["verification_file_path"] and os.path.exists(doctor_profile["verification_file_path"]):
             os.remove(doctor_profile["verification_file_path"])
 
         return (
@@ -756,7 +715,14 @@ def decline_doctor():
             <title>Doctor Declined - MediChain</title>
             <style>
                 body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f0f8ff; }
-                .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
+                .container {
+                    background: white;
+                    padding: 40px;
+                    border-radius: 10px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                    max-width: 500px;
+                    margin: 0 auto;
+                }
                 .decline { color: #f44336; font-size: 24px; margin-bottom: 20px; }
             </style>
         </head>

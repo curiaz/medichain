@@ -16,11 +16,10 @@ Usage in Flask:
 
 import os
 import warnings
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import joblib
 import numpy as np
-import pandas as pd
 
 warnings.filterwarnings("ignore")
 
@@ -273,40 +272,20 @@ class MediChainAI:
         """Load our custom trained AI model and components - prioritize enhanced model"""
         try:
             # Try to load enhanced model first (newest with 56 diagnoses)
-            self.model = joblib.load(
-                os.path.join(self.model_path, "enhanced_diagnosis_model.pkl")
-            )
-            self.label_encoder = joblib.load(
-                os.path.join(self.model_path, "enhanced_label_encoder.pkl")
-            )
-            self.feature_names = joblib.load(
-                os.path.join(self.model_path, "enhanced_feature_names.pkl")
-            )
-            self.prescriptions_map = joblib.load(
-                os.path.join(self.model_path, "enhanced_prescriptions_map.pkl")
-            )
-            print(
-                f"Loaded enhanced model successfully! ({len(self.label_encoder.classes_)} diagnoses available)"
-            )
+            self.model = joblib.load(os.path.join(self.model_path, "enhanced_diagnosis_model.pkl"))
+            self.label_encoder = joblib.load(os.path.join(self.model_path, "enhanced_label_encoder.pkl"))
+            self.feature_names = joblib.load(os.path.join(self.model_path, "enhanced_feature_names.pkl"))
+            self.prescriptions_map = joblib.load(os.path.join(self.model_path, "enhanced_prescriptions_map.pkl"))
+            print(f"Loaded enhanced model successfully! ({len(self.label_encoder.classes_)} diagnoses available)")
             return True
         except Exception as e:
             print(f"Enhanced model not found, trying conversational model: {e}")
             try:
                 # Fallback to conversational model if enhanced doesn't exist
-                self.model = joblib.load(
-                    os.path.join(self.model_path, "conversational_diagnosis_model.pkl")
-                )
-                self.label_encoder = joblib.load(
-                    os.path.join(self.model_path, "conversational_label_encoder.pkl")
-                )
-                self.feature_names = joblib.load(
-                    os.path.join(self.model_path, "conversational_feature_names.pkl")
-                )
-                self.prescriptions_map = joblib.load(
-                    os.path.join(
-                        self.model_path, "conversational_prescriptions_map.pkl"
-                    )
-                )
+                self.model = joblib.load(os.path.join(self.model_path, "conversational_diagnosis_model.pkl"))
+                self.label_encoder = joblib.load(os.path.join(self.model_path, "conversational_label_encoder.pkl"))
+                self.feature_names = joblib.load(os.path.join(self.model_path, "conversational_feature_names.pkl"))
+                self.prescriptions_map = joblib.load(os.path.join(self.model_path, "conversational_prescriptions_map.pkl"))
                 print("Loaded conversational model successfully!")
                 return True
             except Exception as e2:
@@ -368,12 +347,7 @@ class MediChainAI:
                                 if (
                                     groups[0] in keyword
                                     or keyword in groups[0]
-                                    or (
-                                        len(groups) > 2
-                                        and (
-                                            groups[2] in keyword or keyword in groups[2]
-                                        )
-                                    )
+                                    or (len(groups) > 2 and (groups[2] in keyword or keyword in groups[2]))
                                 ):
                                     duration_info[symptom] = f"{groups[1]} {groups[2]}"
 
@@ -399,9 +373,7 @@ class MediChainAI:
 
         # Additional weight for critical symptoms
         critical_symptoms = ["fever", "shortness_of_breath", "chest_pain", "dizziness"]
-        critical_count = sum(
-            1 for sym in critical_symptoms if symptoms.get(sym, 0) == 1
-        )
+        critical_count = sum(1 for sym in critical_symptoms if symptoms.get(sym, 0) == 1)
         severity_score += critical_count * 0.15
 
         # Ensure score is within range
@@ -417,9 +389,7 @@ class MediChainAI:
         else:
             return "Critical", severity_score
 
-    def get_alternative_diagnoses(
-        self, probabilities: np.ndarray, top_k: int = 3
-    ) -> List[Dict]:
+    def get_alternative_diagnoses(self, probabilities: np.ndarray, top_k: int = 3) -> List[Dict]:
         """Get top alternative diagnoses with our own ranking system"""
         top_indices = np.argsort(probabilities)[-top_k:][::-1]
         alternatives = []
@@ -465,9 +435,7 @@ class MediChainAI:
             return {"error": "No input provided"}
 
         # Convert to our model's input format (only basic symptoms)
-        feature_vector = np.array(
-            [[float(detected_symptoms.get(f, 0)) for f in self.feature_names]]
-        )
+        feature_vector = np.array([[float(detected_symptoms.get(f, 0)) for f in self.feature_names]])
 
         # Make prediction with our custom trained model
         prediction = self.model.predict(feature_vector)[0]
@@ -493,9 +461,7 @@ class MediChainAI:
         prescriptions = self.prescriptions_map.get(primary_diagnosis, {})
 
         # Generate duration insights from extracted duration info
-        duration_insights = self._generate_duration_insights(
-            duration_info, primary_diagnosis
-        )
+        duration_insights = self._generate_duration_insights(duration_info, primary_diagnosis)
 
         # Build comprehensive result
         result = {
@@ -514,9 +480,7 @@ class MediChainAI:
             "input_method": input_method,
             "ai_system": "MediChain AI v4.0 - Conversational with Natural Duration Detection",
             "recommendations": {
-                "immediate_care": self._get_immediate_care_advice(
-                    severity, detected_symptoms
-                ),
+                "immediate_care": self._get_immediate_care_advice(severity, detected_symptoms),
                 "follow_up": self._get_followup_advice(primary_diagnosis),
                 "emergency_signs": self._get_emergency_signs(),
             },
@@ -524,9 +488,7 @@ class MediChainAI:
 
         return result
 
-    def _generate_duration_insights(
-        self, duration_info: Dict[str, str], diagnosis: str
-    ) -> Dict:
+    def _generate_duration_insights(self, duration_info: Dict[str, str], diagnosis: str) -> Dict:
         """Generate insights based on symptom durations from natural language"""
         insights = {
             "duration_analysis": [],
@@ -549,24 +511,14 @@ class MediChainAI:
             if "day" in duration_text:
                 days = int("".join(filter(str.isdigit, duration_text)))
                 if days <= 3:
-                    insights["duration_analysis"].append(
-                        f"{symptom_display}: Recent onset ({duration_text})"
-                    )
+                    insights["duration_analysis"].append(f"{symptom_display}: Recent onset ({duration_text})")
                 elif days <= 7:
-                    insights["duration_analysis"].append(
-                        f"{symptom_display}: Short-term ({duration_text})"
-                    )
+                    insights["duration_analysis"].append(f"{symptom_display}: Short-term ({duration_text})")
                 elif days <= 14:
-                    insights["duration_analysis"].append(
-                        f"{symptom_display}: Extended duration ({duration_text})"
-                    )
-                    insights["urgency_indicators"].append(
-                        f"{symptom_display} persisting over 1 week"
-                    )
+                    insights["duration_analysis"].append(f"{symptom_display}: Extended duration ({duration_text})")
+                    insights["urgency_indicators"].append(f"{symptom_display} persisting over 1 week")
                 else:
-                    insights["duration_analysis"].append(
-                        f"{symptom_display}: Persistent condition ({duration_text})"
-                    )
+                    insights["duration_analysis"].append(f"{symptom_display}: Persistent condition ({duration_text})")
                     insights["urgency_indicators"].append(
                         f"{symptom_display} persisting over 2 weeks - medical evaluation recommended"
                     )
@@ -579,31 +531,21 @@ class MediChainAI:
                     )
 
             elif "month" in duration_text:
-                insights["urgency_indicators"].append(
-                    f"{symptom_display} chronic condition - ongoing medical care needed"
-                )
+                insights["urgency_indicators"].append(f"{symptom_display} chronic condition - ongoing medical care needed")
 
         # Create summary
         if duration_parts:
-            insights["duration_summary"] = "Duration information: " + ", ".join(
-                duration_parts
-            )
+            insights["duration_summary"] = "Duration information: " + ", ".join(duration_parts)
 
         # Add recommendations based on duration
         if insights["urgency_indicators"]:
-            insights["recommendations"].append(
-                "Consider medical evaluation due to symptom duration"
-            )
+            insights["recommendations"].append("Consider medical evaluation due to symptom duration")
         else:
-            insights["recommendations"].append(
-                "Monitor symptoms and seek care if they worsen or persist"
-            )
+            insights["recommendations"].append("Monitor symptoms and seek care if they worsen or persist")
 
         return insights
 
-    def _get_immediate_care_advice(
-        self, severity: str, symptoms: Dict[str, int]
-    ) -> str:
+    def _get_immediate_care_advice(self, severity: str, symptoms: Dict[str, int]) -> str:
         """Generate immediate care advice based on severity"""
         if severity == "Critical":
             return "Seek immediate emergency medical attention. Critical symptoms detected."
@@ -638,13 +580,9 @@ class MediChainAI:
             "system_name": "MediChain Conversational AI",
             "version": "4.0",
             "model_type": "Custom Random Forest Classifier (Conversational-Optimized)",
-            "total_conditions": (
-                len(self.label_encoder.classes_) if self.label_encoder else 0
-            ),
+            "total_conditions": (len(self.label_encoder.classes_) if self.label_encoder else 0),
             "symptom_features": len(self.feature_names) if self.feature_names else 0,
-            "prescription_database": (
-                len(self.prescriptions_map) if self.prescriptions_map else 0
-            ),
+            "prescription_database": (len(self.prescriptions_map) if self.prescriptions_map else 0),
             "external_dependencies": "None - 100% Self-Contained!",
             "capabilities": [
                 "Conversational diagnosis with follow-up questions",
@@ -695,9 +633,7 @@ class MediChainAI:
             "progress": self._calculate_conversation_progress(),
         }
 
-    def continue_conversation(
-        self, user_response: str, question_id: str = None
-    ) -> Dict:
+    def continue_conversation(self, user_response: str, question_id: str = None) -> Dict:
         """Continue the conversation with user response"""
         # Process the response
         processed_response = self._process_user_response(user_response, question_id)
@@ -739,9 +675,7 @@ class MediChainAI:
     def _generate_next_question(self) -> Dict:
         """Generate the next appropriate question based on current symptoms"""
         # Check what symptoms we have and what questions we need to ask
-        detected_symptom_names = [
-            k for k, v in self.gathered_symptoms.items() if v == 1
-        ]
+        detected_symptom_names = [k for k, v in self.gathered_symptoms.items() if v == 1]
 
         # Priority order for questions (removed duration questions - duration extracted from text)
         question_priority = [
@@ -754,10 +688,7 @@ class MediChainAI:
 
         # Find the first appropriate question to ask
         for symptom, question_key in question_priority:
-            if (
-                symptom in detected_symptom_names
-                and question_key not in self.follow_up_questions
-            ):
+            if symptom in detected_symptom_names and question_key not in self.follow_up_questions:
                 self.follow_up_questions.append(question_key)
                 question_data = self.question_templates[question_key].copy()
                 question_data["question_id"] = question_key
@@ -807,17 +738,9 @@ class MediChainAI:
             if "fever" in question_id:
                 if "high" in response_lower or "103" in response_lower:
                     processed["details"]["fever_severity"] = "high"
-                elif (
-                    "moderate" in response_lower
-                    or "101" in response_lower
-                    or "102" in response_lower
-                ):
+                elif "moderate" in response_lower or "101" in response_lower or "102" in response_lower:
                     processed["details"]["fever_severity"] = "moderate"
-                elif (
-                    "low" in response_lower
-                    or "99" in response_lower
-                    or "100" in response_lower
-                ):
+                elif "low" in response_lower or "99" in response_lower or "100" in response_lower:
                     processed["details"]["fever_severity"] = "low"
 
             elif "cough" in question_id:
@@ -875,7 +798,7 @@ if __name__ == "__main__":
     print("Testing MediChain Custom AI...")
     result = quick_test()
     if "error" not in result:
-        print(f"✅ AI Test Successful!")
+        print("✅ AI Test Successful!")
         print(f"Diagnosis: {result['primary_diagnosis']}")
         print(f"Confidence: {result['confidence']}%")
     else:

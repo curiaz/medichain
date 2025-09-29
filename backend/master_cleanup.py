@@ -7,7 +7,6 @@ Clears both Firebase Auth and Supabase data for complete reset
 import os
 import subprocess
 import sys
-from pathlib import Path
 
 
 def run_script(script_name, description):
@@ -25,9 +24,7 @@ def run_script(script_name, description):
             print(f"✅ {description} completed successfully")
             return True
         else:
-            print(
-                f"⚠️ {description} completed with warnings (exit code: {result.returncode})"
-            )
+            print(f"⚠️ {description} completed with warnings (exit code: {result.returncode})")
             return False
 
     except Exception as e:
@@ -44,9 +41,7 @@ def main():
     print("=" * 60)
 
     # Confirm the operation
-    confirm = input(
-        "\nAre you sure you want to proceed with complete data cleanup? (yes/no): "
-    )
+    confirm = input("\nAre you sure you want to proceed with complete data cleanup? (yes/no): ")
     if confirm.lower() != "yes":
         print("❌ Operation cancelled")
         return

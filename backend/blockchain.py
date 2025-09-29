@@ -5,7 +5,7 @@ Blockchain ledger integration for medical record integrity verification
 import hashlib
 import json
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 class Block:
@@ -105,10 +105,7 @@ class Blockchain:
         """Get all blockchain transactions for a specific medical record"""
         transactions = []
         for block in self.chain:
-            if (
-                block.data.get("type") == "medical_record"
-                and block.data.get("record_id") == record_id
-            ):
+            if block.data.get("type") == "medical_record" and block.data.get("record_id") == record_id:
                 transactions.append(
                     {
                         "block_index": block.index,

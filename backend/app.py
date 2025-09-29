@@ -9,16 +9,16 @@ from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
 
-# Load environment variables
-load_dotenv()
-
-from appointment_routes import appointments_bp
 # Import our services
+from appointment_routes import appointments_bp
 from auth.firebase_auth_routes import auth_firebase_bp
 from contact_routes import contact_bp
 from db.supabase_client import SupabaseClient
 from doctor_verification import doctor_verification_bp
 from medical_routes import medical_bp
+
+# Load environment variables
+load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)

@@ -4,15 +4,13 @@ Comprehensive AI Diagnosis System with Enhanced Confidence
 Core AI diagnosis logic for MediChain with confidence boosting
 """
 
-import json
 import logging
 import pickle
 import re
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 import numpy as np
-import pandas as pd
 
 from medication_recommendations import MedicationRecommendations
 
@@ -41,7 +39,7 @@ class ComprehensiveAIDiagnosis:
             with open(features_path, "rb") as f:
                 self.feature_names = pickle.load(f)
 
-            logger.info(f"Model loaded successfully")
+            logger.info("Model loaded successfully")
             logger.info(f"Features: {len(self.feature_names)}")
             logger.info(f"Supported diagnoses: {len(self.label_encoder.classes_)}")
 
@@ -55,9 +53,7 @@ class ComprehensiveAIDiagnosis:
             logger.error(f"Error loading model: {e}")
             raise
 
-    def diagnose(
-        self, symptoms_text: str, duration_text: str = "", intensity_text: str = ""
-    ) -> Dict:
+    def diagnose(self, symptoms_text: str, duration_text: str = "", intensity_text: str = "") -> Dict:
         """
         Comprehensive diagnosis with natural language processing and confidence boosting
 
@@ -71,9 +67,7 @@ class ComprehensiveAIDiagnosis:
         """
         try:
             # Parse symptoms and extract features
-            parsed_result = self.symptom_parser.parse_comprehensive(
-                symptoms_text, duration_text, intensity_text
-            )
+            parsed_result = self.symptom_parser.parse_comprehensive(symptoms_text, duration_text, intensity_text)
 
             # Create feature vector
             feature_vector = self._create_feature_vector(parsed_result)
@@ -86,9 +80,7 @@ class ComprehensiveAIDiagnosis:
             base_confidence = float(probabilities[prediction])
 
             # Apply confidence boosting
-            boosted_confidence = self._apply_confidence_boosting(
-                base_confidence, parsed_result, feature_vector
-            )
+            boosted_confidence = self._apply_confidence_boosting(base_confidence, parsed_result, feature_vector)
 
             # Get diagnosis name
             diagnosis = self.label_encoder.inverse_transform([prediction])[0]
@@ -99,26 +91,20 @@ class ComprehensiveAIDiagnosis:
 
             for idx in top_indices:
                 pred_diagnosis = self.label_encoder.inverse_transform([idx])[0]
-                pred_confidence = (
-                    float(probabilities[idx]) * 100
-                )  # Convert to percentage
+                pred_confidence = float(probabilities[idx]) * 100  # Convert to percentage
 
                 # Apply boosting to primary prediction
                 if idx == prediction:
                     pred_confidence = boosted_confidence * 100  # Convert to percentage
 
                 # Get medication recommendations for this diagnosis
-                med_recommendations = (
-                    self.medication_recommendations.get_recommendations(pred_diagnosis)
-                )
+                med_recommendations = self.medication_recommendations.get_recommendations(pred_diagnosis)
 
                 top_predictions.append(
                     {
                         "diagnosis": pred_diagnosis,
                         "confidence": pred_confidence,
-                        "medications": med_recommendations["medications"][
-                            :3
-                        ],  # Top 3 medications
+                        "medications": med_recommendations["medications"][:3],  # Top 3 medications
                         "dosage": med_recommendations["dosage"],
                         "duration": med_recommendations["duration"],
                         "instructions": med_recommendations["instructions"],
@@ -126,11 +112,7 @@ class ComprehensiveAIDiagnosis:
                 )
 
             # Get comprehensive medication recommendations for all top predictions
-            medication_summary = (
-                self.medication_recommendations.get_multiple_recommendations(
-                    top_predictions
-                )
-            )
+            medication_summary = self.medication_recommendations.get_multiple_recommendations(top_predictions)
 
             result = {
                 "primary_diagnosis": diagnosis,
@@ -146,9 +128,7 @@ class ComprehensiveAIDiagnosis:
                 "timestamp": datetime.now().isoformat(),
             }
 
-            logger.info(
-                f"Diagnosis: {diagnosis} (confidence: {boosted_confidence:.3f})"
-            )
+            logger.info(f"Diagnosis: {diagnosis} (confidence: {boosted_confidence:.3f})")
             return result
 
         except Exception as e:
@@ -190,16 +170,12 @@ class ComprehensiveAIDiagnosis:
 
         # Add intensity (numeric)
         intensity_mapping = {"mild": 1.0, "moderate": 2.0, "severe": 3.0}
-        intensity_numeric = intensity_mapping.get(
-            parsed_result.get("intensity", "moderate"), 2.0
-        )
+        intensity_numeric = intensity_mapping.get(parsed_result.get("intensity", "moderate"), 2.0)
         symptom_vector.append(intensity_numeric)
 
         return symptom_vector
 
-    def _apply_confidence_boosting(
-        self, base_confidence: float, parsed_result: Dict, feature_vector: List[float]
-    ) -> float:
+    def _apply_confidence_boosting(self, base_confidence: float, parsed_result: Dict, feature_vector: List[float]) -> float:
         """Apply confidence boosting based on various factors"""
 
         boosted_confidence = base_confidence
@@ -502,9 +478,7 @@ class EnhancedSymptomParser:
             ],
         }
 
-    def parse_comprehensive(
-        self, symptoms_text: str, duration_text: str = "", intensity_text: str = ""
-    ) -> Dict:
+    def parse_comprehensive(self, symptoms_text: str, duration_text: str = "", intensity_text: str = "") -> Dict:
         """Parse comprehensive symptom information with enhanced NLP"""
 
         # Combine all text for parsing
@@ -546,7 +520,7 @@ class EnhancedSymptomParser:
             if match:
                 try:
                     return converter(match)
-                except:
+                except BaseException:
                     continue
 
         # Default to 7 days if no duration found
@@ -618,18 +592,14 @@ def test_comprehensive_diagnosis():
         ]
 
         for i, case in enumerate(test_cases):
-            print(f"\n--- Test Case {i+1} ---")
+            print(f"\n--- Test Case {i + 1} ---")
             print(f"Input: {case['symptoms']}")
 
-            result = ai_diagnosis.diagnose(
-                case["symptoms"], case["duration"], case["intensity"]
-            )
+            result = ai_diagnosis.diagnose(case["symptoms"], case["duration"], case["intensity"])
 
             if "error" not in result:
                 print(f"Diagnosis: {result['primary_diagnosis']}")
-                print(
-                    f"Confidence: {result['confidence']:.3f} ({result['confidence_level']})"
-                )
+                print(f"Confidence: {result['confidence']:.3f} ({result['confidence_level']})")
                 print(f"Base Confidence: {result['base_confidence']:.3f}")
                 print(f"Duration: {result['duration_days']} days")
                 print(f"Intensity: {result['intensity']}")

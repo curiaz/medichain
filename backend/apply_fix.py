@@ -12,9 +12,7 @@ def apply_fix():
     supabase = SupabaseClient()
 
     # Read the fix SQL file
-    fix_file = os.path.join(
-        os.path.dirname(__file__), "..", "database", "fix_foreign_key_constraint.sql"
-    )
+    fix_file = os.path.join(os.path.dirname(__file__), "..", "database", "fix_foreign_key_constraint.sql")
 
     with open(fix_file, "r") as f:
         fix_sql = f.read()
@@ -27,12 +25,7 @@ def apply_fix():
 
     try:
         # Test database connection
-        result = (
-            supabase.service_client.table("user_profiles")
-            .select("count")
-            .limit(1)
-            .execute()
-        )
+        supabase.service_client.table("user_profiles").select("count").limit(1).execute()
         print("✅ Database connection successful")
 
         print("\n📋 Please copy and run the above SQL in your Supabase dashboard:")

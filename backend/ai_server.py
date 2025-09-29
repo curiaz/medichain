@@ -4,26 +4,23 @@ Enhanced Confident AI Server with Confidence Boosting
 Improved confidence mechanisms without ensemble complexity
 """
 
+from medical_recommendations import get_personalized_recommendations
 import logging
 import os
 import sys
 from datetime import datetime
 
-import numpy as np
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+
+# Import the existing diagnosis system
+from comprehensive_ai_diagnosis import ComprehensiveAIDiagnosis
 
 # Add the backend directory to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Import the existing diagnosis system
-from comprehensive_ai_diagnosis import ComprehensiveAIDiagnosis
-from medical_recommendations import get_personalized_recommendations
-
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Initialize Flask app
@@ -101,16 +98,12 @@ class ConfidenceBooster:
         # 3. Symptom combination patterns
         for combo in self.confident_combinations:
             if all(symptom in active_symptoms for symptom in combo):
-                boosted_confidence *= self.confidence_multipliers[
-                    "symptom_combinations"
-                ]
+                boosted_confidence *= self.confidence_multipliers["symptom_combinations"]
                 applied_boosts.append(f"Known pattern: {', '.join(combo)}")
                 break
 
         # 4. Manual input boost
-        if parsed_result.get("manual_duration_override") or parsed_result.get(
-            "manual_intensity_override"
-        ):
+        if parsed_result.get("manual_duration_override") or parsed_result.get("manual_intensity_override"):
             boosted_confidence *= self.confidence_multipliers["manual_input"]
             applied_boosts.append("Manual input provided")
 
@@ -118,8 +111,7 @@ class ConfidenceBooster:
         confidence_keywords = parsed_result.get("confidence_keywords_found", 0)
         if confidence_keywords > 0:
             boost = min(
-                self.confidence_multipliers["keyword_confidence"]
-                ** confidence_keywords,
+                self.confidence_multipliers["keyword_confidence"] ** confidence_keywords,
                 1.10,
             )
             boosted_confidence *= boost
@@ -159,9 +151,7 @@ def initialize_ai_system():
         # Initialize AI diagnosis system
         ai_diagnosis = ComprehensiveAIDiagnosis()
 
-        logger.info(
-            "✅ Enhanced confident AI diagnosis system initialized successfully"
-        )
+        logger.info("✅ Enhanced confident AI diagnosis system initialized successfully")
         return True
 
     except Exception as e:
@@ -193,9 +183,7 @@ def model_info():
             "features": len(ai_diagnosis.feature_names),
             "diagnoses": len(ai_diagnosis.label_encoder.classes_),
             "confidence_boosting": "enabled",
-            "confidence_mechanisms": list(
-                confidence_booster.confidence_multipliers.keys()
-            ),
+            "confidence_mechanisms": list(confidence_booster.confidence_multipliers.keys()),
             "dataset_info": "Enhanced dataset with confidence features",
         }
     )
@@ -259,9 +247,7 @@ def enhanced_confident_diagnosis():
         # Update confidence in result
         result["confidence"] = boosted_confidence
         result["base_confidence"] = base_confidence
-        result["confidence_level"] = confidence_booster.get_confidence_level(
-            boosted_confidence
-        )
+        result["confidence_level"] = confidence_booster.get_confidence_level(boosted_confidence)
         result["confidence_boosts_applied"] = applied_boosts
 
         # Boost top predictions proportionally
@@ -270,23 +256,15 @@ def enhanced_confident_diagnosis():
                 prediction["confidence"] = boosted_confidence
             else:
                 # Apply smaller boost to other predictions
-                boost_ratio = (
-                    boosted_confidence / base_confidence if base_confidence > 0 else 1.0
-                )
-                prediction["confidence"] = min(
-                    prediction["confidence"] * (boost_ratio * 0.8), 0.90
-                )
+                boost_ratio = boosted_confidence / base_confidence if base_confidence > 0 else 1.0
+                prediction["confidence"] = min(prediction["confidence"] * (boost_ratio * 0.8), 0.90)
 
         # Sort top predictions by new confidence
         result["top_predictions"].sort(key=lambda x: x["confidence"], reverse=True)
 
         # Determine if duration and intensity were auto-detected
-        duration_auto_detected = ai_diagnosis.symptom_parser._was_duration_detected(
-            symptoms_text + " " + duration_text
-        )
-        intensity_auto_detected = ai_diagnosis.symptom_parser._was_intensity_detected(
-            symptoms_text + " " + intensity_text
-        )
+        duration_auto_detected = ai_diagnosis.symptom_parser._was_duration_detected(symptoms_text + " " + duration_text)
+        intensity_auto_detected = ai_diagnosis.symptom_parser._was_intensity_detected(symptoms_text + " " + intensity_text)
 
         # Get medical recommendations
         try:
@@ -307,9 +285,7 @@ def enhanced_confident_diagnosis():
         if isinstance(parsed_symptoms, list):
             symptoms_detected_count = len(parsed_symptoms)
         elif isinstance(parsed_symptoms, dict):
-            symptoms_detected_count = len(
-                [s for s in parsed_symptoms.values() if s == 1]
-            )
+            symptoms_detected_count = len([s for s in parsed_symptoms.values() if s == 1])
         else:
             symptoms_detected_count = 0
 
@@ -320,10 +296,8 @@ def enhanced_confident_diagnosis():
             "confidence_level": result["confidence_level"],
             "duration_auto_detected": duration_auto_detected,
             "intensity_auto_detected": intensity_auto_detected,
-            "needs_duration_input": not duration_auto_detected
-            and not result.get("manual_duration_override", False),
-            "needs_intensity_input": not intensity_auto_detected
-            and not result.get("manual_intensity_override", False),
+            "needs_duration_input": not duration_auto_detected and not result.get("manual_duration_override", False),
+            "needs_intensity_input": not intensity_auto_detected and not result.get("manual_intensity_override", False),
             "original_duration": original_duration,
             "original_intensity": original_intensity,
             "manual_overrides_applied": result.get("manual_duration_override", False)
@@ -336,7 +310,8 @@ def enhanced_confident_diagnosis():
         }
 
         logger.info(
-            f"Enhanced confident diagnosis complete: {result['primary_diagnosis']} (confidence: {boosted_confidence:.3f}, level: {result['confidence_level']})"
+            f"Enhanced diagnosis: {result['primary_diagnosis']} "
+            f"(confidence: {boosted_confidence:.3f}, level: {result['confidence_level']})"
         )
 
         return jsonify(result)

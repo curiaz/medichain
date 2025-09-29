@@ -3,14 +3,13 @@ Firebase Authentication Service for Backend
 Handles Firebase Admin SDK operations and token verification
 """
 
-import json
 import os
 from functools import wraps
 
 import firebase_admin
 from dotenv import load_dotenv
 from firebase_admin import auth, credentials
-from flask import current_app, jsonify, request
+from flask import jsonify, request
 
 # Load environment variables
 load_dotenv()
@@ -42,9 +41,7 @@ class FirebaseAuthService:
                         "type": "service_account",
                         "project_id": os.getenv("FIREBASE_PROJECT_ID"),
                         "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
-                        "private_key": os.getenv("FIREBASE_PRIVATE_KEY", "").replace(
-                            "\\n", "\n"
-                        ),
+                        "private_key": os.getenv("FIREBASE_PRIVATE_KEY", "").replace("\\n", "\n"),
                         "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
                         "client_id": os.getenv("FIREBASE_CLIENT_ID"),
                         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -57,9 +54,7 @@ class FirebaseAuthService:
                     if all(service_account_info.values()):
                         cred = credentials.Certificate(service_account_info)
                         firebase_admin.initialize_app(cred)
-                        print(
-                            "✅ Firebase Admin initialized with environment variables"
-                        )
+                        print("✅ Firebase Admin initialized with environment variables")
                     else:
                         print("⚠️ Firebase Admin not initialized - missing credentials")
                         return False
@@ -194,9 +189,7 @@ def firebase_auth_required(f):
 
         if not verification_result["success"]:
             return (
-                jsonify(
-                    {"error": "Invalid token", "details": verification_result["error"]}
-                ),
+                jsonify({"error": "Invalid token", "details": verification_result["error"]}),
                 401,
             )
 
@@ -238,9 +231,7 @@ def firebase_role_required(allowed_roles):
 
                 if user_role not in allowed_roles:
                     return (
-                        jsonify(
-                            {"error": f"Access denied. Required roles: {allowed_roles}"}
-                        ),
+                        jsonify({"error": f"Access denied. Required roles: {allowed_roles}"}),
                         403,
                     )
 

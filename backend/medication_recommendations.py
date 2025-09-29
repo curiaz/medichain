@@ -268,7 +268,7 @@ class MedicationRecommendations:
         """Get medication recommendations for a specific diagnosis"""
 
         # Clean up diagnosis name (remove underscores, handle variations)
-        clean_diagnosis = diagnosis.replace("_", " ").replace("-", " ").title()
+        diagnosis.replace("_", " ").replace("-", " ").title()
 
         # Direct match
         if diagnosis in self.medication_map:

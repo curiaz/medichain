@@ -12,9 +12,7 @@ def apply_trigger():
     supabase = SupabaseClient()
 
     # Read the trigger SQL file
-    trigger_file = os.path.join(
-        os.path.dirname(__file__), "..", "database", "sync_firebase_uid_trigger.sql"
-    )
+    trigger_file = os.path.join(os.path.dirname(__file__), "..", "database", "sync_firebase_uid_trigger.sql")
 
     with open(trigger_file, "r") as f:
         trigger_sql = f.read()
@@ -28,12 +26,7 @@ def apply_trigger():
     try:
         # Try to execute using service client
         # Note: This requires proper permissions
-        result = (
-            supabase.service_client.table("user_profiles")
-            .select("count")
-            .limit(1)
-            .execute()
-        )
+        supabase.service_client.table("user_profiles").select("count").limit(1).execute()
         print("✅ Database connection successful")
 
         # For now, just show the SQL - user needs to run it manually in Supabase dashboard

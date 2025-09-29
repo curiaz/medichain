@@ -3,8 +3,6 @@ Appointments API Routes
 Handles appointment scheduling and management
 """
 
-from datetime import datetime
-
 from flask import Blueprint, jsonify, request
 
 from auth.firebase_auth import firebase_auth_required
@@ -23,12 +21,7 @@ def get_appointments():
         uid = firebase_user["uid"]
 
         # Get user profile to determine role
-        user_response = (
-            supabase.client.table("user_profiles")
-            .select("role")
-            .eq("firebase_uid", uid)
-            .execute()
-        )
+        user_response = supabase.client.table("user_profiles").select("role").eq("firebase_uid", uid).execute()
         if not user_response.data:
             return jsonify({"success": False, "error": "User profile not found"}), 404
 
@@ -36,20 +29,10 @@ def get_appointments():
 
         if user_role == "patient":
             # Patients see their own appointments
-            response = (
-                supabase.client.table("appointments")
-                .select("*")
-                .eq("patient_firebase_uid", uid)
-                .execute()
-            )
+            response = supabase.client.table("appointments").select("*").eq("patient_firebase_uid", uid).execute()
         elif user_role == "doctor":
             # Doctors see their appointments
-            response = (
-                supabase.client.table("appointments")
-                .select("*")
-                .eq("doctor_firebase_uid", uid)
-                .execute()
-            )
+            response = supabase.client.table("appointments").select("*").eq("doctor_firebase_uid", uid).execute()
         else:
             return jsonify({"success": False, "error": "Unauthorized role"}), 403
 
@@ -73,19 +56,12 @@ def create_appointment():
         for field in required_fields:
             if field not in data:
                 return (
-                    jsonify(
-                        {"success": False, "error": f"Missing required field: {field}"}
-                    ),
+                    jsonify({"success": False, "error": f"Missing required field: {field}"}),
                     400,
                 )
 
         # Get user role
-        user_response = (
-            supabase.client.table("user_profiles")
-            .select("role")
-            .eq("firebase_uid", uid)
-            .execute()
-        )
+        user_response = supabase.client.table("user_profiles").select("role").eq("firebase_uid", uid).execute()
         if not user_response.data:
             return jsonify({"success": False, "error": "User profile not found"}), 404
 
@@ -110,9 +86,7 @@ def create_appointment():
         else:
             return jsonify({"success": False, "error": "Unauthorized role"}), 403
 
-        response = (
-            supabase.client.table("appointments").insert(appointment_data).execute()
-        )
+        response = supabase.client.table("appointments").insert(appointment_data).execute()
 
         return (
             jsonify(
@@ -150,9 +124,7 @@ def update_appointment(appointment_id):
             return jsonify({"success": True, "appointment": response.data[0]}), 200
         else:
             return (
-                jsonify(
-                    {"success": False, "error": "Appointment not found or unauthorized"}
-                ),
+                jsonify({"success": False, "error": "Appointment not found or unauthorized"}),
                 404,
             )
 

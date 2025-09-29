@@ -4,7 +4,6 @@ Create database tables using Supabase REST API
 
 import os
 
-import requests
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,12 +15,8 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 def create_tables():
     """Create tables using Supabase REST API"""
 
-    # Headers for Supabase REST API
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json",
-    }
+    # Headers for Supabase REST API would be used if making direct REST calls
+    # Currently using SupabaseClient which handles headers automatically
 
     # SQL commands to create tables
     sql_commands = [
@@ -58,7 +53,7 @@ def create_tables():
             # Use Supabase Edge Functions or direct SQL endpoint
             # Note: This approach may not work with the standard Supabase setup
             # You typically need to use the Supabase dashboard SQL editor
-            print(f"Attempting to execute SQL...")
+            print("Attempting to execute SQL...")
             print("Note: You may need to run this SQL manually in Supabase dashboard:")
             print(sql)
             print("-" * 50)

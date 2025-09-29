@@ -8,7 +8,7 @@ import os
 import sys
 
 from dotenv import load_dotenv
-from supabase import Client, create_client
+from supabase import create_client
 
 # Load environment variables
 load_dotenv()
@@ -55,12 +55,7 @@ def clear_table(supabase, table_name):
         print(f"🧹 {table_name}: Deleting {count} records...")
 
         # Delete all records (Supabase requires a condition, so we use neq with impossible value)
-        result = (
-            supabase.table(table_name)
-            .delete()
-            .neq("id", "00000000-0000-0000-0000-000000000000")
-            .execute()
-        )
+        result = supabase.table(table_name).delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
 
         if result.data is not None:
             deleted_count = len(result.data) if isinstance(result.data, list) else 1
@@ -125,7 +120,7 @@ def clear_all_user_data(supabase):
             print(f"⚠️ Warning: Failed to clear {table}")
 
     print("=" * 50)
-    print(f"📊 Cleanup Summary:")
+    print("📊 Cleanup Summary:")
     print(f"  ✅ Successfully cleared: {success_count}/{total_tables} tables")
 
     if success_count == total_tables:
@@ -169,9 +164,7 @@ def main():
                 print("\n✨ Database is already clean!")
                 continue
 
-            confirm = input(
-                f"\n⚠️ Are you sure you want to delete ALL user data? (yes/no): "
-            )
+            confirm = input("\n⚠️ Are you sure you want to delete ALL user data? (yes/no): ")
             if confirm.lower() != "yes":
                 print("❌ Operation cancelled")
                 continue
@@ -205,9 +198,7 @@ def main():
                         print(f"ℹ️ {table_name} is already empty")
                         continue
 
-                    confirm = input(
-                        f"⚠️ Delete all {count} records from {table_name}? (yes/no): "
-                    )
+                    confirm = input(f"⚠️ Delete all {count} records from {table_name}? (yes/no): ")
                     if confirm.lower() == "yes":
                         if clear_table(supabase, table_name):
                             print(f"✅ {table_name} cleared successfully!")

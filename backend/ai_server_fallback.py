@@ -9,7 +9,6 @@ import os
 import sys
 from datetime import datetime
 
-import numpy as np
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
@@ -86,9 +85,7 @@ FALLBACK_DIAGNOSES = {
                 "Do not delay medical care",
                 "Call emergency services if severe",
             ],
-            "when_to_see_doctor": [
-                "IMMEDIATELY - Chest pain with breathing difficulty requires urgent evaluation"
-            ],
+            "when_to_see_doctor": ["IMMEDIATELY - Chest pain with breathing difficulty requires urgent evaluation"],
         },
     },
     ("diarrhea", "nausea", "fatigue"): {
@@ -184,8 +181,9 @@ def diagnose():
             return jsonify({"error": "No data provided"}), 400
 
         symptoms_text = data.get("symptoms", "")
-        duration_text = data.get("duration", "")
-        intensity_text = data.get("intensity", "")
+        # Duration and intensity analysis could be added here
+        # duration_text = data.get("duration", "")
+        # intensity_text = data.get("intensity", "")
 
         if not symptoms_text:
             return jsonify({"error": "Symptoms are required"}), 400
@@ -201,9 +199,7 @@ def diagnose():
                     {
                         "error": "No recognizable symptoms found",
                         "message": "Please describe your symptoms more clearly",
-                        "suggestions": [
-                            "Try describing symptoms like: fever, cough, headache, nausea, etc."
-                        ],
+                        "suggestions": ["Try describing symptoms like: fever, cough, headache, nausea, etc."],
                     }
                 ),
                 400,
@@ -266,12 +262,13 @@ def diagnose():
                 "ml_model_available": False,
                 "timestamp": datetime.now().isoformat(),
             },
-            "disclaimer": "This is a preliminary assessment. Please consult a healthcare professional for proper diagnosis and treatment.",
+            "disclaimer": (
+                "This is a preliminary assessment. Please consult a healthcare "
+                "professional for proper diagnosis and treatment."
+            ),
         }
 
-        logger.info(
-            f"Fallback diagnosis complete: {best_match['diagnosis']} (confidence: {final_confidence:.3f})"
-        )
+        logger.info(f"Fallback diagnosis: {best_match['diagnosis']} " f"(confidence: {final_confidence:.3f})")
 
         return jsonify(response)
 
@@ -306,15 +303,7 @@ def model_info():
                 "Symptom pattern matching",
                 "Basic diagnosis suggestions",
             ],
-            "supported_symptoms": list(
-                set(
-                    [
-                        symptom
-                        for pattern in FALLBACK_DIAGNOSES.keys()
-                        for symptom in pattern
-                    ]
-                )
-            ),
+            "supported_symptoms": list(set([symptom for pattern in FALLBACK_DIAGNOSES.keys() for symptom in pattern])),
             "fallback_diagnoses": len(FALLBACK_DIAGNOSES),
         }
     )

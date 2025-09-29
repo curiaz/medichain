@@ -4,7 +4,6 @@ import os
 from datetime import datetime
 
 import joblib
-import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
@@ -56,9 +55,7 @@ class ContinuousLearningSystem:
                     json.dump([], f)
                 logging.info(f"Created {file}")
 
-    def collect_prediction_data(
-        self, symptoms, patient_data, prediction_result, user_feedback=None
-    ):
+    def collect_prediction_data(self, symptoms, patient_data, prediction_result, user_feedback=None):
         """
         Collect prediction data for continuous learning
         """
@@ -78,9 +75,7 @@ class ContinuousLearningSystem:
 
         return learning_entry["session_id"]
 
-    def collect_feedback(
-        self, session_id, actual_diagnosis, doctor_notes=None, treatment_outcome=None
-    ):
+    def collect_feedback(self, session_id, actual_diagnosis, doctor_notes=None, treatment_outcome=None):
         """
         Collect feedback from healthcare providers or patient outcomes
         """
@@ -107,15 +102,13 @@ class ContinuousLearningSystem:
             "timestamp": datetime.now().isoformat(),
             "symptoms": symptoms,
             "patient_data": patient_data,
-            "reason": (
-                "low_confidence" if confidence_threshold < 0.6 else "unknown_pattern"
-            ),
+            "reason": ("low_confidence" if confidence_threshold < 0.6 else "unknown_pattern"),
             "requires_human_review": True,
             "status": "pending",
         }
 
         self._append_to_file(self.unknown_cases_file, unknown_entry)
-        logging.info(f"Recorded unknown case for human review")
+        logging.info("Recorded unknown case for human review")
 
         return self._generate_unknown_case_response(symptoms, patient_data)
 
@@ -165,12 +158,8 @@ class ContinuousLearningSystem:
 
             if new_training_data is not None and len(new_training_data) > 0:
                 # Combine original and new data
-                combined_data = pd.concat(
-                    [original_data, new_training_data], ignore_index=True
-                )
-                logging.info(
-                    f"Combined {len(original_data)} original + {len(new_training_data)} new samples"
-                )
+                combined_data = pd.concat([original_data, new_training_data], ignore_index=True)
+                logging.info(f"Combined {len(original_data)} original + {len(new_training_data)} new samples")
             else:
                 combined_data = original_data
                 logging.info("No new training data available, using original data only")
@@ -194,9 +183,7 @@ class ContinuousLearningSystem:
                 # Record training history
                 self._record_training_history(accuracy, len(combined_data))
 
-                logging.info(
-                    f"Model retrained successfully. New accuracy: {accuracy:.2%}"
-                )
+                logging.info(f"Model retrained successfully. New accuracy: {accuracy:.2%}")
                 return True
             else:
                 logging.warning(f"Retraining failed. Low accuracy: {accuracy:.2%}")
@@ -225,21 +212,14 @@ class ContinuousLearningSystem:
             for feedback in feedback_data:
                 # Find corresponding learning entry
                 matching_learning = next(
-                    (
-                        ld
-                        for ld in learning_data
-                        if ld["session_id"] == feedback["session_id"]
-                    ),
+                    (ld for ld in learning_data if ld["session_id"] == feedback["session_id"]),
                     None,
                 )
 
                 if matching_learning and feedback.get("actual_diagnosis"):
                     # Create training row
                     symptoms = matching_learning["symptoms"]
-                    row = {
-                        feature: symptoms.get(feature, 0)
-                        for feature in self.feature_names
-                    }
+                    row = {feature: symptoms.get(feature, 0) for feature in self.feature_names}
                     row["diagnosis"] = feedback["actual_diagnosis"]
                     training_rows.append(row)
 
@@ -271,16 +251,12 @@ class ContinuousLearningSystem:
 
         # Split data
         if len(filtered_data) > 10:
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y_encoded, test_size=0.2, random_state=42
-            )
+            X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
         else:
             X_train, X_test, y_train, y_test = X, X, y_encoded, y_encoded
 
         # Train model
-        model = RandomForestClassifier(
-            n_estimators=100, max_depth=10, random_state=42, n_jobs=-1
-        )
+        model = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42, n_jobs=-1)
         model.fit(X_train, y_train)
 
         # Calculate accuracy
@@ -330,14 +306,11 @@ class ContinuousLearningSystem:
             recent_feedback = [
                 fb
                 for fb in feedback_data
-                if datetime.fromisoformat(fb["timestamp"])
-                > datetime.now().replace(day=1)  # This month
+                if datetime.fromisoformat(fb["timestamp"]) > datetime.now().replace(day=1)  # This month
             ]
 
             if len(recent_feedback) >= 10:
-                logging.info(
-                    f"Retraining triggered: {len(recent_feedback)} new feedback cases"
-                )
+                logging.info(f"Retraining triggered: {len(recent_feedback)} new feedback cases")
                 self.retrain_model()
 
         except Exception as e:

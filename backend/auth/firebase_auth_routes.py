@@ -6,8 +6,11 @@ import re
 
 from flask import Blueprint, jsonify, request
 
-from auth.firebase_auth import (firebase_auth_required, firebase_auth_service,
-                                firebase_role_required)
+from auth.firebase_auth import (
+    firebase_auth_required,
+    firebase_auth_service,
+    firebase_role_required,
+)
 from db.supabase_client import SupabaseClient
 
 auth_firebase_bp = Blueprint("auth_firebase", __name__, url_prefix="/api/auth")
@@ -36,12 +39,7 @@ def verify_token():
         uid = firebase_user["uid"]
 
         # Get user profile from Supabase
-        response = (
-            supabase.service_client.table("user_profiles")
-            .select("*")
-            .eq("firebase_uid", uid)
-            .execute()
-        )
+        response = supabase.service_client.table("user_profiles").select("*").eq("firebase_uid", uid).execute()
 
         if response.data:
             user_profile = response.data[0]
@@ -49,12 +47,7 @@ def verify_token():
             # If user is a doctor, get doctor profile too
             doctor_profile = None
             if user_profile["role"] == "doctor":
-                doc_response = (
-                    supabase.service_client.table("doctor_profiles")
-                    .select("*")
-                    .eq("firebase_uid", uid)
-                    .execute()
-                )
+                doc_response = supabase.service_client.table("doctor_profiles").select("*").eq("firebase_uid", uid).execute()
                 if doc_response.data:
                     doctor_profile = doc_response.data[0]
 
@@ -75,9 +68,7 @@ def verify_token():
             )
         else:
             return (
-                jsonify(
-                    {"success": False, "error": "User profile not found in database"}
-                ),
+                jsonify({"success": False, "error": "User profile not found in database"}),
                 404,
             )
 
@@ -94,12 +85,7 @@ def get_profile():
         uid = firebase_user["uid"]
 
         # Get user profile from Supabase
-        response = (
-            supabase.service_client.table("user_profiles")
-            .select("*")
-            .eq("firebase_uid", uid)
-            .execute()
-        )
+        response = supabase.service_client.table("user_profiles").select("*").eq("firebase_uid", uid).execute()
 
         if response.data:
             user_profile = response.data[0]
@@ -129,12 +115,7 @@ def update_profile():
             data.pop(field, None)
 
         # Update user profile in Supabase
-        response = (
-            supabase.service_client.table("user_profiles")
-            .update(data)
-            .eq("firebase_uid", uid)
-            .execute()
-        )
+        response = supabase.service_client.table("user_profiles").update(data).eq("firebase_uid", uid).execute()
 
         if response.data:
             return jsonify({"success": True, "profile": response.data[0]}), 200
@@ -163,9 +144,7 @@ def create_profile():
 
         if missing_fields:
             return (
-                jsonify(
-                    {"error": f'Missing required fields: {", ".join(missing_fields)}'}
-                ),
+                jsonify({"error": f'Missing required fields: {", ".join(missing_fields)}'}),
                 400,
             )
 
@@ -173,19 +152,12 @@ def create_profile():
         valid_roles = ["patient", "doctor", "admin"]
         if data["role"] not in valid_roles:
             return (
-                jsonify(
-                    {"error": f'Invalid role. Must be one of: {", ".join(valid_roles)}'}
-                ),
+                jsonify({"error": f'Invalid role. Must be one of: {", ".join(valid_roles)}'}),
                 400,
             )
 
         # Check if profile already exists
-        existing = (
-            supabase.service_client.table("user_profiles")
-            .select("id")
-            .eq("firebase_uid", uid)
-            .execute()
-        )
+        existing = supabase.service_client.table("user_profiles").select("id").eq("firebase_uid", uid).execute()
         if existing.data:
             return jsonify({"error": "Profile already exists"}), 409
 
@@ -202,11 +174,7 @@ def create_profile():
         }
 
         # Insert user profile
-        response = (
-            supabase.service_client.table("user_profiles")
-            .insert(profile_data)
-            .execute()
-        )
+        response = supabase.service_client.table("user_profiles").insert(profile_data).execute()
 
         if not response.data:
             return jsonify({"error": "Failed to create profile"}), 500
@@ -226,11 +194,7 @@ def create_profile():
                 "bio": data.get("bio"),
             }
 
-            doc_response = (
-                supabase.service_client.table("doctor_profiles")
-                .insert(doctor_data)
-                .execute()
-            )
+            doc_response = supabase.service_client.table("doctor_profiles").insert(doctor_data).execute()
 
             if doc_response.data:
                 created_profile["doctor_profile"] = doc_response.data[0]
@@ -249,12 +213,7 @@ def get_doctor_profile():
         firebase_user = request.firebase_user
         uid = firebase_user["uid"]
 
-        response = (
-            supabase.service_client.table("doctor_profiles")
-            .select("*")
-            .eq("firebase_uid", uid)
-            .execute()
-        )
+        response = supabase.service_client.table("doctor_profiles").select("*").eq("firebase_uid", uid).execute()
 
         if response.data:
             return jsonify({"success": True, "doctor_profile": response.data[0]}), 200
@@ -288,12 +247,7 @@ def update_doctor_profile():
         for field in restricted_fields:
             data.pop(field, None)
 
-        response = (
-            supabase.service_client.table("doctor_profiles")
-            .update(data)
-            .eq("firebase_uid", uid)
-            .execute()
-        )
+        response = supabase.service_client.table("doctor_profiles").update(data).eq("firebase_uid", uid).execute()
 
         if response.data:
             return jsonify({"success": True, "doctor_profile": response.data[0]}), 200
@@ -347,21 +301,14 @@ def delete_user(user_id):
     """Delete user (admin only)"""
     try:
         # Delete from Supabase (cascading will handle related tables)
-        response = (
-            supabase.service_client.table("user_profiles")
-            .delete()
-            .eq("firebase_uid", user_id)
-            .execute()
-        )
+        response = supabase.service_client.table("user_profiles").delete().eq("firebase_uid", user_id).execute()
 
         if response.data:
             # Also delete from Firebase
             firebase_result = firebase_auth_service.delete_user(user_id)
 
             return (
-                jsonify(
-                    {"success": True, "firebase_deletion": firebase_result["success"]}
-                ),
+                jsonify({"success": True, "firebase_deletion": firebase_result["success"]}),
                 200,
             )
         else:
@@ -401,37 +348,19 @@ def login():
 
             # Get user profile from Supabase
             print(f"🗄️ LOGIN: Fetching user profile for UID: {uid}")
-            response = (
-                supabase.service_client.table("user_profiles")
-                .select("*")
-                .eq("firebase_uid", uid)
-                .execute()
-            )
-            print(
-                f"🗄️ LOGIN: Database response received: {len(response.data) if response.data else 0} records"
-            )
+            response = supabase.service_client.table("user_profiles").select("*").eq("firebase_uid", uid).execute()
+            print(f"🗄️ LOGIN: Database response received: {len(response.data) if response.data else 0} records")
 
             # If no profile found for this UID, check if there's a profile with the same email
             if not response.data:
-                print(
-                    f"🗄️ LOGIN: No profile found for UID {uid}, checking for existing email: {email}"
-                )
-                email_response = (
-                    supabase.service_client.table("user_profiles")
-                    .select("*")
-                    .eq("email", email)
-                    .execute()
-                )
-                print(
-                    f"🗄️ LOGIN: Email search returned {len(email_response.data) if email_response.data else 0} records"
-                )
+                print(f"🗄️ LOGIN: No profile found for UID {uid}, checking for existing email: {email}")
+                email_response = supabase.service_client.table("user_profiles").select("*").eq("email", email).execute()
+                print(f"🗄️ LOGIN: Email search returned {len(email_response.data) if email_response.data else 0} records")
 
                 if email_response.data:
                     existing_profile = email_response.data[0]
                     existing_uid = existing_profile["firebase_uid"]
-                    print(
-                        f"✅ LOGIN: Found existing profile with same email: {existing_uid}"
-                    )
+                    print(f"✅ LOGIN: Found existing profile with same email: {existing_uid}")
 
                     # Update the existing profile with the new Firebase UID
                     print(f"🔄 LOGIN: Updating profile {existing_uid} to new UID {uid}")
@@ -445,9 +374,7 @@ def login():
                         )
 
                         if update_response.data:
-                            print(
-                                "✅ LOGIN: Successfully updated user_profiles with new Firebase UID"
-                            )
+                            print("✅ LOGIN: Successfully updated user_profiles with new Firebase UID")
 
                             # Now update doctor_profiles if it exists
                             doctor_check = (
@@ -457,9 +384,7 @@ def login():
                                 .execute()
                             )
                             if doctor_check.data:
-                                print(
-                                    f"🔄 LOGIN: Found doctor profile for {existing_uid}, updating it"
-                                )
+                                print(f"🔄 LOGIN: Found doctor profile for {existing_uid}, updating it")
                                 doctor_update = (
                                     supabase.service_client.table("doctor_profiles")
                                     .update({"firebase_uid": uid})
@@ -468,22 +393,14 @@ def login():
                                 )
 
                                 if doctor_update.data:
-                                    print(
-                                        "✅ LOGIN: Successfully updated doctor profile with new Firebase UID"
-                                    )
+                                    print("✅ LOGIN: Successfully updated doctor profile with new Firebase UID")
                                 else:
-                                    print(
-                                        f"❌ LOGIN: Failed to update doctor profile: {doctor_update}"
-                                    )
+                                    print(f"❌ LOGIN: Failed to update doctor profile: {doctor_update}")
 
                             response = email_response  # Use the existing profile data
-                            response.data[0][
-                                "firebase_uid"
-                            ] = uid  # Update the UID in the response
+                            response.data[0]["firebase_uid"] = uid  # Update the UID in the response
                         else:
-                            print(
-                                f"❌ LOGIN: Update failed - no data returned: {update_response}"
-                            )
+                            print(f"❌ LOGIN: Update failed - no data returned: {update_response}")
                             return (
                                 jsonify(
                                     {
@@ -519,18 +436,13 @@ def login():
             if response.data:
                 user_profile = response.data[0]
                 print(f"🔍 LOGIN: Retrieved user profile: {user_profile}")
-                print(
-                    f"🔍 LOGIN: User role: {user_profile.get('role', 'NO ROLE FOUND')}"
-                )
+                print(f"🔍 LOGIN: User role: {user_profile.get('role', 'NO ROLE FOUND')}")
 
                 # If user is a doctor, get doctor profile too
                 doctor_profile = None
                 if user_profile["role"] == "doctor":
                     doc_response = (
-                        supabase.service_client.table("doctor_profiles")
-                        .select("*")
-                        .eq("firebase_uid", uid)
-                        .execute()
+                        supabase.service_client.table("doctor_profiles").select("*").eq("firebase_uid", uid).execute()
                     )
                     if doc_response.data:
                         doctor_profile = doc_response.data[0]
@@ -591,14 +503,10 @@ def register():
         print("🔐 Verifying Firebase ID token...")
         # Verify the Firebase ID token to get user info
         token_result = firebase_auth_service.verify_token(id_token)
-        print(
-            f"🔐 Token verification result: {token_result.get('success', 'No success key')}"
-        )
+        print(f"🔐 Token verification result: {token_result.get('success', 'No success key')}")
 
         if not token_result["success"]:
-            print(
-                f"❌ Token verification failed: {token_result.get('error', 'Unknown error')}"
-            )
+            print(f"❌ Token verification failed: {token_result.get('error', 'Unknown error')}")
             return (
                 jsonify(
                     {
@@ -619,19 +527,12 @@ def register():
         print("🗄️ Checking if user profile exists in Supabase...")
         # Check if user profile already exists
         try:
-            existing_response = (
-                supabase.service_client.table("user_profiles")
-                .select("*")
-                .eq("firebase_uid", uid)
-                .execute()
-            )
+            existing_response = supabase.service_client.table("user_profiles").select("*").eq("firebase_uid", uid).execute()
             print(f"🗄️ Existing profile check result: {bool(existing_response.data)}")
         except Exception as db_error:
             print(f"❌ Database error checking existing profile: {str(db_error)}")
             return (
-                jsonify(
-                    {"success": False, "error": f"Database error: {str(db_error)}"}
-                ),
+                jsonify({"success": False, "error": f"Database error: {str(db_error)}"}),
                 500,
             )
 
@@ -646,10 +547,7 @@ def register():
                 print("👨‍⚕️ Getting doctor profile...")
                 try:
                     doc_response = (
-                        supabase.service_client.table("doctor_profiles")
-                        .select("*")
-                        .eq("firebase_uid", uid)
-                        .execute()
+                        supabase.service_client.table("doctor_profiles").select("*").eq("firebase_uid", uid).execute()
                     )
                     if doc_response.data:
                         doctor_profile = doc_response.data[0]
@@ -696,11 +594,7 @@ def register():
 
         print(f"💾 Inserting user profile: {user_profile_data}")
         try:
-            profile_response = (
-                supabase.service_client.table("user_profiles")
-                .insert(user_profile_data)
-                .execute()
-            )
+            profile_response = supabase.service_client.table("user_profiles").insert(user_profile_data).execute()
             print(f"💾 Profile insert result: {bool(profile_response.data)}")
         except Exception as insert_error:
             print(f"❌ Database error inserting profile: {str(insert_error)}")
@@ -731,11 +625,7 @@ def register():
                 }
                 print(f"💾 Inserting doctor profile: {doctor_profile_data}")
                 try:
-                    doc_response = (
-                        supabase.service_client.table("doctor_profiles")
-                        .insert(doctor_profile_data)
-                        .execute()
-                    )
+                    doc_response = supabase.service_client.table("doctor_profiles").insert(doctor_profile_data).execute()
                     if doc_response.data:
                         doctor_profile = doc_response.data[0]
                         print("✅ Doctor profile created successfully")

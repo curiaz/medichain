@@ -56,19 +56,12 @@ def send_contact_email():
         email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         if not re.match(email_pattern, email):
             return (
-                jsonify(
-                    {"success": False, "error": "Please enter a valid email address"}
-                ),
+                jsonify({"success": False, "error": "Please enter a valid email address"}),
                 400,
             )
 
         # Length validation for security
-        if (
-            len(name) > 100
-            or len(email) > 100
-            or len(subject) > 200
-            or len(message) > 2000
-        ):
+        if len(name) > 100 or len(email) > 100 or len(subject) > 200 or len(message) > 2000:
             return (
                 jsonify(
                     {

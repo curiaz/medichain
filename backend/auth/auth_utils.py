@@ -2,7 +2,6 @@
 Authentication utilities for JWT tokens, password hashing, and user management
 """
 
-import os
 from datetime import datetime, timedelta
 from functools import wraps
 

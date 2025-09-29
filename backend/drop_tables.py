@@ -3,15 +3,13 @@ Drop existing tables script for MediChain
 Drops all existing tables to prepare for fresh schema setup
 """
 
+from db.supabase_client import SupabaseClient
 import os
 import sys
 
-from dotenv import load_dotenv
 
 # Add the parent directory to the path so we can import our modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from db.supabase_client import SupabaseClient
 
 
 def drop_existing_tables():
@@ -36,9 +34,7 @@ def drop_existing_tables():
         for table in tables_to_drop:
             try:
                 # Use service client to bypass RLS
-                supabase.service_client.table(table).delete().neq(
-                    "id", "00000000-0000-0000-0000-000000000000"
-                ).execute()
+                supabase.service_client.table(table).delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
                 print(f"✓ Cleared data from {table}")
             except Exception as e:
                 print(f"Note: {table} may not exist or is already empty: {e}")

@@ -3,15 +3,13 @@ Database setup script for MediChain
 Creates the necessary tables if they don't exist
 """
 
+from db.supabase_client import SupabaseClient
 import os
 import sys
 
-from dotenv import load_dotenv
 
 # Add the parent directory to the path so we can import our modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from db.supabase_client import SupabaseClient
 
 
 def setup_database():
@@ -63,15 +61,13 @@ def setup_database():
 
             # Check if tables exist by trying to query them
             try:
-                users_result = supabase.client.table("users").select("count").execute()
+                supabase.client.table("users").select("count").execute()
                 print("✓ Users table exists")
             except Exception as e:
                 print(f"✗ Users table doesn't exist or has issues: {e}")
 
             try:
-                health_records_result = (
-                    supabase.client.table("health_records").select("count").execute()
-                )
+                supabase.client.table("health_records").select("count").execute()
                 print("✓ Health records table exists")
             except Exception as e:
                 print(f"✗ Health records table doesn't exist or has issues: {e}")

@@ -3,8 +3,6 @@
 Simplified Flask Test Server
 Tests if basic Flask functionality works
 """
-import os
-
 from flask import Flask, jsonify
 from flask_cors import CORS
 

@@ -4,7 +4,6 @@ AES Encryption and SHA-256 Hashing Utilities for Medical Records
 
 import base64
 import hashlib
-import os
 import secrets
 
 from cryptography.hazmat.backends import default_backend
@@ -18,11 +17,7 @@ class MedicalRecordCrypto:
     def __init__(self, encryption_key=None):
         """Initialize with encryption key (32 bytes for AES-256)"""
         if encryption_key:
-            self.key = (
-                encryption_key.encode("utf-8")
-                if isinstance(encryption_key, str)
-                else encryption_key
-            )
+            self.key = encryption_key.encode("utf-8") if isinstance(encryption_key, str) else encryption_key
         else:
             # Generate a random key if none provided (for development)
             self.key = secrets.token_bytes(32)
@@ -40,9 +35,7 @@ class MedicalRecordCrypto:
         padded_data = padder.update(plaintext.encode("utf-8")) + padder.finalize()
 
         # Create cipher and encrypt
-        cipher = Cipher(
-            algorithms.AES(self.key), modes.CBC(iv), backend=default_backend()
-        )
+        cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv), backend=default_backend())
         encryptor = cipher.encryptor()
         ciphertext = encryptor.update(padded_data) + encryptor.finalize()
 
@@ -64,9 +57,7 @@ class MedicalRecordCrypto:
             ciphertext = encrypted_bytes[16:]
 
             # Create cipher and decrypt
-            cipher = Cipher(
-                algorithms.AES(self.key), modes.CBC(iv), backend=default_backend()
-            )
+            cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv), backend=default_backend())
             decryptor = cipher.decryptor()
             padded_plaintext = decryptor.update(ciphertext) + decryptor.finalize()
 
@@ -89,9 +80,7 @@ class MedicalRecordCrypto:
             "prescription": self.encrypt_field(prescription),
         }
 
-    def decrypt_medical_record(
-        self, encrypted_diagnosis: str, encrypted_prescription: str
-    ) -> dict:
+    def decrypt_medical_record(self, encrypted_diagnosis: str, encrypted_prescription: str) -> dict:
         """Decrypt diagnosis and prescription fields"""
         return {
             "diagnosis": self.decrypt_field(encrypted_diagnosis),

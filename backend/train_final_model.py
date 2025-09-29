@@ -13,8 +13,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import (accuracy_score, classification_report,
-                             confusion_matrix)
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
@@ -1230,9 +1229,7 @@ def train_comprehensive_model():
 
     # Split data
     print("🔀 Splitting data...")
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
-    )
+    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded)
 
     # Train model
     print("🎯 Training Random Forest model...")
@@ -1274,17 +1271,13 @@ def train_comprehensive_model():
     y_pred = model.predict(X_test)
 
     print("\nClassification Report:")
-    print(
-        classification_report(
-            y_test, y_pred, target_names=label_encoder.classes_, zero_division=0
-        )
-    )
+    print(classification_report(y_test, y_pred, target_names=label_encoder.classes_, zero_division=0))
 
     # Feature importance
     print("\n🎯 Top 10 Most Important Features:")
-    feature_importance = pd.DataFrame(
-        {"feature": feature_names, "importance": model.feature_importances_}
-    ).sort_values("importance", ascending=False)
+    feature_importance = pd.DataFrame({"feature": feature_names, "importance": model.feature_importances_}).sort_values(
+        "importance", ascending=False
+    )
 
     print(feature_importance.head(10))
 
@@ -1335,7 +1328,7 @@ def train_comprehensive_model():
 
         json.dump(training_summary, f, indent=2)
 
-    print(f"\n🎉 Training completed successfully!")
+    print("\n🎉 Training completed successfully!")
     print(f"📊 Final model supports {len(label_encoder.classes_)} diagnoses")
     print(f"📈 Test accuracy: {test_accuracy:.3f}")
 
@@ -1355,7 +1348,7 @@ def test_trained_model():
         with open("final_comprehensive_encoder.pkl", "rb") as f:
             label_encoder = pickle.load(f)
         with open("final_comprehensive_features.pkl", "rb") as f:
-            feature_names = pickle.load(f)
+            pickle.load(f)
 
         # Test cases
         test_cases = [
@@ -1444,7 +1437,7 @@ def test_trained_model():
             for i, idx in enumerate(top_indices):
                 diag = label_encoder.inverse_transform([idx])[0]
                 conf = probabilities[idx]
-                print(f"  {i+1}. {diag}: {conf:.3f}")
+                print(f"  {i + 1}. {diag}: {conf:.3f}")
 
         print("\n✅ Model testing completed!")
 

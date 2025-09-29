@@ -1,8 +1,3 @@
-from datetime import datetime
-
-import numpy as np
-import pandas as pd
-
 # Treatment and medication recommendations database
 TREATMENT_RECOMMENDATIONS = {
     "Flu": {
@@ -328,9 +323,7 @@ def get_personalized_recommendations(diagnosis, patient_data=None):
         diagnosis,
         {
             "medications": [],
-            "treatments": [
-                "Consult with healthcare provider for appropriate treatment"
-            ],
+            "treatments": ["Consult with healthcare provider for appropriate treatment"],
             "warnings": ["This condition requires professional medical evaluation"],
         },
     )
@@ -356,13 +349,9 @@ def personalize_treatment(base_recommendations, patient_data):
     # Age-based modifications
     age = patient_data.get("age", 0)
     if age < 18:
-        personalized["pediatric_note"] = (
-            "Dosages may need adjustment for pediatric patients. Consult pediatrician."
-        )
+        personalized["pediatric_note"] = "Dosages may need adjustment for pediatric patients. Consult pediatrician."
     elif age > 65:
-        personalized["geriatric_note"] = (
-            "Consider reduced dosages and monitor for drug interactions in elderly patients."
-        )
+        personalized["geriatric_note"] = "Consider reduced dosages and monitor for drug interactions in elderly patients."
 
     # Allergy considerations
     allergies = patient_data.get("allergies", [])
@@ -377,24 +366,16 @@ def personalize_treatment(base_recommendations, patient_data):
         condition_warnings = []
 
         if "diabetes" in chronic_conditions:
-            condition_warnings.append(
-                "Monitor blood sugar levels; some medications may affect glucose."
-            )
+            condition_warnings.append("Monitor blood sugar levels; some medications may affect glucose.")
 
         if "hypertension" in chronic_conditions:
-            condition_warnings.append(
-                "Monitor blood pressure; avoid medications that may increase BP."
-            )
+            condition_warnings.append("Monitor blood pressure; avoid medications that may increase BP.")
 
         if "kidney_disease" in chronic_conditions:
-            condition_warnings.append(
-                "Adjust dosages for renal function; avoid nephrotoxic medications."
-            )
+            condition_warnings.append("Adjust dosages for renal function; avoid nephrotoxic medications.")
 
         if "liver_disease" in chronic_conditions:
-            condition_warnings.append(
-                "Consider hepatic metabolism; avoid hepatotoxic medications."
-            )
+            condition_warnings.append("Consider hepatic metabolism; avoid hepatotoxic medications.")
 
         if condition_warnings:
             personalized["chronic_condition_warnings"] = condition_warnings
@@ -415,7 +396,8 @@ def get_medical_disclaimer():
     """
     return {
         "important_notice": [
-            "🚨 MEDICAL DISCLAIMER: This AI system is a decision-support tool only and NOT a replacement for professional medical advice.",
+            "🚨 MEDICAL DISCLAIMER: This AI system is a decision-support tool only and NOT "
+            "a replacement for professional medical advice.",
             "👨‍⚕️ FINAL DECISIONS must be confirmed by a licensed healthcare provider.",
             "🏥 For emergency symptoms, seek immediate medical attention or call emergency services.",
             "💊 Do not start, stop, or change medications without consulting your doctor.",

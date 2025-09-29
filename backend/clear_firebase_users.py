@@ -103,9 +103,7 @@ def delete_all_users():
             print(f"  ... and {len(users) - 5} more")
 
         # Confirm deletion
-        confirm = input(
-            f"\n⚠️ Are you sure you want to delete all {len(users)} users? (yes/no): "
-        )
+        confirm = input(f"\n⚠️ Are you sure you want to delete all {len(users)} users? (yes/no): ")
         if confirm.lower() != "yes":
             print("❌ Operation cancelled")
             return False
@@ -124,7 +122,7 @@ def delete_all_users():
                 failed_count += 1
                 print(f"❌ Failed to delete {user['email']}: {e}")
 
-        print(f"\n📊 Deletion Summary:")
+        print("\n📊 Deletion Summary:")
         print(f"  ✅ Successfully deleted: {deleted_count}")
         print(f"  ❌ Failed to delete: {failed_count}")
         print(f"  📋 Total processed: {len(users)}")
@@ -169,14 +167,10 @@ def main():
                             # Convert timestamp to datetime
                             from datetime import datetime
 
-                            created = datetime.fromtimestamp(
-                                user["created"] / 1000
-                            ).strftime("%Y-%m-%d %H:%M:%S")
+                            created = datetime.fromtimestamp(user["created"] / 1000).strftime("%Y-%m-%d %H:%M:%S")
                     else:
                         created = "Unknown"
-                    print(
-                        f"{i:3d}. {user['email']} | {user['uid'][:8]}... | Created: {created}"
-                    )
+                    print(f"{i:3d}. {user['email']} | {user['uid'][:8]}... | Created: {created}")
             else:
                 print("ℹ️ No users found")
 

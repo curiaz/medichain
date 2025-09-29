@@ -21,12 +21,7 @@ def get_medical_records():
         uid = firebase_user["uid"]
 
         # Get user profile to determine role
-        user_response = (
-            supabase.client.table("user_profiles")
-            .select("role")
-            .eq("firebase_uid", uid)
-            .execute()
-        )
+        user_response = supabase.client.table("user_profiles").select("role").eq("firebase_uid", uid).execute()
         if not user_response.data:
             return jsonify({"success": False, "error": "User profile not found"}), 404
 
@@ -34,20 +29,10 @@ def get_medical_records():
 
         if user_role == "patient":
             # Patients see their own records
-            response = (
-                supabase.client.table("medical_records")
-                .select("*")
-                .eq("patient_firebase_uid", uid)
-                .execute()
-            )
+            response = supabase.client.table("medical_records").select("*").eq("patient_firebase_uid", uid).execute()
         elif user_role == "doctor":
             # Doctors see records of patients they've treated
-            response = (
-                supabase.client.table("medical_records")
-                .select("*")
-                .eq("doctor_firebase_uid", uid)
-                .execute()
-            )
+            response = supabase.client.table("medical_records").select("*").eq("doctor_firebase_uid", uid).execute()
         else:
             return jsonify({"success": False, "error": "Unauthorized role"}), 403
 
@@ -76,23 +61,17 @@ def create_medical_record():
         for field in required_fields:
             if field not in data:
                 return (
-                    jsonify(
-                        {"success": False, "error": f"Missing required field: {field}"}
-                    ),
+                    jsonify({"success": False, "error": f"Missing required field: {field}"}),
                     400,
                 )
 
         # Add doctor UID and create record
         record_data = {**data, "doctor_firebase_uid": uid}
 
-        response = (
-            supabase.client.table("medical_records").insert(record_data).execute()
-        )
+        response = supabase.client.table("medical_records").insert(record_data).execute()
 
         return (
-            jsonify(
-                {"success": True, "record": response.data[0] if response.data else None}
-            ),
+            jsonify({"success": True, "record": response.data[0] if response.data else None}),
             201,
         )
 
@@ -111,20 +90,14 @@ def update_medical_record(record_id):
 
         # Update the record (RLS will ensure doctor can only update their own patients' records)
         response = (
-            supabase.client.table("medical_records")
-            .update(data)
-            .eq("id", record_id)
-            .eq("doctor_firebase_uid", uid)
-            .execute()
+            supabase.client.table("medical_records").update(data).eq("id", record_id).eq("doctor_firebase_uid", uid).execute()
         )
 
         if response.data:
             return jsonify({"success": True, "record": response.data[0]}), 200
         else:
             return (
-                jsonify(
-                    {"success": False, "error": "Record not found or unauthorized"}
-                ),
+                jsonify({"success": False, "error": "Record not found or unauthorized"}),
                 404,
             )
 
