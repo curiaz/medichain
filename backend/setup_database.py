@@ -5,6 +5,7 @@ Creates the necessary tables if they don't exist
 
 from db.supabase_client import SupabaseClient
 import os
+import os
 import sys
 
 
