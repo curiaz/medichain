@@ -35,10 +35,34 @@ export const USER_ROLES = {
 // Database operations wrapper class
 export class SupabaseService {
   
+  // Helper method to get Firebase token for Supabase auth
+  static async getAuthenticatedClient() {
+    try {
+      // Get Firebase token from localStorage (set by AuthContext)
+      const token = localStorage.getItem('medichain_token');
+      if (token) {
+        // Create a new client instance with the Firebase token
+        const authenticatedClient = createClient(supabaseUrl, supabaseAnonKey, {
+          global: {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        });
+        return authenticatedClient;
+      }
+      return supabase; // Fallback to anonymous client
+    } catch (error) {
+      console.warn('Could not get authenticated Supabase client:', error);
+      return supabase; // Fallback to anonymous client
+    }
+  }
+  
   // User Profile Operations
   static async createUserProfile(userId, profileData) {
     try {
-      const { data, error } = await supabase
+      const client = await this.getAuthenticatedClient();
+      const { data, error } = await client
         .from(TABLES.USER_PROFILES)
         .insert({
           firebase_uid: userId,
@@ -57,7 +81,8 @@ export class SupabaseService {
 
   static async getUserProfile(userId) {
     try {
-      const { data, error } = await supabase
+      const client = await this.getAuthenticatedClient();
+      const { data, error } = await client
         .from(TABLES.USER_PROFILES)
         .select('*')
         .eq('firebase_uid', userId)
@@ -73,7 +98,8 @@ export class SupabaseService {
 
   static async updateUserProfile(userId, updates) {
     try {
-      const { data, error } = await supabase
+      const client = await this.getAuthenticatedClient();
+      const { data, error } = await client
         .from(TABLES.USER_PROFILES)
         .update(updates)
         .eq('firebase_uid', userId)

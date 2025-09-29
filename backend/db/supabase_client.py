@@ -97,3 +97,200 @@ class SupabaseClient:
         except Exception as e:
             print(f"Error retrieving blockchain transactions: {e}")
             return []
+
+    # Patient Profile Management Methods
+    def verify_firebase_token(self, token):
+        """Verify Firebase token and return user info"""
+        try:
+            # Import Firebase auth service
+            from auth.firebase_auth import firebase_auth_service
+
+            # Verify the token using the existing Firebase service
+            result = firebase_auth_service.verify_token(token)
+
+            if result['success']:
+                user_info = result['user']
+                return {
+                    'user_id': user_info.get('uid'),
+                    'email': user_info.get('email'),
+                    'role': user_info.get('custom_claims', {}).get('role', 'patient')
+                }
+            else:
+                print(f"Firebase token verification failed: {result.get('error', 'Unknown error')}")
+                return None
+
+        except Exception as e:
+            print(f"Error verifying Firebase token: {e}")
+            return None
+
+    def get_patient_profile(self, user_id):
+        """Get complete patient profile with medical information"""
+        try:
+            # Use service client to bypass RLS for patient profile access
+            user_response = self.service_client.table('user_profiles').select('*').eq('firebase_uid', user_id).execute()
+            user_profile = user_response.data[0] if user_response.data else None
+            
+            if not user_profile:
+                print(f"No user profile found for Firebase UID: {user_id}")
+                return None
+            
+            # Create medical info from user profile data
+            medical_info = {
+                'medical_conditions': user_profile.get('medical_conditions', []),
+                'allergies': user_profile.get('allergies', []),
+                'current_medications': user_profile.get('current_medications', []),
+                'blood_type': user_profile.get('blood_type', ''),
+                'medical_notes': user_profile.get('medical_notes', ''),
+                'medical_records': [],  # No separate medical records table
+                'appointments': [],     # No appointments data yet
+                'prescriptions': []    # No prescriptions data yet
+            }
+            
+            return {
+                'user_profile': user_profile,
+                'medical_info': medical_info,
+                'documents': [],  # No documents table yet
+                'privacy_settings': {},  # No privacy settings table yet
+                'audit_trail': []  # No audit trail table yet
+            }
+        except Exception as e:
+            print(f"Error getting patient profile: {e}")
+            return None
+
+    def update_patient_profile(self, user_id, data):
+        """Update patient profile information"""
+        try:
+            # First get the user profile to get the internal ID
+            user_response = self.client.table('user_profiles').select('id').eq('firebase_uid', user_id).execute()
+            if not user_response.data:
+                print(f"No user profile found for Firebase UID: {user_id}")
+                return None
+            
+            internal_user_id = user_response.data[0]['id']
+            
+            # Update user profile using internal ID
+            response = self.client.table('user_profiles').update(data).eq('id', internal_user_id).execute()
+            
+            if response.data:
+                # Create audit log entry
+                audit_data = {
+                    'user_id': internal_user_id,
+                    'action': 'profile_update',
+                    'type': 'personal_info',
+                    'data_hash': f"hash_{user_id}_{data.get('first_name', '')}_{data.get('last_name', '')}",
+                    'timestamp': 'now()'
+                }
+                self.client.table('patient_audit_log').insert(audit_data).execute()
+                
+                return response.data[0]
+            return None
+        except Exception as e:
+            print(f"Error updating patient profile: {e}")
+            return None
+
+    def update_patient_medical_info(self, user_id, data):
+        """Update patient medical information"""
+        try:
+            # First get the user profile to get the internal ID
+            user_response = self.client.table('user_profiles').select('id').eq('firebase_uid', user_id).execute()
+            if not user_response.data:
+                print(f"No user profile found for Firebase UID: {user_id}")
+                return None
+            
+            internal_user_id = user_response.data[0]['id']
+            
+            # Upsert medical information
+            data['user_id'] = internal_user_id
+            response = self.client.table('patient_medical_info').upsert(data).execute()
+            
+            if response.data:
+                # Create audit log entry
+                audit_data = {
+                    'user_id': internal_user_id,
+                    'action': 'medical_info_update',
+                    'type': 'medical_data',
+                    'data_hash': f"hash_{user_id}_medical_{data.get('blood_type', '')}",
+                    'timestamp': 'now()'
+                }
+                self.client.table('patient_audit_log').insert(audit_data).execute()
+                
+                return response.data[0]
+            return None
+        except Exception as e:
+            print(f"Error updating patient medical info: {e}")
+            return None
+
+    def upload_patient_document(self, user_id, file, document_type, description):
+        """Upload patient health document"""
+        try:
+            # First get the user profile to get the internal ID
+            user_response = self.client.table('user_profiles').select('id').eq('firebase_uid', user_id).execute()
+            if not user_response.data:
+                print(f"No user profile found for Firebase UID: {user_id}")
+                return None
+            
+            internal_user_id = user_response.data[0]['id']
+            
+            # In a real implementation, you would upload the file to storage
+            # For now, create a document record
+            document_data = {
+                'user_id': internal_user_id,
+                'filename': file.filename,
+                'document_type': document_type,
+                'description': description,
+                'file_size': len(file.read()) if hasattr(file, 'read') else 0,
+                'upload_date': 'now()',
+                'file_path': f"documents/{user_id}/{file.filename}"
+            }
+            
+            response = self.client.table('patient_documents').insert(document_data).execute()
+            
+            if response.data:
+                # Create audit log entry
+                audit_data = {
+                    'user_id': internal_user_id,
+                    'action': 'document_upload',
+                    'type': 'document',
+                    'filename': file.filename,
+                    'data_hash': f"hash_{user_id}_doc_{file.filename}",
+                    'timestamp': 'now()'
+                }
+                self.client.table('patient_audit_log').insert(audit_data).execute()
+                
+                return response.data[0]
+            return None
+        except Exception as e:
+            print(f"Error uploading patient document: {e}")
+            return None
+
+    def update_patient_privacy_settings(self, user_id, data):
+        """Update patient privacy settings"""
+        try:
+            # First get the user profile to get the internal ID
+            user_response = self.client.table('user_profiles').select('id').eq('firebase_uid', user_id).execute()
+            if not user_response.data:
+                print(f"No user profile found for Firebase UID: {user_id}")
+                return None
+            
+            internal_user_id = user_response.data[0]['id']
+            
+            # Upsert privacy settings
+            data['user_id'] = internal_user_id
+            response = self.client.table('patient_privacy_settings').upsert(data).execute()
+            
+            if response.data:
+                # Create audit log entry
+                audit_data = {
+                    'user_id': internal_user_id,
+                    'action': 'privacy_settings_update',
+                    'type': 'privacy',
+                    'data_hash': f"hash_{user_id}_privacy_{data.get('profile_visibility', '')}",
+                    'timestamp': 'now()'
+                }
+                self.client.table('patient_audit_log').insert(audit_data).execute()
+                
+                return response.data[0]
+            return None
+        except Exception as e:
+            print(f"Error updating patient privacy settings: {e}")
+            return None

@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard'; // Role-based dashboard router
 import AIHealth from './pages/AIHealth'; // New standalone AI Health page
 import PatientAIHistory from './pages/PatientAIHistory'; // For doctors to view patient AI history
 import HealthRecord from './pages/HealthRecord'; // Patient health record page
+import ProfilePage from './pages/ProfilePage'; // Profile management page
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
@@ -95,6 +96,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Prescriptions />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
                 </ProtectedRoute>
               } 
             />

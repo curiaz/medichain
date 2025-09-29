@@ -15,6 +15,9 @@ from auth.firebase_auth_routes import auth_firebase_bp
 from medical_routes import medical_bp
 from appointment_routes import appointments_bp
 from contact_routes import contact_bp
+from profile_routes import profile_bp
+from profile_management import profile_mgmt_bp
+from patient_profile_routes import patient_profile_bp
 from db.supabase_client import SupabaseClient
 
 # Initialize Flask app
@@ -32,6 +35,9 @@ app.register_blueprint(auth_firebase_bp)
 app.register_blueprint(medical_bp)
 app.register_blueprint(appointments_bp)
 app.register_blueprint(contact_bp)
+app.register_blueprint(profile_bp)
+app.register_blueprint(profile_mgmt_bp)
+app.register_blueprint(patient_profile_bp)
 
 # Initialize Supabase client
 supabase = SupabaseClient()
@@ -51,7 +57,8 @@ def index():
         'endpoints': {
             'auth': '/api/auth/*',
             'medical': '/api/medical/*',
-            'appointments': '/api/appointments/*'
+            'appointments': '/api/appointments/*',
+            'profile': '/api/profile/*'
         }
     }
 
