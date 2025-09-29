@@ -15,6 +15,7 @@ from auth.firebase_auth_routes import auth_firebase_bp
 from medical_routes import medical_bp
 from appointment_routes import appointments_bp
 from contact_routes import contact_bp
+from doctor_verification import doctor_verification_bp
 from db.supabase_client import SupabaseClient
 
 # Initialize Flask app
@@ -32,6 +33,7 @@ app.register_blueprint(auth_firebase_bp)
 app.register_blueprint(medical_bp)
 app.register_blueprint(appointments_bp)
 app.register_blueprint(contact_bp)
+app.register_blueprint(doctor_verification_bp)
 
 # Initialize Supabase client
 supabase = SupabaseClient()

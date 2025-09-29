@@ -946,3 +946,83 @@
     padding: 20px 16px;
   }
 }
+
+/* File Upload Styles for Doctor Verification */
+.file-upload-wrapper {
+  position: relative;
+}
+
+.file-upload-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  padding-left: 50px;
+  border: 2px dashed #0288d1;
+  border-radius: 12px;
+  background: #f8fcff;
+  color: #0288d1;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 48px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.file-upload-label:hover {
+  background: #e3f2fd;
+  border-color: #0277bd;
+  color: #0277bd;
+}
+
+.input-wrapper.file-upload-wrapper .input-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #0288d1;
+  z-index: 2;
+}
+
+.file-help-text {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+}
+
+/* File upload success state */
+.file-upload-wrapper input[type="file"]:valid + .file-upload-label {
+  background: #e8f5e8;
+  border-color: #4caf50;
+  color: #2e7d32;
+}
+
+.file-upload-wrapper input[type="file"]:valid ~ .input-icon {
+  color: #4caf50;
+}
+
+/* Doctor specialization field styling */
+.input-group:has(input[name="specialization"]) .input-wrapper {
+  position: relative;
+}
+
+.input-group:has(input[name="specialization"]) input {
+  font-weight: 500;
+}
+
+/* Responsive file upload */
+@media (max-width: 480px) {
+  .file-upload-label {
+    font-size: 13px;
+    padding: 10px 14px;
+    padding-left: 46px;
+  }
+  
+  .file-help-text {
+    font-size: 11px;
+  }
+}
