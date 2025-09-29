@@ -4,7 +4,6 @@ Enhanced Confident AI Server with Confidence Boosting
 Improved confidence mechanisms without ensemble complexity
 """
 
-from medical_recommendations import get_personalized_recommendations
 import logging
 import os
 import sys
@@ -15,6 +14,7 @@ from flask_cors import CORS
 
 # Import the existing diagnosis system
 from comprehensive_ai_diagnosis import ComprehensiveAIDiagnosis
+from medical_recommendations import get_personalized_recommendations
 
 # Add the backend directory to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))

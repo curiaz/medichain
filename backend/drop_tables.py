@@ -3,11 +3,10 @@ Drop existing tables script for MediChain
 Drops all existing tables to prepare for fresh schema setup
 """
 
-from db.supabase_client import SupabaseClient
-import os
 import os
 import sys
 
+from db.supabase_client import SupabaseClient
 
 # Add the parent directory to the path so we can import our modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

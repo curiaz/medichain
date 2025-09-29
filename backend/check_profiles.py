@@ -2,9 +2,10 @@
 """
 Check user profiles in database
 """
-from db.supabase_client import SupabaseClient
 import os
 import sys
+
+from db.supabase_client import SupabaseClient
 
 sys.path.append(os.path.dirname(__file__))
 

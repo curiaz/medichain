@@ -2,8 +2,8 @@
 """
 Script to fix common import issues in the backend
 """
-import re
 import os
+import re
 
 
 def remove_unused_imports():
