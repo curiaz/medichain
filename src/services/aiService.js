@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_CONFIG, buildURL } from '../config/api';
 
 // AI Diagnosis Service - connects to the enhanced AI system
 const AI_BASE_URL = process.env.REACT_APP_AI_URL || 'http://localhost:5001';
@@ -230,7 +231,7 @@ export const aiService = {
    */
   startConversation: async (data) => {
     try {
-      const response = await axios.post('https://medichain.vercel.app/api/ai/start-conversation', data);
+      const response = await axios.post('http://localhost:5000/api/ai/start-conversation', data);
       return response.data;
     } catch (error) {
       console.error('Error starting conversation:', error);
@@ -248,7 +249,7 @@ export const aiService = {
    */
   continueConversation: async (data) => {
     try {
-      const response = await axios.post('https://medichain.vercel.app/api/ai/continue-conversation', data);
+      const response = await axios.post('http://localhost:5000/api/ai/continue-conversation', data);
       return response.data;
     } catch (error) {
       console.error('Error continuing conversation:', error);

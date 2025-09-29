@@ -6,6 +6,7 @@ import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight, Upload, FileText } f
 import LoadingSpinner from "../components/LoadingSpinner"
 import { showToast } from "../components/CustomToast"
 import medichainLogo from "../assets/medichain_logo.png"
+import { API_CONFIG, buildURL } from "../config/api"
 
 const MedichainSignup = () => {
   const navigate = useNavigate()
@@ -162,7 +163,7 @@ const MedichainSignup = () => {
         signupData.append('verificationFile', formData.verificationFile);
         
         // Call doctor signup API endpoint
-        const response = await fetch('https://medichain.vercel.app/api/auth/doctor-signup', {
+        const response = await fetch('http://localhost:5000/api/auth/doctor-signup', {
           method: 'POST',
           body: signupData
         });

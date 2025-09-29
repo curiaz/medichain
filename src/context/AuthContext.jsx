@@ -11,8 +11,8 @@ import axios from 'axios';
 // Create the authentication context
 const AuthContext = createContext();
 
-// API base URL - point to your Flask backend
-const API_URL = 'https://medichain.vercel.app/api';
+// API base URL - simple localhost for development
+const API_URL = 'http://localhost:5000/api';
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

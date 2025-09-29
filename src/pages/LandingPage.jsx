@@ -7,6 +7,7 @@ import RoleSelectionModal from '../components/RoleSelectionModal';
 import Footer from '../components/Footer';
 import medichainLogo from '../assets/medichain_logo.png';
 import '../assets/styles/LandingPage.css';
+import { API_CONFIG, buildURL } from '../config/api';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -75,7 +76,7 @@ const LandingPage = () => {
     setSubmitMessage('');
 
     try {
-      const response = await fetch('https://medichain.vercel.app/contact', {
+      const response = await fetch(buildURL(API_CONFIG.ENDPOINTS.CONTACT), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
