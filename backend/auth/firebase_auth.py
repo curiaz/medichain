@@ -34,7 +34,7 @@ class FirebaseAuthService:
                     # Initialize with service account key file
                     cred = credentials.Certificate(service_account_path)
                     firebase_admin.initialize_app(cred)
-                    print("✅ Firebase Admin initialized with service account key")
+                    print("OK Firebase Admin initialized with service account key")
                 else:
                     # Try to initialize with environment variables
                     service_account_info = {
@@ -54,17 +54,17 @@ class FirebaseAuthService:
                     if all(service_account_info.values()):
                         cred = credentials.Certificate(service_account_info)
                         firebase_admin.initialize_app(cred)
-                        print("✅ Firebase Admin initialized with environment variables")
+                        print("OK Firebase Admin initialized with environment variables")
                     else:
-                        print("⚠️ Firebase Admin not initialized - missing credentials")
+                        print("WARNING Firebase Admin not initialized - missing credentials")
                         return False
             else:
-                print("✅ Firebase Admin already initialized")
-
+                print("OK Firebase Admin already initialized")
+            
             return True
 
         except Exception as e:
-            print(f"❌ Error initializing Firebase Admin: {e}")
+            print(f"ERROR Error initializing Firebase Admin: {e}")
             return False
 
     def verify_token(self, id_token):

@@ -2,23 +2,23 @@
 MediChain Backend Application
 Integrates Firebase Authentication and Supabase Storage
 """
-
-import os
-
-from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
-
-# Import our services
-from appointment_routes import appointments_bp
-from auth.firebase_auth_routes import auth_firebase_bp
-from contact_routes import contact_bp
-from db.supabase_client import SupabaseClient
-from doctor_verification import doctor_verification_bp
-from medical_routes import medical_bp
+from dotenv import load_dotenv
+import os
 
 # Load environment variables
 load_dotenv()
+
+# Import our services
+from auth.firebase_auth_routes import auth_firebase_bp
+from medical_routes import medical_bp
+from appointment_routes import appointments_bp
+from contact_routes import contact_bp
+from profile_routes import profile_bp
+from profile_management import profile_mgmt_bp
+from patient_profile_routes import patient_profile_bp
+from db.supabase_client import SupabaseClient
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -27,58 +27,62 @@ app = Flask(__name__)
 CORS(app)
 
 # Configure Flask
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "your-secret-key-here")
-app.config["DEBUG"] = os.getenv("FLASK_DEBUG", "True").lower() == "true"
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
+app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
 
 # Register blueprints
 app.register_blueprint(auth_firebase_bp)
 app.register_blueprint(medical_bp)
 app.register_blueprint(appointments_bp)
 app.register_blueprint(contact_bp)
-app.register_blueprint(doctor_verification_bp)
+app.register_blueprint(profile_bp)
+app.register_blueprint(profile_mgmt_bp)
+app.register_blueprint(patient_profile_bp)
 
 # Initialize Supabase client
 supabase = SupabaseClient()
 
-
-@app.route("/")
+@app.route('/')
 def index():
     """Health check endpoint"""
     return {
-        "status": "MediChain Backend is running!",
-        "version": "1.0.0",
-        "services": {
-            "firebase_auth": "configured",
-            "supabase_storage": "configured",
-            "medical_records": "available",
-            "appointments": "available",
+        'status': 'MediChain Backend is running!',
+        'version': '1.0.0',
+        'services': {
+            'firebase_auth': 'configured',
+            'supabase_storage': 'configured',
+            'medical_records': 'available',
+            'appointments': 'available',
+            'profile_management': 'available'
         },
-        "endpoints": {
-            "auth": "/api/auth/*",
-            "medical": "/api/medical/*",
-            "appointments": "/api/appointments/*",
-        },
+        'endpoints': {
+            'auth': '/api/auth/*',
+            'medical': '/api/medical/*',
+            'appointments': '/api/appointments/*',
+            'profile': '/api/profile/*',
+            'contact': '/api/contact/*'
+        }
     }
 
 
-@app.route("/api/health")
+@app.route('/api/health')
 def health_check():
     """Detailed health check"""
     try:
         # Test Supabase connection
-        supabase_status = "connected" if supabase.client else "disconnected"
-
+        supabase_status = 'connected' if supabase.client else 'disconnected'
+        
         return {
-            "status": "healthy",
-            "services": {
-                "supabase": supabase_status,
-                "firebase": "configured",  # Firebase is initialized in the auth service
-            },
+            'status': 'healthy',
+            'services': {
+                'supabase': supabase_status,
+                'firebase': 'configured'  # Firebase is initialized in the auth service
+            }
         }
     except Exception as e:
-        return {"status": "unhealthy", "error": str(e)}, 500
+        return {'status': 'unhealthy', 'error': str(e)}, 500
 
 
-if __name__ == "__main__":
-    port = int(os.getenv("FLASK_PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=app.config["DEBUG"])
+if __name__ == '__main__':
+    port = int(os.getenv('FLASK_PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=app.config['DEBUG'])

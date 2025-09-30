@@ -13,6 +13,11 @@ const Header = () => {
     navigate('/')
   }
 
+  const handleProfileClick = () => {
+    console.log('Profile icon clicked in Header!')
+    navigate('/profile')
+  }
+
   return (
     <header className="dashboard-header">
       <div className="header-left">
@@ -51,7 +56,7 @@ const Header = () => {
         <button className="icon-button" title="Settings">
           <Settings size={20} />
         </button>
-        <button className="icon-button" title="Profile">
+        <button className="icon-button" title="Profile" onClick={handleProfileClick}>
           <User size={20} />
         </button>
         <button className="icon-button" onClick={handleLogout} title="Logout">
