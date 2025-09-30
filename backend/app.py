@@ -12,6 +12,7 @@ load_dotenv()
 
 # Import our services
 from auth.firebase_auth_routes import auth_firebase_bp
+from auth.auth_routes import auth_bp
 from medical_routes import medical_bp
 from appointment_routes import appointments_bp
 from contact_routes import contact_bp
@@ -32,6 +33,7 @@ app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
 
 # Register blueprints
 app.register_blueprint(auth_firebase_bp)
+app.register_blueprint(auth_bp)  # Password reset and auth functionality
 app.register_blueprint(medical_bp)
 app.register_blueprint(appointments_bp)
 app.register_blueprint(contact_bp)
