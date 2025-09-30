@@ -204,65 +204,55 @@ export const AuthProvider = ({ children }) => {
     return null;
   };
 
-  // Password reset functions
-  const requestPasswordReset = async (email) => {
+  // Firebase user sync function
+  const syncFirebaseUser = async () => {
     try {
-      const response = await axios.post(`${API_URL}/auth/password-reset-request`, {
-        email: email.trim()
-      });
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error('No authenticated user found');
+      }
+
+      const idToken = await currentUser.getIdToken();
       
-      return {
-        success: response.data.success,
-        message: response.data.message,
-        error: response.data.error
-      };
+      const response = await axios.post(`${API_URL}/auth/sync-firebase-user`, {}, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data.success) {
+        // Update local user data with synced profile
+        const syncedUser = {
+          ...user,
+          ...response.data.user,
+          firebase_uid: currentUser.uid,
+          email: currentUser.email
+        };
+        
+        setUser(syncedUser);
+        localStorage.setItem('medichain_user', JSON.stringify(syncedUser));
+        
+        return response.data;
+      } else {
+        throw new Error(response.data.error || 'Failed to sync user profile');
+      }
     } catch (error) {
+      console.error('Firebase user sync error:', error);
       return {
         success: false,
-        error: error.response?.data?.error || 'Failed to send reset email'
+        error: error.response?.data?.error || error.message || 'Failed to sync user profile'
       };
     }
   };
 
-  const verifyOtp = async (email, otp) => {
+  // Handle post-password-reset sync
+  const handlePostPasswordReset = async () => {
     try {
-      const response = await axios.post(`${API_URL}/auth/verify-otp`, {
-        email: email.trim(),
-        otp: otp.trim()
-      });
-      
-      return {
-        success: response.data.success,
-        message: response.data.message,
-        reset_token: response.data.reset_token,
-        error: response.data.error
-      };
+      await syncFirebaseUser();
+      return { success: true, message: 'Password reset completed and profile synced' };
     } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Failed to verify OTP'
-      };
-    }
-  };
-
-  const resetPassword = async (email, resetToken, newPassword) => {
-    try {
-      const response = await axios.post(`${API_URL}/auth/password-reset`, {
-        email: email.trim(),
-        reset_token: resetToken,
-        new_password: newPassword
-      });
-      
-      return {
-        success: response.data.success,
-        message: response.data.message,
-        error: response.data.error
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Failed to reset password'
-      };
+      return { success: false, error: error.error || 'Failed to complete password reset process' };
     }
   };
 
@@ -301,10 +291,8 @@ export const AuthProvider = ({ children }) => {
     signup,
     updateUser,
     checkVerificationStatus,
-    requestPasswordReset,
-    verifyOtp,
-    resetPassword,
-    resendVerification,
+    syncFirebaseUser,
+    handlePostPasswordReset,
     clearError
   };
 

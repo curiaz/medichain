@@ -13,6 +13,7 @@ from email.mime.text import MIMEText
 
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, jsonify, request
+from firebase_admin import auth
 
 from auth.auth_utils import auth_utils
 from db.supabase_client import SupabaseClient
@@ -185,8 +186,10 @@ def get_current_user():
 
 @auth_bp.route("/password-reset-request", methods=["POST"])
 def password_reset_request():
-    """Request password reset OTP via email"""
+    """Request password reset using Firebase Auth"""
     try:
+        from auth.firebase_auth import firebase_auth_service
+        
         data = request.get_json()
         email = data.get("email", "").strip().lower()
 
@@ -199,51 +202,40 @@ def password_reset_request():
         except EmailNotValidError:
             return jsonify({"error": "Invalid email format"}), 400
 
-        # Find user
-        response = supabase.client.table("users").select("*").eq("email", email).execute()
+        # Check if user exists in Supabase (user profiles)
+        try:
+            response = supabase.client.table("user_profiles").select("*").eq("email", email).execute()
+            
+            if not response.data:
+                # Don't reveal if email exists or not for security
+                return jsonify({
+                    "success": True,
+                    "message": "If this email is registered, you will receive a password reset link"
+                }), 200
+        except Exception as db_error:
+            print(f"Database check error: {db_error}")
+            # Continue with Firebase reset even if DB check fails
 
-        if not response.data:
-            # Don't reveal if email exists or not for security
-            return (
-                jsonify(
-                    {
-                        "success": True,
-                        "message": "If email exists, a reset OTP has been sent",
-                    }
-                ),
-                200,
-            )
-
-        user = response.data[0]
-        
-        # Generate 6-digit OTP
-        otp = f"{random.randint(100000, 999999):06d}"
-        
-        # Calculate expiry time (10 minutes from now)
-        expiry_time = datetime.now() + timedelta(minutes=10)
-        
-        # Store OTP in database (you might want to create an otp_tokens table)
-        # For now, we'll return success and send email
-        
-        # Send OTP via email
-        email_sent = send_otp_email(email, user.get('name', 'User'), otp)
-        
-        if email_sent:
-            # In production, store the OTP in database with expiry
-            # For now, we'll include it in response for testing
-            return (
-                jsonify(
-                    {
-                        "success": True,
-                        "message": "Reset OTP has been sent to your email",
-                        "otp": otp,  # Remove this in production
-                        "expires_at": expiry_time.isoformat()
-                    }
-                ),
-                200,
-            )
-        else:
-            return jsonify({"error": "Failed to send reset email. Please try again."}), 500
+        # Use Firebase Auth to send password reset email
+        try:
+            # Firebase Auth handles the email sending automatically
+            auth.generate_password_reset_link(email)
+            
+            return jsonify({
+                "success": True,
+                "message": "Password reset link has been sent to your email"
+            }), 200
+            
+        except auth.UserNotFoundError:
+            # User doesn't exist in Firebase, but don't reveal this for security
+            return jsonify({
+                "success": True,
+                "message": "If this email is registered, you will receive a password reset link"
+            }), 200
+            
+        except Exception as firebase_error:
+            print(f"Firebase password reset error: {firebase_error}")
+            return jsonify({"error": "Failed to send password reset email"}), 500
 
     except Exception as e:
         print(f"Password reset request error: {str(e)}")
@@ -315,70 +307,138 @@ The MediChain Security Team
         return False
 
 
-@auth_bp.route("/verify-otp", methods=["POST"])
-def verify_otp():
-    """Verify OTP for password reset"""
+@auth_bp.route("/verify-password-reset", methods=["POST"])
+def verify_password_reset():
+    """Verify Firebase password reset and update user profile if needed"""
     try:
+        from auth.firebase_auth import firebase_auth_service
+        
         data = request.get_json()
-        email = data.get("email", "").strip().lower()
-        otp = data.get("otp", "").strip()
+        firebase_token = data.get("firebase_token")
         
-        if not email or not otp:
-            return jsonify({"error": "Email and OTP are required"}), 400
+        if not firebase_token:
+            return jsonify({"error": "Firebase token is required"}), 400
+        
+        # Verify the Firebase token
+        verification_result = firebase_auth_service.verify_token(firebase_token)
+        
+        if not verification_result["success"]:
+            return jsonify({"error": "Invalid Firebase token"}), 401
             
-        # In production, verify OTP from database
-        # For now, we'll simulate OTP verification
-        # You should implement proper OTP storage and verification here
+        user_info = verification_result["user"]
+        email = user_info.get("email")
+        firebase_uid = user_info.get("uid")
         
+        # Update user profile in Supabase if needed
+        try:
+            # Check if user profile exists
+            profile_response = supabase.client.table("user_profiles").select("*").eq("email", email).execute()
+            
+            if profile_response.data:
+                # Update existing profile with Firebase UID if missing
+                profile = profile_response.data[0]
+                if not profile.get("firebase_uid"):
+                    supabase.client.table("user_profiles").update({
+                        "firebase_uid": firebase_uid,
+                        "updated_at": datetime.utcnow().isoformat()
+                    }).eq("email", email).execute()
+                    
+        except Exception as profile_error:
+            print(f"Profile update error: {profile_error}")
+            # Continue even if profile update fails
+            
         return jsonify({
-            "success": True, 
-            "message": "OTP verified successfully",
-            "reset_token": secrets.token_urlsafe(32)  # Generate token for password reset
+            "success": True,
+            "message": "Password reset completed successfully",
+            "user": {
+                "email": email,
+                "firebase_uid": firebase_uid
+            }
         }), 200
         
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Password reset verification error: {str(e)}")
+        return jsonify({"error": "An error occurred during verification"}), 500
 
 
-@auth_bp.route("/password-reset", methods=["POST"])
-def password_reset():
-    """Reset password with verified token"""
+@auth_bp.route("/sync-firebase-user", methods=["POST"])
+def sync_firebase_user():
+    """Sync Firebase user with Supabase user profile after password reset or login"""
     try:
-        data = request.get_json()
-        email = data.get("email", "").strip().lower()
-        reset_token = data.get("reset_token")
-        new_password = data.get("new_password")
-
-        if not email or not reset_token or not new_password:
-            return jsonify({"error": "Email, reset token and new password are required"}), 400
-
-        # Validate new password
-        password_error = validate_password(new_password)
-        if password_error:
-            return jsonify({"error": password_error}), 400
-            
-        # Find user
-        response = supabase.client.table("users").select("*").eq("email", email).execute()
+        from auth.firebase_auth import firebase_auth_service
         
-        if not response.data:
-            return jsonify({"error": "User not found"}), 404
+        # Get Firebase token from request
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return jsonify({"error": "Authorization header required"}), 401
             
-        # In production, verify the reset_token is valid and not expired
-        # For now, we'll proceed with password update
-        
-        # Hash the new password (you should implement proper password hashing)
-        # This is a simplified version - implement proper password hashing in production
         try:
-            # Update password in database
-            # Note: This is simplified - implement proper password hashing
-            update_response = supabase.client.table("users").update({
-                "password": new_password  # Hash this in production!
-            }).eq("email", email).execute()
+            firebase_token = auth_header.split(" ")[1]  # Remove 'Bearer ' prefix
+        except IndexError:
+            return jsonify({"error": "Invalid authorization header format"}), 401
+        
+        # Verify Firebase token
+        verification_result = firebase_auth_service.verify_token(firebase_token)
+        
+        if not verification_result["success"]:
+            return jsonify({"error": "Invalid Firebase token"}), 401
             
-            return jsonify({"success": True, "message": "Password reset successful"}), 200
+        user_info = verification_result["user"]
+        email = user_info.get("email")
+        firebase_uid = user_info.get("uid")
+        name = user_info.get("name", "")
+        
+        if not email or not firebase_uid:
+            return jsonify({"error": "Invalid user information"}), 400
+        
+        # Check if user profile exists in Supabase
+        try:
+            profile_response = supabase.client.table("user_profiles").select("*").eq("firebase_uid", firebase_uid).execute()
             
-        except Exception as e:
-            return jsonify({"error": "Failed to update password"}), 500
-
+            if profile_response.data:
+                # User exists, update profile
+                profile = profile_response.data[0]
+                
+                # Update with latest information
+                update_data = {
+                    "email": email,
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+                
+                if name and not profile.get("full_name"):
+                    update_data["full_name"] = name
+                    
+                supabase.client.table("user_profiles").update(update_data).eq("firebase_uid", firebase_uid).execute()
+                
+                return jsonify({
+                    "success": True,
+                    "message": "User profile synchronized",
+                    "user": profile
+                }), 200
+                
+            else:
+                # User doesn't exist, create new profile
+                new_profile = {
+                    "firebase_uid": firebase_uid,
+                    "email": email,
+                    "full_name": name or email.split("@")[0],
+                    "role": "patient",  # Default role
+                    "created_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+                
+                insert_response = supabase.client.table("user_profiles").insert(new_profile).execute()
+                
+                return jsonify({
+                    "success": True,
+                    "message": "User profile created",
+                    "user": insert_response.data[0] if insert_response.data else new_profile
+                }), 201
+                
+        except Exception as db_error:
+            print(f"Database sync error: {db_error}")
+            return jsonify({"error": "Failed to sync user profile"}), 500
+        
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"User sync error: {str(e)}")
+        return jsonify({"error": "An error occurred during user synchronization"}), 500
