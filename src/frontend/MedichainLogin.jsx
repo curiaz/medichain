@@ -174,7 +174,7 @@ const MedichainLogin = () => {
       <div className="header">
         <div className="logo-container" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
           <div className="logo-icon">
-            <MedichainLogo size={40} />
+            <MedichainLogo size={50} usePng={true} />
           </div>
           <h1>MEDICHAIN</h1>
         </div>

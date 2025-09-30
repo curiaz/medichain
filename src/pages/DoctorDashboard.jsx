@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 import Header from "./Header"
-import { Plus, Users, Activity, AlertCircle, Brain, Stethoscope, RefreshCw } from "lucide-react"
+import { Users, Activity, AlertCircle, Brain, Stethoscope, RefreshCw } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"
@@ -8,12 +8,7 @@ import VerificationStatus from "../components/VerificationStatus"
 import "../assets/styles/ModernDashboard.css"
 import "../assets/styles/DoctorDashboard.css"
 
-// Simple toast replacement
-const toast = {
-  info: (message) => {
-    alert(`ℹ️ ${message}`);
-  }
-};
+
 
 const DoctorDashboard = () => {
   const { user } = useAuth();
@@ -56,10 +51,6 @@ const DoctorDashboard = () => {
     }
   }
 
-  const handleNewPatient = () => {
-    toast.info("New Patient feature coming soon!")
-  }
-
   const handlePatientAIHistory = () => {
     navigate('/patient-ai-history')
   }
@@ -84,11 +75,11 @@ const DoctorDashboard = () => {
       <main className="dashboard-main-content">
         <div className="dashboard-header-section">
           <div className="dashboard-title-section">
-            <h1 className="dashboard-title">DOCTOR DASHBOARD</h1>
+            <h1 className="dashboard-title">MEDICAL DASHBOARD</h1>
             {user && user.profile && (
               <div className="user-welcome">
-                <span>Welcome back, <strong>Dr. {user.profile.first_name || user.profile.name}</strong></span>
-                <span className="user-role">Medical Professional</span>
+                <span>Welcome, <strong>Dr. {user.profile.first_name || user.profile.name}</strong></span>
+                <span className="user-role">LICENSED MEDICAL PRACTITIONER</span>
               </div>
             )}
             
@@ -106,11 +97,8 @@ const DoctorDashboard = () => {
             )}
           </div>
           <div className="dashboard-actions">
-            <button className="primary-action-btn" onClick={handleNewPatient}>
-              <Plus size={20} /> New Patient
-            </button>
             {loading && (
-              <div className="loading-indicator" style={{ marginLeft: '10px', fontSize: '0.9rem', color: '#666' }}>
+              <div className="loading-indicator" style={{ fontSize: '0.9rem', color: '#666' }}>
                 <RefreshCw size={16} className="spinning" /> Loading stats...
               </div>
             )}
@@ -124,7 +112,7 @@ const DoctorDashboard = () => {
                 <Users size={32} />
               </div>
               <div className="stat-info">
-                <span className="stat-label">Total Patients</span>
+                <span className="stat-label">ACTIVE PATIENTS</span>
                 <span className="stat-value">{stats.totalPatients}</span>
               </div>
             </div>
@@ -134,7 +122,7 @@ const DoctorDashboard = () => {
                 <AlertCircle size={32} />
               </div>
               <div className="stat-info">
-                <span className="stat-label">Pending AI Reviews</span>
+                <span className="stat-label">PENDING AI REVIEWS</span>
                 <span className="stat-value">{stats.pendingReviews}</span>
               </div>
             </div>
@@ -144,7 +132,7 @@ const DoctorDashboard = () => {
                 <Brain size={32} />
               </div>
               <div className="stat-info">
-                <span className="stat-label">AI Consultations</span>
+                <span className="stat-label">AI CONSULTATIONS</span>
                 <span className="stat-value">{stats.aiConsultations}</span>
               </div>
             </div>
@@ -154,7 +142,7 @@ const DoctorDashboard = () => {
                 <Activity size={32} />
               </div>
               <div className="stat-info">
-                <span className="stat-label">Recent Activity</span>
+                <span className="stat-label">RECENT ACTIVITY</span>
                 <span className="stat-value">{stats.recentActivity}</span>
               </div>
             </div>
@@ -168,9 +156,9 @@ const DoctorDashboard = () => {
                     <Users size={48} />
                   </div>
                   <div className="action-content">
-                    <h3>Patient Management</h3>
-                    <p>View and manage your patient list, appointments, and medical records</p>
-                    <span className="action-status">Available</span>
+                    <h3>Patient Records</h3>
+                    <p>Access patient files, medical history, and treatment plans</p>
+                    <span className="action-status">Secure Access</span>
                   </div>
                 </div>
 
@@ -179,9 +167,9 @@ const DoctorDashboard = () => {
                     <Brain size={48} />
                   </div>
                   <div className="action-content">
-                    <h3>Patient AI Consultations</h3>
-                    <p>Review AI-generated diagnoses and provide professional oversight</p>
-                    <span className="action-status available">Available Now</span>
+                    <h3>AI Diagnostic Reviews</h3>
+                    <p>Review AI-assisted diagnoses and validate treatment recommendations</p>
+                    <span className="action-status available">Review Required</span>
                   </div>
                 </div>
               </div>
@@ -189,28 +177,28 @@ const DoctorDashboard = () => {
               <div className="content-card">
                 <h3>
                   <Activity size={24} />
-                  Recent Activity
+                  Clinical Activity Log
                 </h3>
                 <div className="activity-list">
                   <div className="activity-item">
-                    <span className="activity-time">1 hour ago</span>
-                    <span className="activity-text">AI consultation reviewed for John Doe</span>
-                    <span className="activity-status completed">Completed</span>
+                    <span className="activity-time">45 min ago</span>
+                    <span className="activity-text">Validated AI diagnosis - Migraine headache</span>
+                    <span className="activity-status completed">Approved</span>
                   </div>
                   <div className="activity-item">
-                    <span className="activity-time">3 hours ago</span>
-                    <span className="activity-text">New AI diagnosis pending review - Jane Smith</span>
-                    <span className="activity-status pending">Pending</span>
+                    <span className="activity-time">2 hours ago</span>
+                    <span className="activity-text">Treatment plan updated - Hypertension management</span>
+                    <span className="activity-status pending">In Progress</span>
                   </div>
                   <div className="activity-item">
-                    <span className="activity-time">5 hours ago</span>
-                    <span className="activity-text">Patient consultation completed</span>
-                    <span className="activity-status completed">Completed</span>
+                    <span className="activity-time">4 hours ago</span>
+                    <span className="activity-text">Lab results reviewed - Blood panel normal</span>
+                    <span className="activity-status completed">Reviewed</span>
                   </div>
                   <div className="activity-item">
-                    <span className="activity-time">1 day ago</span>
-                    <span className="activity-text">Prescription modified for AI diagnosis</span>
-                    <span className="activity-status modified">Modified</span>
+                    <span className="activity-time">6 hours ago</span>
+                    <span className="activity-text">Prescription authorized - Antibiotic therapy</span>
+                    <span className="activity-status modified">Dispensed</span>
                   </div>
                 </div>
               </div>
@@ -220,30 +208,30 @@ const DoctorDashboard = () => {
               <div className="pending-reviews-card">
                 <h3 className="card-title">
                   <AlertCircle size={20} />
-                  Pending AI Reviews
+                  Clinical Reviews Required
                 </h3>
                 <div className="review-item">
-                  <div className="patient-name">John Doe</div>
-                  <div className="consultation-info">Headache symptoms - 85% confidence</div>
+                  <div className="patient-name">Patient #1024</div>
+                  <div className="consultation-info">Tension headache - High confidence</div>
                   <div className="consultation-time">2 hours ago</div>
                   <button className="review-btn" onClick={handlePatientAIHistory}>
-                    Review
+                    Validate
                   </button>
                 </div>
                 <div className="review-item">
-                  <div className="patient-name">Jane Smith</div>
-                  <div className="consultation-info">Flu symptoms - 92% confidence</div>
+                  <div className="patient-name">Patient #1025</div>
+                  <div className="consultation-info">Viral syndrome - Very high confidence</div>
                   <div className="consultation-time">4 hours ago</div>
                   <button className="review-btn" onClick={handlePatientAIHistory}>
-                    Review
+                    Validate
                   </button>
                 </div>
                 <div className="review-item">
-                  <div className="patient-name">Mike Johnson</div>
-                  <div className="consultation-info">Chest pain - 78% confidence</div>
+                  <div className="patient-name">Patient #1026</div>
+                  <div className="consultation-info">Chest pain - Moderate confidence</div>
                   <div className="consultation-time">6 hours ago</div>
                   <button className="review-btn urgent" onClick={handlePatientAIHistory}>
-                    Review (Urgent)
+                    Priority Review
                   </button>
                 </div>
               </div>
