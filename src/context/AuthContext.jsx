@@ -204,6 +204,89 @@ export const AuthProvider = ({ children }) => {
     return null;
   };
 
+  // Password reset functions
+  const requestPasswordReset = async (email) => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/password-reset-request`, {
+        email: email.trim()
+      });
+      
+      return {
+        success: response.data.success,
+        message: response.data.message,
+        error: response.data.error
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Failed to send reset email'
+      };
+    }
+  };
+
+  const verifyOtp = async (email, otp) => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/verify-otp`, {
+        email: email.trim(),
+        otp: otp.trim()
+      });
+      
+      return {
+        success: response.data.success,
+        message: response.data.message,
+        reset_token: response.data.reset_token,
+        error: response.data.error
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Failed to verify OTP'
+      };
+    }
+  };
+
+  const resetPassword = async (email, resetToken, newPassword) => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/password-reset`, {
+        email: email.trim(),
+        reset_token: resetToken,
+        new_password: newPassword
+      });
+      
+      return {
+        success: response.data.success,
+        message: response.data.message,
+        error: response.data.error
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Failed to reset password'
+      };
+    }
+  };
+
+  const resendVerification = async (email) => {
+    try {
+      // For now, this can use the same endpoint as password reset
+      // In production, you might want separate endpoints
+      const response = await axios.post(`${API_URL}/auth/resend-verification`, {
+        email: email.trim()
+      });
+      
+      return {
+        success: response.data.success,
+        message: response.data.message,
+        error: response.data.error
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Failed to resend verification email'
+      };
+    }
+  };
+
   const clearError = () => {
     setError(null);
   };
@@ -218,6 +301,10 @@ export const AuthProvider = ({ children }) => {
     signup,
     updateUser,
     checkVerificationStatus,
+    requestPasswordReset,
+    verifyOtp,
+    resetPassword,
+    resendVerification,
     clearError
   };
 

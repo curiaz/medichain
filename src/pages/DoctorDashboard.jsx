@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 import Header from "./Header"
-import { Users, Activity, AlertCircle, Brain, Stethoscope, RefreshCw } from "lucide-react"
+import { Users, Activity, AlertCircle, Brain, Stethoscope, RefreshCw, FileText, Calendar } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"
@@ -75,11 +75,11 @@ const DoctorDashboard = () => {
       <main className="dashboard-main-content">
         <div className="dashboard-header-section">
           <div className="dashboard-title-section">
-            <h1 className="dashboard-title">MEDICAL DASHBOARD</h1>
+            <h1 className="dashboard-title">DOCTOR DASHBOARD</h1>
             {user && user.profile && (
               <div className="user-welcome">
-                <span>Welcome, <strong>Dr. {user.profile.first_name || user.profile.name}</strong></span>
-                <span className="user-role">LICENSED MEDICAL PRACTITIONER</span>
+                <span>Welcome back, <strong>Dr. {user.profile.first_name || user.profile.name}</strong></span>
+                <span className="user-role">MEDICAL PROFESSIONAL</span>
               </div>
             )}
             
@@ -107,43 +107,47 @@ const DoctorDashboard = () => {
 
         <div className="dashboard-grid">
           <div className="stats-cards-row">
-            <div className="stat-card doctor-stat">
+            <div className="stat-card doctor-stat primary">
               <div className="stat-icon">
                 <Users size={32} />
               </div>
               <div className="stat-info">
-                <span className="stat-label">ACTIVE PATIENTS</span>
+                <span className="stat-label">My Patients</span>
                 <span className="stat-value">{stats.totalPatients}</span>
+                <span className="stat-trend">↑ Active care</span>
               </div>
             </div>
             
-            <div className="stat-card doctor-stat">
+            <div className="stat-card doctor-stat urgent">
               <div className="stat-icon">
                 <AlertCircle size={32} />
               </div>
               <div className="stat-info">
-                <span className="stat-label">PENDING AI REVIEWS</span>
+                <span className="stat-label">Pending Reviews</span>
                 <span className="stat-value">{stats.pendingReviews}</span>
+                <span className="stat-trend">Needs attention</span>
               </div>
             </div>
             
-            <div className="stat-card doctor-stat">
+            <div className="stat-card doctor-stat success">
               <div className="stat-icon">
                 <Brain size={32} />
               </div>
               <div className="stat-info">
-                <span className="stat-label">AI CONSULTATIONS</span>
+                <span className="stat-label">AI Consultations</span>
                 <span className="stat-value">{stats.aiConsultations}</span>
+                <span className="stat-trend">Today</span>
               </div>
             </div>
             
-            <div className="stat-card doctor-stat">
+            <div className="stat-card doctor-stat info">
               <div className="stat-icon">
                 <Activity size={32} />
               </div>
               <div className="stat-info">
-                <span className="stat-label">RECENT ACTIVITY</span>
+                <span className="stat-label">Today's Activity</span>
                 <span className="stat-value">{stats.recentActivity}</span>
+                <span className="stat-trend">Consultations</span>
               </div>
             </div>
           </div>
@@ -151,54 +155,115 @@ const DoctorDashboard = () => {
           <div className="main-and-sidebar-grid">
             <div className="main-content-area">
               <div className="doctor-actions-grid">
-                <div className="action-card" onClick={handlePatientList}>
+                <div className="action-card primary-action" onClick={handlePatientList}>
                   <div className="action-icon">
                     <Users size={48} />
                   </div>
                   <div className="action-content">
                     <h3>Patient Records</h3>
-                    <p>Access patient files, medical history, and treatment plans</p>
-                    <span className="action-status">Secure Access</span>
+                    <p>Access comprehensive patient histories, medical records, and treatment plans</p>
+                    <span className="action-status available">
+                      <span className="status-dot"></span>
+                      Ready to Access
+                    </span>
                   </div>
                 </div>
 
-                <div className="action-card" onClick={handlePatientAIHistory}>
+                <div className="action-card ai-action" onClick={handlePatientAIHistory}>
                   <div className="action-icon ai-icon">
                     <Brain size={48} />
                   </div>
                   <div className="action-content">
-                    <h3>AI Diagnostic Reviews</h3>
-                    <p>Review AI-assisted diagnoses and validate treatment recommendations</p>
-                    <span className="action-status available">Review Required</span>
+                    <h3>AI Diagnosis Review</h3>
+                    <p>Review AI-generated diagnoses, validate recommendations, and provide expert oversight</p>
+                    <span className="action-status urgent">
+                      <span className="status-dot urgent"></span>
+                      {stats.pendingReviews} Pending Reviews
+                    </span>
+                  </div>
+                </div>
+
+                <div className="action-card secondary-action">
+                  <div className="action-icon">
+                    <FileText size={48} />
+                  </div>
+                  <div className="action-content">
+                    <h3>Medical Reports</h3>
+                    <p>Generate detailed reports, prescriptions, and treatment summaries</p>
+                    <span className="action-status available">
+                      <span className="status-dot"></span>
+                      Generate Reports
+                    </span>
+                  </div>
+                </div>
+
+                <div className="action-card secondary-action">
+                  <div className="action-icon">
+                    <Calendar size={48} />
+                  </div>
+                  <div className="action-content">
+                    <h3>Schedule Management</h3>
+                    <p>Manage appointments, consultations, and follow-up sessions</p>
+                    <span className="action-status info">
+                      <span className="status-dot info"></span>
+                      View Schedule
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="content-card">
-                <h3>
-                  <Activity size={24} />
-                  Clinical Activity Log
-                </h3>
+              <div className="content-card activity-card">
+                <div className="card-header">
+                  <h3>
+                    <Activity size={24} />
+                    Recent Medical Activity
+                  </h3>
+                  <button className="view-all-btn">View All</button>
+                </div>
                 <div className="activity-list">
-                  <div className="activity-item">
-                    <span className="activity-time">45 min ago</span>
-                    <span className="activity-text">Validated AI diagnosis - Migraine headache</span>
-                    <span className="activity-status completed">Approved</span>
+                  <div className="activity-item high-priority">
+                    <div className="activity-icon">
+                      <Brain size={16} />
+                    </div>
+                    <div className="activity-details">
+                      <span className="activity-text">AI consultation reviewed for <strong>John Doe</strong></span>
+                      <span className="activity-description">Respiratory symptoms - Diagnosis confirmed</span>
+                      <span className="activity-time">1 hour ago</span>
+                    </div>
+                    <span className="activity-status completed">✓ Reviewed</span>
                   </div>
-                  <div className="activity-item">
-                    <span className="activity-time">2 hours ago</span>
-                    <span className="activity-text">Treatment plan updated - Hypertension management</span>
-                    <span className="activity-status pending">In Progress</span>
+                  <div className="activity-item urgent">
+                    <div className="activity-icon">
+                      <AlertCircle size={16} />
+                    </div>
+                    <div className="activity-details">
+                      <span className="activity-text">Urgent AI diagnosis for <strong>Jane Smith</strong></span>
+                      <span className="activity-description">Cardiac symptoms - Requires immediate review</span>
+                      <span className="activity-time">2 hours ago</span>
+                    </div>
+                    <span className="activity-status pending">Review Now</span>
                   </div>
-                  <div className="activity-item">
-                    <span className="activity-time">4 hours ago</span>
-                    <span className="activity-text">Lab results reviewed - Blood panel normal</span>
-                    <span className="activity-status completed">Reviewed</span>
+                  <div className="activity-item normal">
+                    <div className="activity-icon">
+                      <Users size={16} />
+                    </div>
+                    <div className="activity-details">
+                      <span className="activity-text">Follow-up consultation with <strong>Robert Wilson</strong></span>
+                      <span className="activity-description">Diabetes management - Treatment adjusted</span>
+                      <span className="activity-time">4 hours ago</span>
+                    </div>
+                    <span className="activity-status completed">✓ Completed</span>
                   </div>
-                  <div className="activity-item">
-                    <span className="activity-time">6 hours ago</span>
-                    <span className="activity-text">Prescription authorized - Antibiotic therapy</span>
-                    <span className="activity-status modified">Dispensed</span>
+                  <div className="activity-item normal">
+                    <div className="activity-icon">
+                      <FileText size={16} />
+                    </div>
+                    <div className="activity-details">
+                      <span className="activity-text">Prescription updated for <strong>Mary Johnson</strong></span>
+                      <span className="activity-description">Hypertension medication - Dosage modified</span>
+                      <span className="activity-time">6 hours ago</span>
+                    </div>
+                    <span className="activity-status modified">✓ Updated</span>
                   </div>
                 </div>
               </div>
@@ -208,30 +273,30 @@ const DoctorDashboard = () => {
               <div className="pending-reviews-card">
                 <h3 className="card-title">
                   <AlertCircle size={20} />
-                  Clinical Reviews Required
+                  Pending AI Reviews
                 </h3>
                 <div className="review-item">
-                  <div className="patient-name">Patient #1024</div>
-                  <div className="consultation-info">Tension headache - High confidence</div>
+                  <div className="patient-name">John Doe</div>
+                  <div className="consultation-info">Headache symptoms - 85% confidence</div>
                   <div className="consultation-time">2 hours ago</div>
                   <button className="review-btn" onClick={handlePatientAIHistory}>
-                    Validate
+                    Review
                   </button>
                 </div>
                 <div className="review-item">
-                  <div className="patient-name">Patient #1025</div>
-                  <div className="consultation-info">Viral syndrome - Very high confidence</div>
+                  <div className="patient-name">Jane Smith</div>
+                  <div className="consultation-info">Flu symptoms - 92% confidence</div>
                   <div className="consultation-time">4 hours ago</div>
                   <button className="review-btn" onClick={handlePatientAIHistory}>
-                    Validate
+                    Review
                   </button>
                 </div>
                 <div className="review-item">
-                  <div className="patient-name">Patient #1026</div>
-                  <div className="consultation-info">Chest pain - Moderate confidence</div>
+                  <div className="patient-name">Mike Johnson</div>
+                  <div className="consultation-info">Chest pain - 78% confidence</div>
                   <div className="consultation-time">6 hours ago</div>
                   <button className="review-btn urgent" onClick={handlePatientAIHistory}>
-                    Priority Review
+                    Review (Urgent)
                   </button>
                 </div>
               </div>
