@@ -4,6 +4,8 @@ import { AuthProvider } from './context/AuthContext';
 import LandingPage from './pages/LandingPage';
 import MedichainLogin from './frontend/MedichainLogin';
 import MedichainSignup from './frontend/MedichainSignup';
+import ResetPassword from './frontend/ResetPassword'; // Updated reset password component
+import FirebaseDebugTest from './components/FirebaseDebugTest'; // Debug tool
 import Dashboard from './pages/Dashboard'; // Role-based dashboard router
 import AIHealth from './pages/AIHealth'; // New standalone AI Health page
 import PatientAIHistory from './pages/PatientAIHistory'; // For doctors to view patient AI history
@@ -12,13 +14,7 @@ import ProfilePage from './pages/ProfilePage'; // Profile management page
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
-// Create placeholder components
-const ResetPassword = () => (
-  <div style={{ padding: '2rem', textAlign: 'center' }}>
-    <h2>Reset Password</h2>
-    <p>Reset password component coming soon...</p>
-  </div>
-);
+// Placeholder components for development
 
 // Placeholder components for other routes
 const Patients = () => (
@@ -48,6 +44,7 @@ function App() {
             <Route path="/login" element={<MedichainLogin />} />
             <Route path="/signup" element={<MedichainSignup />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/debug-firebase" element={<FirebaseDebugTest />} />
             
             {/* Protected Dashboard routes */}
             <Route 

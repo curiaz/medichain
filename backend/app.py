@@ -21,6 +21,14 @@ from profile_management import profile_mgmt_bp
 from patient_profile_routes import patient_profile_bp
 from db.supabase_client import SupabaseClient
 
+# Import new healthcare system routes
+from healthcare_routes import (
+    healthcare_auth_bp,
+    healthcare_medical_bp, 
+    healthcare_appointments_bp,
+    healthcare_system_bp
+)
+
 # Initialize Flask app
 app = Flask(__name__)
 
@@ -41,8 +49,21 @@ app.register_blueprint(profile_bp)
 app.register_blueprint(profile_mgmt_bp)
 app.register_blueprint(patient_profile_bp)
 
-# Initialize Supabase client
-supabase = SupabaseClient()
+# Register new healthcare system blueprints
+app.register_blueprint(healthcare_auth_bp)
+app.register_blueprint(healthcare_medical_bp)
+app.register_blueprint(healthcare_appointments_bp)
+app.register_blueprint(healthcare_system_bp)
+
+# Initialize Supabase client (lazy loading to avoid startup issues)
+supabase = None
+
+def get_supabase_client():
+    """Lazy initialization of Supabase client"""
+    global supabase
+    if supabase is None:
+        supabase = SupabaseClient()
+    return supabase
 
 @app.route('/')
 def index():

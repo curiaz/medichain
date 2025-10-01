@@ -1,7 +1,7 @@
 import { useState } from "react"
-import "./ResetPassword.css"
+import "./MedichainLogin.css"
 import { useNavigate } from "react-router-dom"
-import { Eye, EyeOff, Lock, Mail, Plus, ChevronRight, Key } from "lucide-react"
+import { Eye, EyeOff, Lock, Mail, Plus, ChevronRight, Key, Shield } from "lucide-react"
 import MedichainLogo from "../components/MedichainLogo"
 import LoadingSpinner from "../components/LoadingSpinner"
 import { showToast } from "../components/CustomToast"
@@ -18,9 +18,9 @@ const ResetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [resetToken, setResetToken] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [otpExpiry, setOtpExpiry] = useState(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isRedirecting, setIsRedirecting] = useState(false)
 
   const handleEmailSubmit = async (e) => {
     e.preventDefault()
@@ -47,16 +47,10 @@ const ResetPassword = () => {
       })
       
       if (response.data.success) {
-        if (response.data.ui_message) {
-          showToast.success(response.data.ui_message)
-        } else {
-          showToast.success("Reset code sent to your email!")
-        }
-        // Set a dummy OTP for UI continuity with Firebase flow
-        if (response.data.session_token) {
-          setResetToken(response.data.session_token)
-        }
+        showToast.success("Reset OTP has been sent to your email!")
         setStep(2)
+        // Set expiry time for OTP (10 minutes)
+        setOtpExpiry(new Date(Date.now() + 10 * 60 * 1000))
       } else {
         showToast.error(response.data.error || "Failed to send reset email")
       }
@@ -78,13 +72,12 @@ const ResetPassword = () => {
     if (isSubmitting) return
     
     if (!otp.trim()) {
-      showToast.error("Please enter the verification code")
+      showToast.error("Please enter the OTP code")
       return
     }
 
-    // For Firebase mode, accept any 6-digit code as verification
     if (otp.trim().length !== 6) {
-      showToast.error("Please enter a valid 6-digit code")
+      showToast.error("Please enter a valid 6-digit OTP code")
       return
     }
 
@@ -97,22 +90,18 @@ const ResetPassword = () => {
       })
       
       if (response.data.success) {
-        if (response.data.firebase_mode && response.data.instructions) {
-          showToast.success("Verification successful! " + response.data.instructions)
-        } else {
-          showToast.success("Code verified successfully!")
-        }
+        showToast.success("OTP verified successfully!")
         setResetToken(response.data.reset_token)
         setStep(3)
       } else {
-        showToast.error(response.data.error || "Invalid verification code")
+        showToast.error(response.data.error || "Invalid OTP code")
       }
     } catch (error) {
       console.error('OTP verification error:', error)
       if (error.response?.data?.error) {
         showToast.error(error.response.data.error)
       } else {
-        showToast.error("Failed to verify code. Please try again.")
+        showToast.error("Failed to verify OTP. Please try again.")
       }
     } finally {
       setIsSubmitting(false)
@@ -154,20 +143,10 @@ const ResetPassword = () => {
       })
       
       if (response.data.success) {
-        setIsRedirecting(true)
-        
-        if (response.data.instructions) {
-          showToast.success("Please complete the reset using the email link!")
-          // Show detailed instructions
-          console.log("Firebase Reset Instructions:", response.data.instructions)
-          setTimeout(() => {
-            showToast.success("Redirecting to login page...")
-            setTimeout(() => navigate("/login"), 1000)
-          }, 2000)
-        } else {
-          showToast.success("Password updated successfully! Redirecting to login...")
-          setTimeout(() => navigate("/login"), 2000)
-        }
+        showToast.success("Password reset successful! You can now login with your new password.")
+        setTimeout(() => {
+          navigate("/login")
+        }, 2000)
       } else {
         showToast.error(response.data.error || "Failed to reset password")
       }
@@ -194,21 +173,22 @@ const ResetPassword = () => {
       })
       
       if (response.data.success) {
-        showToast.success("New code sent to your email!")
+        showToast.success("New OTP has been sent to your email!")
         setOtp("")
+        setOtpExpiry(new Date(Date.now() + 10 * 60 * 1000))
       } else {
-        showToast.error(response.data.error || "Failed to resend code")
+        showToast.error(response.data.error || "Failed to resend OTP")
       }
     } catch (error) {
       console.error('Resend OTP error:', error)
-      showToast.error("Failed to resend code. Please try again.")
+      showToast.error("Failed to resend OTP. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <div className="reset-password-container">
+    <div className="medichain-container">
       {/* Background crosses */}
       <div className="background-crosses">
         {[...Array(24)].map((_, i) => (
@@ -220,7 +200,7 @@ const ResetPassword = () => {
 
       {/* Header */}
       <div className="header">
-        <div className="logo-container" onClick={() => navigate('/')}>
+        <div className="logo-container" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
           <div className="logo-icon">
             <MedichainLogo size={50} usePng={true} />
           </div>
@@ -230,29 +210,21 @@ const ResetPassword = () => {
 
       {/* Main Content */}
       <div className="main-content">
-        <div className="reset-form-container">
-          {/* Reset Form */}
-          <div className="reset-form">
+        <div className="login-container">
+          {/* Reset Password Form */}
+          <div className="login-form">
             <div className="form-content">
+
+
               {/* Step 1: Email Input */}
               {step === 1 && (
                 <>
                   <div className="form-header">
                     <h2>Reset Password</h2>
-                    <p>Enter your email to reset your password</p>
+                    <p>Enter your email address to reset your password</p>
                   </div>
 
-                  {isRedirecting && (
-                    <div className="success-message">
-                      <div className="success-content">
-                        <div className="success-icon">✅</div>
-                        <h3>Password Reset Complete!</h3>
-                        <p>You will be redirected to the login page shortly...</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <form onSubmit={handleEmailSubmit} className="reset-form-wrapper">
+                  <form onSubmit={handleEmailSubmit} className="login-form-wrapper">
                     <div className="input-group">
                       <label htmlFor="email">Email Address</label>
                       <div className="input-wrapper">
@@ -271,7 +243,7 @@ const ResetPassword = () => {
 
                     <button 
                       type="submit" 
-                      className="reset-btn"
+                      className="login-btn"
                       disabled={isSubmitting}
                     >
                       {isSubmitting ? (
@@ -293,11 +265,11 @@ const ResetPassword = () => {
 
                     <button 
                       type="button" 
-                      className="back-btn" 
+                      className="google-btn" 
                       onClick={() => navigate("/login")}
                       disabled={isSubmitting}
                     >
-                      <div className="back-icon">←</div>
+                      <div className="google-icon">←</div>
                       Back to Login
                     </button>
 
@@ -305,6 +277,7 @@ const ResetPassword = () => {
                       Don't have an account? <span 
                         onClick={() => navigate("/signup")} 
                         className="signup-link-text"
+                        style={{ cursor: 'pointer' }}
                       >
                         Sign Up
                       </span>
@@ -317,25 +290,11 @@ const ResetPassword = () => {
               {step === 2 && (
                 <>
                   <div className="form-header">
-                    <h2>Check Your Email</h2>
-                    <p>We sent a password reset email to {email} with two options:</p>
-                    <ul style={{textAlign: 'left', marginTop: '10px', color: '#666'}}>
-                      <li><strong>Option 1:</strong> Enter the 6-digit verification code below</li>
-                      <li><strong>Option 2:</strong> Click the "Reset Password" button in your email</li>
-                    </ul>
+                    <h2>Enter Verification Code</h2>
+                    <p>We sent a code to {email}</p>
                   </div>
 
-                  {isRedirecting && (
-                    <div className="success-message">
-                      <div className="success-content">
-                        <div className="success-icon">✅</div>
-                        <h3>Password Reset Complete!</h3>
-                        <p>You will be redirected to the login page shortly...</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <form onSubmit={handleOtpSubmit} className="reset-form-wrapper">
+                  <form onSubmit={handleOtpSubmit} className="login-form-wrapper">
                     <div className="input-group">
                       <label htmlFor="otp">Verification Code</label>
                       <div className="input-wrapper">
@@ -350,19 +309,24 @@ const ResetPassword = () => {
                             const numericValue = e.target.value.replace(/\D/g, '').slice(0, 6);
                             setOtp(numericValue);
                           }}
-                          placeholder="Enter verification code from email"
+                          placeholder="Enter 6-digit code"
                           disabled={isSubmitting}
                           autoFocus
                           autoComplete="one-time-code"
                           maxLength={6}
-                          className="otp-input"
+                          style={{ 
+                            textAlign: 'center', 
+                            letterSpacing: '0.2em', 
+                            fontWeight: '600',
+                            fontSize: '1.1em'
+                          }}
                         />
                       </div>
                     </div>
 
                     <button 
                       type="submit" 
-                      className="reset-btn"
+                      className="login-btn"
                       disabled={isSubmitting || otp.length !== 6}
                     >
                       {isSubmitting ? (
@@ -384,7 +348,7 @@ const ResetPassword = () => {
 
                     <button
                       type="button"
-                      className="resend-btn"
+                      className="google-btn"
                       onClick={resendOtp}
                       disabled={isSubmitting}
                     >
@@ -395,6 +359,7 @@ const ResetPassword = () => {
                       Wrong email? <span 
                         onClick={() => setStep(1)} 
                         className="signup-link-text"
+                        style={{ cursor: 'pointer' }}
                       >
                         Change Email
                       </span>
@@ -407,21 +372,11 @@ const ResetPassword = () => {
               {step === 3 && (
                 <>
                   <div className="form-header">
-                    <h2>Complete Password Reset</h2>
-                    <p>Click the button below to receive final instructions, or use the Firebase reset link from your email</p>
+                    <h2>Set New Password</h2>
+                    <p>Create a strong password for your account</p>
                   </div>
 
-                  {isRedirecting && (
-                    <div className="success-message">
-                      <div className="success-content">
-                        <div className="success-icon">✅</div>
-                        <h3>Password Reset Complete!</h3>
-                        <p>You will be redirected to the login page shortly...</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <form onSubmit={handlePasswordSubmit} className="reset-form-wrapper">
+                  <form onSubmit={handlePasswordSubmit} className="login-form-wrapper">
                     <div className="input-group">
                       <label htmlFor="newPassword">New Password</label>
                       <div className="input-wrapper">
@@ -469,20 +424,17 @@ const ResetPassword = () => {
                       </div>
                     </div>
 
+
+
                     <button 
                       type="submit" 
-                      className="reset-btn"
-                      disabled={isSubmitting || isRedirecting || newPassword !== confirmPassword || newPassword.length < 6}
+                      className="login-btn"
+                      disabled={isSubmitting || newPassword !== confirmPassword || newPassword.length < 6}
                     >
                       {isSubmitting ? (
                         <LoadingSpinner 
                           size="small" 
                           text="Updating..." 
-                        />
-                      ) : isRedirecting ? (
-                        <LoadingSpinner 
-                          size="small" 
-                          text="Redirecting to login..." 
                         />
                       ) : (
                         <>
@@ -496,6 +448,7 @@ const ResetPassword = () => {
                       All set? <span 
                         onClick={() => navigate("/login")} 
                         className="signup-link-text"
+                        style={{ cursor: 'pointer' }}
                       >
                         Sign In Now
                       </span>
@@ -506,27 +459,27 @@ const ResetPassword = () => {
             </div>
           </div>
 
-          {/* Info Section */}
-          <div className="info-section">
-            <div className="info-content">
-              <div className="info-icon">
+          {/* Doctor Image Section */}
+          <div className="doctor-image">
+            <div className="doctor-placeholder">
+              <div className="doctor-icon">
                 <Plus size={48} />
               </div>
-              <h3>Secure Password Recovery</h3>
+              <h3>Secure Account Recovery</h3>
               <p>
                 Reset your password securely with our encrypted verification system and regain access to your MediChain account.
               </p>
-              <div className="info-list">
-                <div className="info-item">
-                  <span>+</span>
+              <div className="login-feature-list">
+                <div className="login-feature-item">
+                  <Plus size={16} />
                   <span>Email Verification</span>
                 </div>
-                <div className="info-item">
-                  <span>+</span>
+                <div className="login-feature-item">
+                  <Plus size={16} />
                   <span>Secure Reset Process</span>
                 </div>
-                <div className="info-item">
-                  <span>+</span>
+                <div className="login-feature-item">
+                  <Plus size={16} />
                   <span>Account Protection</span>
                 </div>
               </div>
@@ -535,7 +488,7 @@ const ResetPassword = () => {
         </div>
       </div>
 
-      {/* Footer - Same as Login */}
+      {/* Footer */}
       <div className="footer">
         <div className="footer-content">
           <div className="footer-main">

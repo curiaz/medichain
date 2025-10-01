@@ -672,3 +672,45 @@ def register():
             jsonify({"success": False, "error": f"Registration failed: {str(e)}"}),
             500,
         )
+
+
+@auth_firebase_bp.route("/password-reset", methods=["POST"])
+def firebase_password_reset():
+    """Send Firebase password reset email"""
+    print("🔍 FIREBASE PASSWORD RESET ENDPOINT CALLED")
+    try:
+        data = request.get_json()
+        print(f"📥 Password reset data: {data}")
+
+        if not data or not data.get("email"):
+            print("❌ No email provided")
+            return jsonify({"success": False, "error": "Email is required"}), 400
+
+        email = data["email"]
+        print(f"📧 Processing password reset for email: {email}")
+
+        # Use Firebase Auth service to send password reset email
+        result = firebase_auth_service.send_password_reset_email(email)
+        print(f"🔐 Firebase password reset result: {result}")
+
+        if result["success"]:
+            print("✅ Password reset email sent successfully")
+            return jsonify({
+                "success": True,
+                "message": "Password reset email sent successfully"
+            }), 200
+        else:
+            print(f"❌ Password reset failed: {result.get('error', 'Unknown error')}")
+            return jsonify({
+                "success": False,
+                "error": result.get("error", "Failed to send password reset email")
+            }), 400
+
+    except Exception as e:
+        print(f"💥 PASSWORD RESET ERROR: {str(e)}")
+        import traceback
+        print(f"💥 Full traceback: {traceback.format_exc()}")
+        return jsonify({
+            "success": False,
+            "error": f"Password reset failed: {str(e)}"
+        }), 500
