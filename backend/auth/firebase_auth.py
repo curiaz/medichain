@@ -165,47 +165,7 @@ class FirebaseAuthService:
     def send_password_reset_email(self, email):
         """Send password reset email via Firebase with actual email delivery and verification code"""
         try:
-            # Import OTP service
-            import sys
-            import os
-            sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-            
-            try:
-                from services.simple_otp_manager import simple_otp_manager as otp_service
-                print("✅ Using Simple OTP Manager")
-            except ImportError:
-                try:
-                    from services.otp_service import otp_service
-                    print("✅ Using Database OTP Service")
-                except ImportError as e:
-                    print(f"Warning: Could not import any OTP service: {e}")
-                    # Fallback to simple random code generation
-                    import random
-                    verification_code = str(random.randint(100000, 999999))
-                    
-                    # Send email with simple code
-                    email_sent = self._send_reset_link_email(email, link, verification_code)
-                    
-                    if email_sent:
-                        return {
-                            "success": True,
-                            "message": "Password reset email sent successfully",
-                            "verification_code": verification_code,
-                            "expires_in": "5 minutes"
-                        }
-                    else:
-                        print(f"🔐 FIREBASE RESET LINK for {email}:")
-                        print(f"🔗 {link}")
-                        print(f"🔢 VERIFICATION CODE: {verification_code} (basic fallback)")
-                        return {
-                            "success": True,
-                            "message": "Password reset link and code generated (check console for development)",
-                            "dev_link": link,
-                            "verification_code": verification_code,
-                            "expires_in": "5 minutes"
-                        }
-            
-            # Generate password reset link with proper configuration
+            # Generate password reset link with proper configuration first
             try:
                 # Configure the action code settings for better link handling
                 action_code_settings = auth.ActionCodeSettings(
@@ -218,6 +178,72 @@ class FirebaseAuthService:
                 print(f"⚠️  Firebase link generation failed: {link_error}")
                 # Create a fallback link
                 link = f"http://localhost:3000/reset-password?email={email}"
+            
+            # Import OTP service
+            import sys
+            import os
+            sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+            
+            try:
+                from services.simple_otp_manager import simple_otp_manager as otp_service
+                print("✅ Using Simple OTP Manager")
+                
+                # Store OTP in database with 5-minute expiration
+                otp_result = otp_service.store_otp(email, link)
+                
+                if not otp_result["success"]:
+                    return {
+                        "success": False,
+                        "error": "Failed to generate verification code"
+                    }
+                
+                verification_code = otp_result["otp_code"]
+                
+            except ImportError:
+                try:
+                    from services.otp_service import otp_service
+                    print("✅ Using Database OTP Service")
+                    
+                    # Store OTP in database with 5-minute expiration
+                    otp_result = otp_service.store_otp(email, link)
+                    
+                    if not otp_result["success"]:
+                        return {
+                            "success": False,
+                            "error": "Failed to generate verification code"
+                        }
+                    
+                    verification_code = otp_result["otp_code"]
+                    
+                except ImportError as e:
+                    print(f"Warning: Could not import any OTP service: {e}")
+                    # Fallback to simple random code generation
+                    import random
+                    verification_code = str(random.randint(100000, 999999))
+                    print(f"🔢 Using fallback verification code: {verification_code}")
+            
+            # Send the reset link and verification code via email
+            email_sent = self._send_reset_link_email(email, link, verification_code)
+            
+            if email_sent:
+                return {
+                    "success": True,
+                    "message": "Password reset email sent successfully",
+                    "verification_code": verification_code,  # Return code for backend verification
+                    "expires_in": "5 minutes"
+                }
+            else:
+                # For development, return both link and code in console
+                print(f"🔐 FIREBASE RESET LINK for {email}:")
+                print(f"🔗 {link}")
+                print(f"🔢 VERIFICATION CODE: {verification_code} (expires in 5 minutes)")
+                return {
+                    "success": True,
+                    "message": "Password reset link and code generated (check console for development)",
+                    "dev_link": link,  # For development only
+                    "verification_code": verification_code,
+                    "expires_in": "5 minutes"
+                }
             
             # Store OTP in database with 5-minute expiration
             otp_result = otp_service.store_otp(email, link)

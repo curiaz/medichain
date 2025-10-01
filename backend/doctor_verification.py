@@ -391,10 +391,19 @@ def send_doctor_notification_email(doctor_email, doctor_name, status, message):
         return False
 
 
-@doctor_verification_bp.route("/doctor-signup", methods=["POST"])
+@doctor_verification_bp.route("/doctor-signup", methods=["POST", "OPTIONS"])
 def doctor_signup():
     """Handle doctor signup with verification document upload"""
+    
+    # Handle OPTIONS request for CORS
+    if request.method == "OPTIONS":
+        return jsonify({"status": "OK"}), 200
+    
     try:
+        print(f"🩺 DOCTOR SIGNUP REQUEST - Method: {request.method}")
+        print(f"📋 Form data keys: {list(request.form.keys())}")
+        print(f"📎 Files: {list(request.files.keys())}")
+        
         # Get form data
         email = request.form.get("email")
         password = request.form.get("password")
@@ -402,9 +411,15 @@ def doctor_signup():
         last_name = request.form.get("lastName")
         specialization = request.form.get("specialization")
 
+        print(f"👤 Doctor data: {email}, {first_name} {last_name}, {specialization}")
+
         # Validate required fields
         if not all([email, password, first_name, last_name, specialization]):
-            return jsonify({"success": False, "error": "All fields are required"}), 400
+            missing_fields = [field for field, value in [
+                ('email', email), ('password', password), ('firstName', first_name), 
+                ('lastName', last_name), ('specialization', specialization)
+            ] if not value]
+            return jsonify({"success": False, "error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
 
         # Check for verification file
         if "verificationFile" not in request.files:

@@ -19,6 +19,7 @@ from contact_routes import contact_bp
 from profile_routes import profile_bp
 from profile_management import profile_mgmt_bp
 from patient_profile_routes import patient_profile_bp
+from doctor_verification import doctor_verification_bp
 from db.supabase_client import SupabaseClient
 
 # Import new healthcare system routes
@@ -29,11 +30,20 @@ from healthcare_routes import (
     healthcare_system_bp
 )
 
+# Import test auth endpoints
+from test_auth_endpoints import test_auth_bp
+
 # Initialize Flask app
 app = Flask(__name__)
 
 # Enable CORS for all routes
-CORS(app)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:3000", "http://127.0.0.1:3000"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 # Configure Flask
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
@@ -48,12 +58,16 @@ app.register_blueprint(contact_bp)
 app.register_blueprint(profile_bp)
 app.register_blueprint(profile_mgmt_bp)
 app.register_blueprint(patient_profile_bp)
+app.register_blueprint(doctor_verification_bp)  # Doctor signup and verification
 
 # Register new healthcare system blueprints
 app.register_blueprint(healthcare_auth_bp)
 app.register_blueprint(healthcare_medical_bp)
 app.register_blueprint(healthcare_appointments_bp)
 app.register_blueprint(healthcare_system_bp)
+
+# Register test auth blueprint
+app.register_blueprint(test_auth_bp)
 
 # Initialize Supabase client (lazy loading to avoid startup issues)
 supabase = None
