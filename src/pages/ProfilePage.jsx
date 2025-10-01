@@ -224,6 +224,7 @@ const ProfilePage = () => {
       const token = localStorage.getItem('medichain_token');
       if (!token) {
         setError('Authentication token not found. Please log in again.');
+        setSaving(false);
         return;
       }
 
