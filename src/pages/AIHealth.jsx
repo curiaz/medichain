@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { aiService } from '../services/aiService';
+import LoadingSpinner from '../components/LoadingSpinner';
+import AIProgressBar from '../components/AIProgressBar';
 import { showToast } from '../components/CustomToast';
-import '../assets/styles/AIHealth_Modern.css';
-import medichainLogo from '../assets/medichain_logo.png';
+import '../assets/styles/AIHealth.css';
 
 // Icons
 const HeartIcon = () => (
@@ -31,6 +32,12 @@ const SparklesIcon = () => (
   </svg>
 );
 
+const CheckIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+  </svg>
+);
+
 const ExclamationIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -49,227 +56,40 @@ const ShieldIcon = () => (
   </svg>
 );
 
-// Disclaimer Component
-const DisclaimerNotice = () => (
-  <div className="disclaimer-notice">
-    <div className="disclaimer-header">
-      <ExclamationIcon />
-      <span>Disclaimer:</span>
-    </div>
-    <div className="disclaimer-content">
-      <p>
-        Our system is designed to provide symptom-based health insights using AI trained on medical datasets. 
-        It may suggest possible conditions, recommended actions, and general treatment information. However, 
-        the system is not a substitute for professional medical advice, diagnosis, or treatment.
-      </p>
-      <p>
-        The outputs are predictions based on patterns in medical data and should be used only as a supportive tool, 
-        not as a final medical decision-maker. Always consult a licensed healthcare provider before starting, 
-        changing, or stopping any medical treatment.
-      </p>
-    </div>
-  </div>
-);
-
 const ActivityIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
   </svg>
 );
 
-const ChevronLeftIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+const LoginIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
   </svg>
 );
 
-const ChevronRightIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+const UserPlusIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
   </svg>
 );
-
-// Medical Analysis Slideshow Component
-const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, patientAge, patientGender }) => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  
-  // Parse the formatted response into sections
-  const parseResponse = (response) => {
-    const sections = [];
-    
-    // Add the "Symptoms Reported" slide as the first slide
-    const symptomsReported = {
-      type: 'reported-symptoms',
-      title: 'Symptoms Reported',
-      content: [
-        symptoms || 'No symptoms described'
-      ]
-    };
-    sections.push(symptomsReported);
-    
-    // Filter out disclaimer lines from the entire response first
-    const cleanResponse = response
-      .replace(/.*Disclaimer:.*\n?/gi, '')
-      .replace(/.*I am not a doctor.*\n?/gi, '')
-      .replace(/.*informational purposes only.*\n?/gi, '');
-    
-    // Split by sections using --- markers
-    const sectionParts = cleanResponse.split('---').filter(part => part.trim());
-    
-    for (const part of sectionParts) {
-      const trimmedPart = part.trim();
-      if (!trimmedPart) continue;
-      
-      // Identify section type and extract content more carefully
-      let title = '';
-      let type = '';
-      let content = [];
-      
-      const lines = trimmedPart.split('\n').map(line => line.trim()).filter(line => line);
-      
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        
-        // Check if it's a title line
-        if (line.match(/^###?\s*[🔎📋🚦✅]/)) {
-          title = line.replace(/^###?\s*/, '').trim();
-          
-          // Determine section type
-          if (title.includes('🔎') || title.includes('Possible Conditions')) {
-            type = 'conditions';
-          } else if (title.includes('📋') || title.includes('Symptoms')) {
-            type = 'symptoms';  
-          } else if (title.includes('🚦') || title.includes('Severity')) {
-            type = 'severity';
-          } else if (title.includes('✅') || title.includes('Recommended')) {
-            type = 'recommendations';
-          }
-          
-          // Collect content after title
-          content = lines.slice(i + 1);
-          break;
-        }
-      }
-      
-      if (title && content.length > 0) {
-        sections.push({ 
-          type, 
-          title, 
-          content: content.filter(line => line !== '' && line !== '---') 
-        });
-      }
-    }
-    
-    return sections;
-  };
-  
-  const sections = parseResponse(formattedResponse);
-  
-  // Navigation functions for slideshow with transition animations
-  const nextSlide = () => {
-    if (isTransitioning) return;
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setCurrentSlide((prev) => (prev + 1) % sections.length);
-      setTimeout(() => setIsTransitioning(false), 50);
-    }, 150);
-  };
-  
-  const prevSlide = () => {
-    if (isTransitioning) return;
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setCurrentSlide((prev) => (prev - 1 + sections.length) % sections.length);
-      setTimeout(() => setIsTransitioning(false), 50);
-    }, 150);
-  };
-  
-  const goToSlide = (index) => {
-    if (isTransitioning || index === currentSlide) return;
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setCurrentSlide(index);
-      setTimeout(() => setIsTransitioning(false), 50);
-    }, 150);
-  };
-  
-  if (sections.length === 0) return null;
-  
-  return (
-    <div className="medical-slideshow-container">
-      {/* Slideshow Navigation */}
-      <div className="slideshow-navigation">
-        {sections.map((section, index) => (
-          <button
-            key={index}
-            className={`nav-dot ${index === currentSlide ? 'active' : ''}`}
-            onClick={() => goToSlide(index)}
-            title={section.title}
-          >
-            {index + 1}
-          </button>
-        ))}
-      </div>
-      
-      {/* Slideshow Content */}
-      <div className="slideshow-content">
-        {sections.length > 0 && (
-          <div 
-            className={`slide ${isTransitioning ? 'slide-transitioning' : 'slide-active'}`}
-            data-slide-type={sections[currentSlide].type}
-          >
-            <h3 className="slide-title">{sections[currentSlide].title}</h3>
-            <div className="slide-content">
-              {sections[currentSlide].content.map((line, idx) => (
-                <p key={idx}>{line}</p>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-      
-      {/* Arrow Navigation - positioned above New Diagnosis button */}
-      {sections.length > 1 && (
-        <div className="arrow-navigation">
-          <button 
-            className="arrow-nav arrow-left" 
-            onClick={prevSlide}
-            title="Previous"
-          >
-            <ChevronLeftIcon />
-          </button>
-          <span className="slide-indicator">
-            {currentSlide + 1} of {sections.length}
-          </span>
-          <button 
-            className="arrow-nav arrow-right" 
-            onClick={nextSlide}
-            title="Next"
-          >
-            <ChevronRightIcon />
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const AIHealth = () => {
   const [symptoms, setSymptoms] = useState('');
   const [patientAge, setPatientAge] = useState('');
   const [patientGender, setPatientGender] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [diagnosis, setDiagnosis] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
-  // const [progressStatus, setProgressStatus] = useState(''); // Unused
+  const [progressStatus, setProgressStatus] = useState('');
   const [aiStatus, setAiStatus] = useState('checking');
   const [saveData, setSaveData] = useState(false);
-  // const [showAuthPrompt, setShowAuthPrompt] = useState(false); // Unused
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [sessionData, setSessionData] = useState(null);
   
   const { user } = useAuth();
-  // const navigate = useNavigate(); // Unused
+  const navigate = useNavigate();
 
   useEffect(() => {
     checkAiStatus();
@@ -324,7 +144,7 @@ const AIHealth = () => {
     ];
     
     setProgress(0);
-    // setProgressStatus('Initializing AI analysis...'); // Commented out - variable not defined
+    setProgressStatus('Initializing AI analysis...');
     
     // A bit of randomness for a more realistic feeling
     const addJitter = () => Math.random() * 0.5 - 0.25; // ±0.25
@@ -342,36 +162,44 @@ const AIHealth = () => {
       if (currentStageIndex < progressStages.length - 1 && 
           i >= progressStages[currentStageIndex + 1].milestone) {
         currentStageIndex++;
-        // setProgressStatus(progressStages[currentStageIndex].message); // Commented out - variable not defined
+        setProgressStatus(progressStages[currentStageIndex].message);
       }
     }
   };
 
-  const handleDiagnosis = async (e) => {
-    e.preventDefault();
-    
+  const handleDiagnosis = async () => {
     if (!symptoms.trim()) {
       showToast.error('Please enter symptoms');
       return;
     }
 
     if (!patientAge || !patientGender) {
-      showToast.error('Please select age and gender');
+      showToast.error('Please enter patient age and gender');
       return;
     }
 
-    setIsLoading(true);
+    // If user wants to save data but isn't logged in, show auth prompt
+    if (saveData && !user) {
+      setShowAuthPrompt(true);
+      return;
+    }
+
+    setLoading(true);
     setError(null);
     setDiagnosis(null);
+    setProgress(0);
+    
+    // Start progress simulation
+    await simulateProgress();
 
     try {
-      // Start progress simulation
-      simulateProgress();
-
+      // Create the proper format for symptoms
+      const symptomText = symptoms.trim();
+      
       const diagnosisRequest = {
-        symptoms: symptoms.trim(),
+        symptoms: { symptomText: symptomText }, // Passing as a dictionary with the symptomText key
         patient_data: {
-          age: patientAge,
+          age: parseInt(patientAge),
           gender: patientGender,
           patient_id: user ? (user.profile?.id || user.uid) : `guest_${Date.now()}`,
           name: user && user.profile ? `${user.profile.first_name} ${user.profile.last_name}` : 'Guest'
@@ -379,7 +207,8 @@ const AIHealth = () => {
         doctor_id: null, // No doctor for public access
         include_recommendations: true,
         detailed_analysis: true,
-        save_to_database: saveData && user // Only save if user is logged in and wants to save
+        save_to_database: saveData && user, // Only save if user is logged in and wants to save
+        session_type: user ? 'authenticated' : 'guest'
       };
 
       console.log('Sending diagnosis request:', diagnosisRequest);
@@ -387,9 +216,14 @@ const AIHealth = () => {
       const result = await aiService.getDiagnosis(diagnosisRequest);
       
       if (result.success) {
-        console.log('✅ Frontend received diagnosis data:', result.data);
-        console.log('🔍 Has formatted_response?', !!result.data.formatted_response);
         setDiagnosis(result.data);
+        setSessionData({
+          symptoms,
+          age: patientAge,
+          gender: patientGender,
+          timestamp: new Date().toISOString(),
+          saved: saveData && user
+        });
         showToast.success('AI diagnosis completed successfully');
         
         if (saveData && user) {
@@ -398,16 +232,21 @@ const AIHealth = () => {
       } else {
         throw new Error(result.error || 'Failed to get diagnosis');
       }
+      
     } catch (err) {
       console.error('Diagnosis error:', err);
-      setError(err.message || 'Failed to get AI diagnosis. Please try again.');
-      showToast.error('Failed to get diagnosis');
+      setError(err.message);
+      
+      if (aiStatus === 'disconnected') {
+        showToast.error('AI service is unavailable. Please try again later.');
+      } else {
+        showToast.error('Failed to get AI diagnosis: ' + err.message);
+      }
     } finally {
-      setIsLoading(false);
-      // Reset progress after a short delay
+      setLoading(false);
       setTimeout(() => {
         setProgress(0);
-        // setProgressStatus(''); // Commented out - variable not defined
+        setProgressStatus('');
       }, 1000);
     }
   };
@@ -419,86 +258,91 @@ const AIHealth = () => {
     setDiagnosis(null);
     setError(null);
     setSaveData(false);
-    // setShowAuthPrompt(false); // Commented out - variable not defined
+    setShowAuthPrompt(false);
+    setSessionData(null);
+  };
+
+  const handleSignup = () => {
+    navigate('/signup');
+  };
+
+  const handleLogin = () => {
+    navigate('/login');
+  };
+
+  const closeAuthPrompt = () => {
+    setShowAuthPrompt(false);
+    setSaveData(false);
   };
 
   return (
-    <div className="medichain-container ai-health-page">
-      {/* Background Animation */}
+    <div className="ai-assistant-container">
+      {/* Background crosses */}
       <div className="background-crosses">
-        <div className="cross cross-1">+</div>
-        <div className="cross cross-2">+</div>
-        <div className="cross cross-3">+</div>
-        <div className="cross cross-4">+</div>
+        {[...Array(12)].map((_, i) => (
+          <span key={i} className="cross">+</span>
+        ))}
       </div>
 
-      {/* Header */}
-      <header className="header">
-        <div className="logo-container">
-          <div className="logo-icon">
-            <img src={medichainLogo} alt="MediChain" className="medichain-logo" />
+      <main className="ai-main-content">
+        {/* Header */}
+        <div className="ai-header">
+          <div className="ai-header-icon">
+            <HeartIcon />
           </div>
-          <h1>AI Health Assistant</h1>
+          <h1>MediChain AI Health Assistant</h1>
+          <p>
+            Get instant AI-powered health insights and personalized medical recommendations. 
+            Our advanced system analyzes your symptoms and provides comprehensive treatment guidance.
+          </p>
         </div>
-      </header>
 
-      <main className="main-content">
-        {/* Medical Disclaimer */}
-        <DisclaimerNotice />
-        
-        <div className="content-layout">
-          {/* Left Side - Symptom Input Form */}
-          <div className="form-container">
-            <div className="form-header">
-              <div className="form-icon">
+        <div className="ai-layout-container">
+          {/* Left Section - Input Form */}
+          <div className="ai-left-section">
+            <div className="ai-card">
+              <div className="ai-card-header">
                 <ClipboardIcon />
-              </div>
-              <h2>Describe Your Symptoms</h2>
-              <p>Tell us what symptoms you're experiencing for AI-powered analysis</p>
-            </div>
-
-            <form onSubmit={handleDiagnosis} className="modern-form">
-            <div className="form-row">
-              <div className="input-group">
-                <label className="input-label">
-                  <UserIcon />
-                  Age Group
-                </label>
-                <select
-                  value={patientAge}
-                  onChange={(e) => setPatientAge(e.target.value)}
-                  className="modern-select"
-                  required
-                >
-                  <option value="">Select age group</option>
-                  <option value="child">Child (0 – 12 years)</option>
-                  <option value="teen">Teenager (13 – 19 years)</option>
-                  <option value="adult">Adult (20 – 59 years)</option>
-                  <option value="senior">Senior (60+ years)</option>
-                </select>
+                Symptom Analysis
               </div>
               
-              <div className="input-group">
-                <label className="input-label">
+              <div className="ai-form-group">
+                <label className="ai-label">
+                  <UserIcon />
+                  Patient Age
+                </label>
+                <input
+                  type="number"
+                  value={patientAge}
+                  onChange={(e) => setPatientAge(e.target.value)}
+                  placeholder="Enter age"
+                  min="1"
+                  max="120"
+                  className="ai-input"
+                />
+              </div>
+              
+              <div className="ai-form-group">
+                <label className="ai-label">
                   <UserIcon />
                   Gender
                 </label>
-                <select
-                  value={patientGender}
-                  onChange={(e) => setPatientGender(e.target.value)}
-                  className="modern-select"
-                  required
-                >
-                  <option value="">Select gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
+                <div className="ai-select-wrapper">
+                  <select
+                    value={patientGender}
+                    onChange={(e) => setPatientGender(e.target.value)}
+                    className="ai-select-clean"
+                  >
+                    <option value="">Select gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
               </div>
-            </div>
 
-            <div className="input-group">
-              <label className="input-label">
+            <div className="ai-form-group">
+              <label className="ai-label">
                 <ClipboardIcon />
                 Describe Your Symptoms
               </label>
@@ -506,100 +350,448 @@ const AIHealth = () => {
                 value={symptoms}
                 onChange={(e) => setSymptoms(e.target.value)}
                 placeholder="Please describe your symptoms in detail... (e.g., I have a high fever for 3 days, severe cough, and feeling tired)"
-                className="modern-textarea"
-                required
+                className="ai-textarea"
               />
-            </div>
-
-            <button 
-              type="submit" 
-              className="submit-button" 
-              disabled={isLoading || aiStatus !== 'connected'}
-            >
-              {isLoading ? (
-                <>
-                  <div className="loading-spinner" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <SparklesIcon />
-                  Get AI Diagnosis
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Simple Loading State */}
-          {isLoading && (
-            <div className="simple-loading">
-              <div className="loading-spinner large" />
-              <p className="loading-text">Analyzing your symptoms...</p>
-              <div className="loading-bar">
-                <div className="loading-progress" style={{width: `${progress}%`}} />
+              
+              <div className="symptoms-examples">
+                <p>Common symptoms you may include:</p>
+                <div className="example-chips">
+                  {['Fever', 'Cough', 'Headache', 'Fatigue', 'Sore throat', 
+                    'Shortness of breath', 'Nausea', 'Dizziness', 'Body aches', 
+                    'Runny nose'].map((example, idx) => (
+                    <span 
+                      key={idx} 
+                      className="example-chip"
+                      onClick={() => setSymptoms(prev => {
+                        const newText = prev.trim() ? 
+                          `${prev}, ${example.toLowerCase()}` : 
+                          example.toLowerCase();
+                        return newText;
+                      })}
+                    >
+                      + {example}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
-          )}
 
-          {/* Error Display */}
-          {error && (
-            <div className="error-container">
-              <ExclamationIcon />
-              {error}
+            {/* Save Data Option for logged-in users */}
+            {user && (
+              <div className="save-data-option">
+                <label className="checkbox-container">
+                  <input
+                    type="checkbox"
+                    checked={saveData}
+                    onChange={(e) => setSaveData(e.target.checked)}
+                  />
+                  <span className="checkmark"></span>
+                  <span className="checkbox-text">
+                    <DatabaseIcon />
+                    Save this consultation to my medical record
+                  </span>
+                </label>
+                <div className="save-data-info">
+                  <ShieldIcon />
+                  Saved consultations can be reviewed by your doctor during appointments
+                </div>
+              </div>
+            )}
+
+            {/* Guest notice */}
+            {!user && (
+              <div className="ai-output-card yellow">
+                <div className="ai-output-title">
+                  <ExclamationIcon />
+                  Guest Mode
+                </div>
+                <div className="ai-output-content">
+                  You're using MediChain as a guest. Your consultation will not be saved. 
+                  <button onClick={handleSignup} className="link-button">
+                    Create an account
+                  </button> to save your medical history.
+                </div>
+              </div>
+            )}
+
+            <div className="ai-button-group">
+              <button
+                onClick={handleDiagnosis}
+                disabled={loading}
+                className="ai-primary-button"
+              >
+                {loading ? (
+                  <>
+                    <LoadingSpinner size="small" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <SparklesIcon />
+                    Get AI Diagnosis
+                  </>
+                )}
+              </button>
+              
+              {diagnosis && (
+                <button
+                  onClick={handleNewDiagnosis}
+                  className="ai-secondary-button"
+                >
+                  New Consultation
+                </button>
+              )}
             </div>
-          )}
 
-          {/* System Information */}
-          <div className="system-info">
-            <div className="system-info-item">
+            {/* Progress Section moved to right side */}
+            </div>
+          </div>
+
+          {/* Right Section - AI Analysis & Results */}
+          <div className="ai-right-section">
+            {/* AI Analysis Loading Panel */}
+            {loading && (
+              <div className="ai-analysis-panel">
+                <div className="ai-analysis-header">
+                  <div className="ai-analysis-icon">
+                    <SparklesIcon />
+                  </div>
+                  <div className="ai-analysis-title">AI Medical Analysis</div>
+                  <div className="ai-analysis-subtitle">Correlating with medical database...</div>
+                </div>
+                
+                <div className="ai-analysis-progress">
+                  <AIProgressBar 
+                    isLoading={true} 
+                    progress={progress} 
+                    status={progressStatus}
+                    className="enhanced-progress-bar"
+                  />
+                </div>
+                
+                <div className="ai-analysis-steps">
+                  <div className={`analysis-step ${progress >= 25 ? 'completed' : progress >= 0 ? 'active' : ''}`}>
+                    <div className="step-icon">1</div>
+                    <div className="step-content">
+                      <div className="step-title">Analyzing</div>
+                      <div className="step-description">Processing input data</div>
+                    </div>
+                  </div>
+                  <div className={`analysis-step ${progress >= 50 ? 'completed' : progress >= 25 ? 'active' : ''}`}>
+                    <div className="step-icon">2</div>
+                    <div className="step-content">
+                      <div className="step-title">Computing</div>
+                      <div className="step-description">Running AI algorithms</div>
+                    </div>
+                  </div>
+                  <div className={`analysis-step ${progress >= 75 ? 'completed' : progress >= 50 ? 'active' : ''}`}>
+                    <div className="step-icon">3</div>
+                    <div className="step-content">
+                      <div className="step-title">Diagnosing</div>
+                      <div className="step-description">Generating results</div>
+                    </div>
+                  </div>
+                  <div className={`analysis-step ${progress >= 100 ? 'completed' : progress >= 75 ? 'active' : ''}`}>
+                    <div className="step-icon">4</div>
+                    <div className="step-content">
+                      <div className="step-title">Complete</div>
+                      <div className="step-description">Analysis finished</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="ai-analysis-status">
+                  <div className="status-text">{progressStatus}</div>
+                  <div className="status-percentage">{Math.round(progress)}%</div>
+                </div>
+              </div>
+            )}
+
+            {/* Results Panel */}
+            {!loading && (
+              <div className="ai-card">
+                <div className="ai-card-header">
+                  <ActivityIcon />
+                  Diagnosis Results
+                </div>
+            
+            {!diagnosis && !loading && (
+              <div className="ai-empty-state">
+                <div className="ai-empty-icon">
+                  <HeartIcon />
+                </div>
+                <div className="ai-empty-title">Ready for Analysis</div>
+                <div className="ai-empty-subtitle">
+                  Enter your symptoms and patient information to receive an AI-powered health assessment
+                </div>
+              </div>
+            )}
+
+            {diagnosis && (
+              <div className="ai-output-section">
+                {/* Conversational Response */}
+                {diagnosis.conversational_response && (
+                  <div className="ai-output-card blue">
+                    <div className="ai-output-title">
+                      <CheckIcon />
+                      AI Health Assessment
+                    </div>
+                    <div className="ai-output-content conversational-text">
+                      {diagnosis.conversational_response.split('\n').map((line, index) => {
+                        if (line.trim() === '') return <br key={index} />;
+                        
+                        if (line.includes('**') && line.includes('**')) {
+                          const parts = line.split('**');
+                          return (
+                            <p key={index}>
+                              {parts.map((part, i) => 
+                                i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+                              )}
+                            </p>
+                          );
+                        } else if (line.startsWith('•')) {
+                          return <p key={index} className="bullet-point">{line}</p>;
+                        } else if (line.includes('⚠️') || line.includes('✅') || line.includes('👨‍⚕️') || line.includes('🩺') || line.includes('💊') || line.includes('🔬') || line.includes('⏰') || line.includes('🕐') || line.includes('👉')) {
+                          return <p key={index} className="icon-line">{line}</p>;
+                        } else {
+                          return <p key={index}>{line}</p>;
+                        }
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Medication Response Toggle */}
+                {diagnosis.medication_response && (
+                  <div className="ai-output-card green">
+                    <div className="ai-output-title">
+                      <CheckIcon />
+                      Medication Guidance
+                    </div>
+                    <div className="ai-output-content">
+                      <button 
+                        className="medication-toggle-btn"
+                        onClick={() => {
+                          setDiagnosis(prev => ({
+                            ...prev,
+                            showMedicationResponse: !prev.showMedicationResponse
+                          }));
+                        }}
+                      >
+                        {diagnosis.showMedicationResponse ? 'Show General Guidance' : 'Show Medication Focus'}
+                      </button>
+                      
+                      {diagnosis.showMedicationResponse && (
+                        <div className="medication-response">
+                          {diagnosis.medication_response.split('\n').map((line, index) => {
+                            if (line.trim() === '') return <br key={index} />;
+                            
+                            if (line.includes('**') && line.includes('**')) {
+                              const parts = line.split('**');
+                              return (
+                                <p key={index}>
+                                  {parts.map((part, i) => 
+                                    i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+                                  )}
+                                </p>
+                              );
+                            } else if (line.startsWith('•')) {
+                              return <p key={index} className="bullet-point">{line}</p>;
+                            } else if (line.includes('⚠️') || line.includes('✅') || line.includes('👨‍⚕️') || line.includes('🩺') || line.includes('💊')) {
+                              return <p key={index} className="icon-line">{line}</p>;
+                            } else {
+                              return <p key={index}>{line}</p>;
+                            }
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Traditional Diagnosis (fallback) */}
+                {!diagnosis.conversational_response && (
+                  <>
+                    <div className="ai-output-card blue">
+                      <div className="ai-output-title">Primary Diagnosis</div>
+                      <div className="ai-output-content">{diagnosis.diagnosis}</div>
+                    </div>
+                    
+                    <div className="ai-output-card purple">
+                      <div className="ai-output-title">Confidence Level</div>
+                      <div className="ai-output-content">
+                        <div className="confidence-bar">
+                          <div 
+                            className="confidence-fill" 
+                            style={{ width: `${diagnosis.confidence}%` }}
+                          ></div>
+                          <span className="confidence-text">{diagnosis.confidence}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Top 3 Predictions with Medications */}
+                {diagnosis.top_predictions && diagnosis.top_predictions.length > 0 && (
+                  <div className="ai-output-card green">
+                    <div className="ai-output-title">
+                      <SparklesIcon />
+                      Top 3 Diagnostic Possibilities
+                    </div>
+                    <div className="ai-output-content">
+                      <div className="predictions-grid">
+                        {diagnosis.top_predictions.map((prediction, index) => (
+                          <div key={index} className={`prediction-card ${index === 0 ? 'primary' : ''}`}>
+                            <div className="prediction-header">
+                              <div className="prediction-rank">#{index + 1}</div>
+                              <div className="prediction-info">
+                                <div className="prediction-name">{prediction.diagnosis.replace(/_/g, ' ')}</div>
+                                <div className="prediction-confidence">
+                                  <span className="confidence-percentage">{prediction.confidence.toFixed(1)}%</span>
+                                  <div className="mini-confidence-bar">
+                                    <div 
+                                      className="mini-confidence-fill" 
+                                      style={{ width: `${prediction.confidence}%` }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {prediction.medications && (
+                              <div className="prediction-medications">
+                                <div className="medication-title">
+                                  💊 Recommended Medications:
+                                </div>
+                                <ul className="medication-list">
+                                  {prediction.medications.map((medication, medIndex) => (
+                                    <li key={medIndex} className="medication-item">
+                                      {medication}
+                                    </li>
+                                  ))}
+                                </ul>
+                                
+                                {prediction.dosage && (
+                                  <div className="medication-details">
+                                    <div className="detail-item">
+                                      <strong>Dosage:</strong> {prediction.dosage}
+                                    </div>
+                                    <div className="detail-item">
+                                      <strong>Duration:</strong> {prediction.duration}
+                                    </div>
+                                    <div className="detail-item">
+                                      <strong>Instructions:</strong> {prediction.instructions}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="predictions-disclaimer">
+                        <ExclamationIcon />
+                        <span>These are AI-generated possibilities. Always consult a healthcare professional for proper diagnosis and treatment.</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Medical Disclaimer */}
+                <div className="ai-output-card red">
+                  <div className="ai-output-title">
+                    <ExclamationIcon />
+                    Medical Disclaimer
+                  </div>
+                  <div className="ai-output-content">
+                    This AI diagnosis is for informational purposes only and should not replace 
+                    professional medical advice. Please consult with a qualified healthcare 
+                    provider for proper medical evaluation and treatment.
+                  </div>
+                </div>
+
+                {/* Session Information */}
+                {sessionData && (
+                  <div className="ai-output-card gray">
+                    <div className="ai-output-title">
+                      <DatabaseIcon />
+                      Session Information
+                    </div>
+                    <div className="ai-output-content">
+                      {sessionData.saved ? (
+                        <>
+                          <CheckIcon style={{ color: '#16a34a', marginRight: '0.5rem' }} />
+                          This consultation has been saved to your medical record
+                        </>
+                      ) : (
+                        <>
+                          <ExclamationIcon style={{ color: '#dc2626', marginRight: '0.5rem' }} />
+                          This consultation was not saved and will be lost when you leave this page
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {error && (
+              <div className="ai-output-card red">
+                <div className="ai-output-title">
+                  <ExclamationIcon />
+                  Error
+                </div>
+                <div className="ai-output-content">{error}</div>
+              </div>
+            )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* System Information */}
+        <div className="ai-system-info">
+          <div className="ai-system-grid">
+            <div className="ai-system-item">
               <ActivityIcon />
               AI Status: {aiStatus === 'connected' ? 'Online' : 'Checking...'}
             </div>
-            <div className="system-info-item">
+            <div className="ai-system-item">
               <ShieldIcon />
               {user && user.profile ? `Logged in as ${user.profile.first_name}` : 'Guest Mode'}
             </div>
-            <div className="system-info-item">
+            <div className="ai-system-item">
               <DatabaseIcon />
               Data Saving: {user && saveData ? 'Enabled' : 'Disabled'}
             </div>
           </div>
         </div>
+      </main>
 
-        {/* Right Side - AI Response Output */}
-        <div className="results-side">
-          {diagnosis && diagnosis.formatted_response && (
-            <div className="results-container">
-              <div className="results-header">
-                <div className="results-icon">
-                  <ActivityIcon />
-                </div>
-                <h3>AI Medical Analysis</h3>
-              </div>
-              
-              {/* Medical Analysis Slideshow */}
-              <MedicalAnalysisSlideshow 
-                formattedResponse={diagnosis.formatted_response} 
-                diagnosis={diagnosis.diagnosis}
-                symptoms={symptoms}
-                patientAge={patientAge}
-                patientGender={patientGender}
-              />
-
-              {/* New Diagnosis Button */}
-              <button 
-                onClick={handleNewDiagnosis}
-                className="submit-button"
-                style={{ marginTop: '24px' }}
-              >
-                <ClipboardIcon />
-                New Diagnosis
+      {/* Auth Prompt Modal */}
+      {showAuthPrompt && (
+        <div className="modal-overlay">
+          <div className="auth-prompt-modal">
+            <h3>Account Required</h3>
+            <p>To save your consultation history, you need to create an account or log in.</p>
+            <div className="auth-prompt-actions">
+              <button onClick={handleSignup} className="ai-primary-button">
+                <UserPlusIcon />
+                Create Account
+              </button>
+              <button onClick={handleLogin} className="ai-primary-button">
+                <LoginIcon />
+                Log In
+              </button>
+              <button onClick={closeAuthPrompt} className="ai-secondary-button">
+                Continue as Guest
               </button>
             </div>
-          )}
+          </div>
         </div>
-      </div>
-      </main>
+      )}
     </div>
   );
 };

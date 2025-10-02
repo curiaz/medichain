@@ -204,79 +204,6 @@ export const AuthProvider = ({ children }) => {
     return null;
   };
 
-  // Firebase user sync function
-  const syncFirebaseUser = async () => {
-    try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        throw new Error('No authenticated user found');
-      }
-
-      const idToken = await currentUser.getIdToken();
-      
-      const response = await axios.post(`${API_URL}/auth/sync-firebase-user`, {}, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.data.success) {
-        // Update local user data with synced profile
-        const syncedUser = {
-          ...user,
-          ...response.data.user,
-          firebase_uid: currentUser.uid,
-          email: currentUser.email
-        };
-        
-        setUser(syncedUser);
-        localStorage.setItem('medichain_user', JSON.stringify(syncedUser));
-        
-        return response.data;
-      } else {
-        throw new Error(response.data.error || 'Failed to sync user profile');
-      }
-    } catch (error) {
-      console.error('Firebase user sync error:', error);
-      return {
-        success: false,
-        error: error.response?.data?.error || error.message || 'Failed to sync user profile'
-      };
-    }
-  };
-
-  // Handle post-password-reset sync
-  const handlePostPasswordReset = async () => {
-    try {
-      await syncFirebaseUser();
-      return { success: true, message: 'Password reset completed and profile synced' };
-    } catch (error) {
-      return { success: false, error: error.error || 'Failed to complete password reset process' };
-    }
-  };
-
-  const resendVerification = async (email) => {
-    try {
-      // For now, this can use the same endpoint as password reset
-      // In production, you might want separate endpoints
-      const response = await axios.post(`${API_URL}/auth/resend-verification`, {
-        email: email.trim()
-      });
-      
-      return {
-        success: response.data.success,
-        message: response.data.message,
-        error: response.data.error
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Failed to resend verification email'
-      };
-    }
-  };
-
   const clearError = () => {
     setError(null);
   };
@@ -291,8 +218,6 @@ export const AuthProvider = ({ children }) => {
     signup,
     updateUser,
     checkVerificationStatus,
-    syncFirebaseUser,
-    handlePostPasswordReset,
     clearError
   };
 
