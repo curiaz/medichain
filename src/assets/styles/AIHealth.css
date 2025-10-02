@@ -1,21 +1,65 @@
-/* AI Health Styles - Matching Modern AIAssistant Design */
-.ai-assistant-container {
+/* Modern AI Health Interface - Matching LandingPage and MedichainLogin Design */
+
+/* General Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.medichain-ai-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: linear-gradient(180deg, 
+    #e0f2fe 0%,
+    #b3e5fc 25%,
+    #81d4fa 50%,
+    #4fc3f7 75%,
+    #29b6f6 100%
+  );
   position: relative;
   overflow-x: hidden;
 }
 
-/* Background crosses - optimized for performance */
-.ai-assistant-container .background-crosses {
+/* Subtle animated background */
+.medichain-ai-container::before {
+  content: '';
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.2) 0%, transparent 40%),
+    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 40%);
+  animation: subtleFloat 8s ease-in-out infinite;
+}
+
+/* Clean overlay */
+.medichain-ai-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, 
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+@keyframes subtleFloat {
+  0%, 100% { 
+    opacity: 1;
+    transform: translateY(0px);
+  }
+  50% { 
+    opacity: 0.8;
+    transform: translateY(-10px);
+  }
 }
 
 .ai-assistant-container .cross {
@@ -956,6 +1000,92 @@
   gap: 0.75rem;
 }
 
+/* New Medical Analysis Formatting Styles */
+.medical-analysis {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.formatted-medical-response {
+  line-height: 1.8;
+  color: #2d3748;
+}
+
+.medical-analysis .section-header {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 2rem 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.medical-analysis .medical-line {
+  margin: 0.75rem 0;
+  color: #2d3748;
+}
+
+.medical-analysis .bullet-point {
+  margin: 0.5rem 0 0.5rem 1.5rem;
+  color: #4a5568;
+  font-size: 0.95rem;
+  position: relative;
+}
+
+.medical-analysis .bullet-point::before {
+  content: '•';
+  color: #10b981;
+  font-weight: bold;
+  font-size: 1.2rem;
+  position: absolute;
+  left: -1rem;
+}
+
+.medical-analysis .numbered-point {
+  margin: 1rem 0;
+  color: #2d3748;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.medical-analysis .medical-divider {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, #e2e8f0 0%, #cbd5e0 50%, #e2e8f0 100%);
+  margin: 2rem 0;
+  border-radius: 1px;
+}
+
+.medical-analysis .icon-line {
+  background: rgba(16, 185, 129, 0.08);
+  border-left: 4px solid #10b981;
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  font-weight: 600;
+  color: #047857;
+  font-size: 1.02rem;
+}
+
+.medical-analysis .medical-paragraph {
+  margin: 1rem 0;
+  color: #4a5568;
+  font-size: 1rem;
+}
+
+.medical-analysis strong {
+  color: #1a202c;
+  font-weight: 700;
+}
+
+/* Enhanced styling for medical conditions */
+.medical-analysis .numbered-point strong {
+  color: #047857;
+  font-size: 1.1rem;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .ai-main-content {
@@ -994,6 +1124,21 @@
   .example-chip {
     font-size: 0.6875rem;
     padding: 0.25rem 0.375rem;
+  }
+  
+  /* Medical analysis responsiveness */
+  .medical-analysis .section-header {
+    font-size: 1.2rem;
+    margin: 1.5rem 0 0.75rem 0;
+  }
+  
+  .medical-analysis .icon-line {
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+  }
+  
+  .medical-analysis .bullet-point {
+    font-size: 0.9rem;
   }
 }
 
@@ -1198,14 +1343,15 @@
 
 .medication-details {
   margin-top: 15px;
-  padding-top: 15px;
-  border-top: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .detail-item {
-  margin: 8px 0;
+  background: #f8f9fa;
+  padding: 8px 12px;
+  margin: 5px 0;
+  border-radius: 6px;
   font-size: 0.9em;
-  color: #6b7280;
+  color: #495057;
 }
 
 .detail-item strong {
@@ -1213,16 +1359,23 @@
 }
 
 .predictions-disclaimer {
-  margin-top: 20px;
-  padding: 15px;
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  border: 1px solid #fde68a;
-  border-radius: 10px;
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-top: 20px;
+  padding: 15px;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
   font-size: 0.9em;
-  color: #92400e;
+  color: #856404;
+}
+
+.predictions-disclaimer svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: #f39c12;
 }
 
 /* Mobile responsiveness for predictions */
@@ -1230,18 +1383,295 @@
   .predictions-grid {
     gap: 15px;
   }
-
+  
+  .prediction-card {
+    padding: 15px;
+  }
+  
   .prediction-header {
-    flex-direction: column;
-    align-items: flex-start;
     gap: 10px;
+    margin-bottom: 12px;
   }
-
-  .prediction-confidence {
-    width: 100%;
+  
+  .prediction-rank {
+    width: 35px;
+    height: 35px;
+    font-size: 1.1em;
   }
-
+  
   .prediction-name {
     font-size: 1.2em;
+  }
+  
+  .prediction-confidence {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .mini-confidence-bar {
+    max-width: 100%;
+    width: 100%;
+  }
+  
+  .prediction-medications {
+    padding: 12px;
+    margin-top: 12px;
+  }
+  
+  .medication-title {
+    font-size: 1em;
+  }
+}
+
+@media (max-width: 480px) {
+  .prediction-card {
+    padding: 12px;
+  }
+  
+  .prediction-name {
+    font-size: 1.1em;
+  }
+  
+  .confidence-percentage {
+    font-size: 1em;
+  }
+}
+
+/* Medical Analysis Slideshow Styles */
+.medical-slideshow-container {
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.slideshow-navigation {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.nav-dot {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-dot:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.nav-dot.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+}
+
+.medical-slide {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.medical-slide .ai-output-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.slide-content {
+  flex: 1;
+  padding: 1rem 0;
+  line-height: 1.7;
+}
+
+.slide-content .medical-line {
+  margin: 0.75rem 0;
+  color: #2d3748;
+  font-size: 1rem;
+}
+
+.slide-content .bullet-point {
+  margin: 0.5rem 0 0.5rem 1.5rem;
+  color: #4a5568;
+  font-size: 0.95rem;
+  position: relative;
+}
+
+.slide-content .bullet-point::before {
+  content: '•';
+  color: #10b981;
+  font-weight: bold;
+  font-size: 1.2rem;
+  position: absolute;
+  left: -1rem;
+}
+
+.slide-content .numbered-point {
+  margin: 1rem 0;
+  color: #2d3748;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding-left: 0.5rem;
+}
+
+.slide-content .numbered-point strong {
+  color: #1a202c;
+  font-weight: 700;
+}
+
+.slide-content .medical-paragraph {
+  margin: 0.75rem 0;
+  color: #4a5568;
+  line-height: 1.6;
+}
+
+.slideshow-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem 0 0.5rem 0;
+  border-top: 1px solid #e2e8f0;
+  margin-top: auto;
+}
+
+.slide-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 1.25rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-btn:hover:not(:disabled) {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  transform: scale(1.1);
+}
+
+.slide-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.slide-counter {
+  font-size: 0.875rem;
+  color: #64748b;
+  font-weight: 500;
+  min-width: 60px;
+  text-align: center;
+}
+
+/* Ensure consistent card sizing */
+.medical-slide.ai-output-card {
+  height: auto;
+  min-height: 400px;
+  max-height: none;
+}
+
+/* Match the symptoms analysis card styling */
+.medical-slide .ai-output-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+/* Centered title styling */
+.centered-title {
+  justify-content: center;
+  text-align: center;
+}
+
+/* Centered content styling */
+.centered-content {
+  text-align: center;
+}
+
+.centered-content .bullet-point,
+.centered-content .numbered-point,
+.centered-content .medical-paragraph,
+.centered-content .medical-line {
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.centered-content .bullet-point {
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 0;
+}
+
+.centered-content .bullet-point::before {
+  position: static;
+  margin-right: 0.5rem;
+}
+
+/* Responsive design for slideshow */
+@media (max-width: 768px) {
+  .slideshow-navigation {
+    gap: 0.25rem;
+  }
+  
+  .nav-dot {
+    width: 35px;
+    height: 35px;
+    font-size: 0.8rem;
+  }
+  
+  .medical-slide {
+    min-height: 350px;
+  }
+  
+  .slide-content {
+    padding: 0.75rem 0;
+  }
+  
+  .slideshow-controls {
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-dot {
+    width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+  }
+  
+  .medical-slide {
+    min-height: 320px;
+  }
+  
+  .slide-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1.1rem;
   }
 }

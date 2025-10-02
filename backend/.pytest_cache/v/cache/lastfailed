@@ -1,9 +1,8 @@
 {
-  "tests/test_profile_management.py::TestProfileManagement": true,
-  "tests/test_profile_management.py::TestProfileIntegration": true,
   "tests/test_profile_management.py::TestProfileManagement::test_get_patient_profile_success": true,
   "tests/test_profile_management.py::TestProfileManagement::test_update_patient_profile_success": true,
   "tests/test_profile_management.py::TestProfileManagement::test_update_medical_info_success": true,
   "tests/test_profile_management.py::TestProfileManagement::test_privacy_settings_update": true,
-  "tests/test_profile_management.py::TestProfileIntegration::test_complete_profile_workflow": true
+  "tests/test_profile_management.py::TestProfileIntegration::test_complete_profile_workflow": true,
+  "simple_server_test.py::test_healthcare": true
 }

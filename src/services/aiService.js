@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// AI Diagnosis Service - connects to the enhanced AI system
-const AI_BASE_URL = process.env.REACT_APP_AI_URL || 'http://localhost:5001';
+// AI Diagnosis Service - connects to the integrated AI system in main backend
+const AI_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const api = axios.create({
   baseURL: AI_BASE_URL,
@@ -31,7 +31,7 @@ export const aiService = {
    */
   getDiagnosis: async (diagnosisData) => {
     try {
-      const response = await api.post('/diagnose', diagnosisData);
+      const response = await api.post('/api/ai/diagnose', diagnosisData);
       
       // Transform the AI response to match frontend expectations
       const aiData = response.data;
@@ -62,7 +62,35 @@ export const aiService = {
         };
       }
       
-      // Handle direct diagnosis response from run_ai_server.py
+      // Handle new formatted response (priority)
+      if (aiData.formatted_response) {
+        console.log("Handling new formatted response:", aiData);
+        
+        // Format diagnosis name (replace underscores with spaces and capitalize)
+        const rawDiagnosis = aiData.diagnosis || 'Medical Assessment';
+        const formattedDiagnosis = rawDiagnosis.replace(/_/g, ' ')
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+        
+        return {
+          success: true,
+          data: {
+            diagnosis: formattedDiagnosis,
+            formatted_response: aiData.formatted_response, // Pass through the formatted response
+            alternative_diagnoses: aiData.alternative_diagnoses || [],
+            matched_symptoms: aiData.matched_symptoms || [],
+            method: aiData.method || 'Enhanced AI Analysis',
+            severity_level: aiData.severity_level || 'UNKNOWN',
+            processing_info: aiData.processing_info || {},
+            extracted_info: aiData.extracted_info || {},
+            ai_model_version: 'MediChain-AI',
+            timestamp: new Date().toISOString()
+          }
+        };
+      }
+
+      // Handle direct diagnosis response from run_ai_server.py (fallback)
       if (aiData.diagnosis || aiData.primary_diagnosis) {
         console.log("Handling direct diagnosis format:", aiData);
         
@@ -137,7 +165,7 @@ export const aiService = {
       if (error.isNetworkError) {
         return {
           success: false,
-          error: 'AI server is not available. Please ensure the AI diagnosis server is running on port 5001.',
+          error: 'AI server is not available. Please ensure the AI diagnosis server is running on port 5000.',
           isNetworkError: true
         };
       }
@@ -157,7 +185,7 @@ export const aiService = {
    */
   provideFeedback: async (feedbackData) => {
     try {
-      const response = await api.post('/submit-feedback', feedbackData);
+      const response = await api.post('/api/ai/submit-feedback', feedbackData);
       return {
         success: true,
         data: response.data
@@ -177,7 +205,7 @@ export const aiService = {
    */
   getModelInfo: async () => {
     try {
-      const response = await api.get('/learning-stats');
+      const response = await api.get('/api/ai/learning-stats');
       const data = response.data;
       
       // Transform the response to match frontend expectations
@@ -208,7 +236,7 @@ export const aiService = {
    */
   healthCheck: async () => {
     try {
-      const response = await api.get('/health');
+      const response = await api.get('/api/ai/health');
       return {
         success: true,
         data: response.data,
@@ -257,6 +285,33 @@ export const aiService = {
       }
       throw new Error(error.response?.data?.error || 'Failed to continue conversation');
     }
+  },
+
+  // Wrapper methods to match AIAssistant.jsx expectations
+  /**
+   * Wrapper for getDiagnosis - matches AIAssistant.jsx call
+   * @param {Object} diagnosisData - The diagnosis request data
+   * @returns {Promise<Object>} Diagnosis response
+   */
+  diagnose: async (diagnosisData) => {
+    return await aiService.getDiagnosis(diagnosisData);
+  },
+
+  /**
+   * Wrapper for healthCheck - matches AIAssistant.jsx call
+   * @returns {Promise<Object>} Health status
+   */
+  checkStatus: async () => {
+    return await aiService.healthCheck();
+  },
+
+  /**
+   * Wrapper for provideFeedback - matches AIAssistant.jsx call
+   * @param {Object} feedbackData - The feedback data
+   * @returns {Promise<Object>} Feedback response
+   */
+  submitFeedback: async (feedbackData) => {
+    return await aiService.provideFeedback(feedbackData);
   }
 };
 

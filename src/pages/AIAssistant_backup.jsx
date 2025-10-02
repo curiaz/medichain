@@ -197,7 +197,7 @@ const AIAssistant = () => {
       
       // Show enhanced fallback with AI service status
       if (aiStatus === 'disconnected') {
-        showToast.error('AI service is unavailable. Please ensure the AI diagnosis server is running on port 5001.');
+        showToast.error('AI service is unavailable. Please ensure the AI diagnosis server is running on port 5000.');
         return; // Don't show mock data if AI service is down
       } else {
         showToast.error('Failed to get AI diagnosis: ' + err.message);
@@ -975,7 +975,7 @@ const AIAssistant = () => {
                   <p className="ai-empty-subtitle">
                     {aiStatus === 'connected' 
                       ? 'AI diagnosis service is ready' 
-                      : 'Make sure the AI diagnosis server is running on port 5001'
+                      : 'Make sure the AI diagnosis server is running on port 5000'
                     }
                   </p>
                   {aiStatus === 'disconnected' && (
