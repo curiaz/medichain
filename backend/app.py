@@ -39,7 +39,13 @@ class EnhancedAIEngine:
                 if self.dataset:
                     # Get symptom columns (exclude non-symptom fields)
                     all_columns = set(self.dataset[0].keys())
-                    exclude_columns = {'diagnosis', 'duration_days', 'intensity'}
+                    # Comprehensive list of non-symptom fields to exclude
+                    exclude_columns = {
+                        'diagnosis', 'duration_days', 'intensity', 'age_group', 'gender',
+                        'underlying_conditions', 'recent_exposure', 'symptom_onset', 'progression',
+                        'treatment_received', 'hospital_visit_required', 'recovery_time_days',
+                        'complications_risk', 'symptoms', 'diagnosis_description', 'recommended_action'
+                    }
                     self.symptom_columns = list(all_columns - exclude_columns)
                     
                     # Get all unique diagnoses
@@ -660,7 +666,7 @@ class EnhancedAIEngine:
         
         diagnosis_weights = {}
         for match in scores[:20]:  # Top 20 matches
-            if match['similarity'] > 0:
+            if match['similarity'] > 0.1:  # Only consider matches with significant similarity
                 diag = match['diagnosis']
                 weight = match['similarity']
                 diagnosis_weights[diag] = diagnosis_weights.get(diag, 0) + weight
@@ -669,7 +675,9 @@ class EnhancedAIEngine:
             return None
         
         best_diagnosis = max(diagnosis_weights.items(), key=lambda x: x[1])
-        confidence = min(best_diagnosis[1], 1.0)
+        # Scale confidence more realistically - max 0.85 for CSV-based diagnosis
+        raw_confidence = best_diagnosis[1]
+        confidence = min(raw_confidence * 0.7, 0.85)
         
         # Ensure we have a valid primary diagnosis
         primary_diagnosis = best_diagnosis[0]
@@ -678,7 +686,8 @@ class EnhancedAIEngine:
             for diag, weight in sorted(diagnosis_weights.items(), key=lambda x: x[1], reverse=True):
                 if diag and diag.strip():
                     primary_diagnosis = diag
-                    confidence = min(weight, 1.0)
+                    # Keep the same confidence scaling for fallback diagnoses
+                    confidence = min(weight * 0.7, 0.85)
                     break
             else:
                 primary_diagnosis = 'Unspecified Condition'
@@ -697,8 +706,9 @@ class EnhancedAIEngine:
     def combine_predictions(self, ml_result, csv_result, symptoms, age, gender, user_original_terms=None):
         """Combine ML and CSV predictions for optimal accuracy"""
         if ml_result and csv_result:
-            # Both methods available - use weighted combination
-            ml_weight = 0.7 if ml_result['confidence'] > 0.8 else 0.5
+            # Both methods available - prefer ML when it has reasonable confidence
+            # ML model is generally more accurate than CSV matching
+            ml_weight = 0.8 if ml_result['confidence'] > 0.15 else 0.6
             csv_weight = 1.0 - ml_weight
             
             # If both agree, increase confidence
@@ -710,15 +720,19 @@ class EnhancedAIEngine:
                 diagnosis = ml_result['diagnosis']
                 method = 'ML+CSV (Agreement)'
             else:
-                # They disagree - use the one with higher confidence
-                if ml_result['confidence'] > csv_result['confidence']:
+                # They disagree - prefer ML when it has reasonable confidence (>0.15)
+                if ml_result['confidence'] > 0.15:
                     diagnosis = ml_result['diagnosis']
-                    final_confidence = ml_result['confidence'] * 0.9  # Slightly reduce due to disagreement
+                    final_confidence = ml_result['confidence'] * 0.95  # Small reduction due to disagreement
+                    method = 'Enhanced ML (Primary)'
+                elif ml_result['confidence'] > csv_result['confidence']:
+                    diagnosis = ml_result['diagnosis']
+                    final_confidence = ml_result['confidence'] * 0.9
                     method = 'ML (Primary)'
                 else:
                     diagnosis = csv_result['diagnosis']
-                    final_confidence = csv_result['confidence'] * 0.9
-                    method = 'CSV (Primary)'
+                    final_confidence = csv_result['confidence'] * 0.8  # Reduce CSV confidence more
+                    method = 'CSV (Fallback)'
                 
                 # If primary diagnosis is empty, use best alternative
                 if not diagnosis or diagnosis.strip() == '':
