@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import AIProgressBar from '../components/AIProgressBar';
 import { showToast } from '../components/CustomToast';
 import '../assets/styles/AIHealth_Modern.css';
+import '../assets/styles/AIHealth_Slides.css';
 
 // Icons
 const HeartIcon = () => (
@@ -67,64 +68,75 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   
-  // Parse the formatted response into sections
+  // Parse the formatted response into 4-slide structure
   const parseResponse = (response) => {
     const sections = [];
     
-    // Slide 1: Symptoms Overview
-    sections.push({
-      type: 'symptoms',
-      title: 'Symptoms Overview',
-      content: {
-        symptoms: symptoms,
+    if (response && typeof response === 'string') {
+      // Split response by slide markers
+      const slideContent = {
+        symptoms: '',
+        conditions: '',
+        severity: '',
+        recommendations: ''
+      };
+      
+      // Extract content for each slide
+      const symptomsMatch = response.match(/\*\*SLIDE_1_SYMPTOMS\*\*(.*?)\*\*SLIDE_2_CONDITIONS\*\*/s);
+      if (symptomsMatch) {
+        slideContent.symptoms = symptomsMatch[1].trim();
+      }
+      
+      const conditionsMatch = response.match(/\*\*SLIDE_2_CONDITIONS\*\*(.*?)\*\*SLIDE_3_SEVERITY\*\*/s);
+      if (conditionsMatch) {
+        slideContent.conditions = conditionsMatch[1].trim();
+      }
+      
+      const severityMatch = response.match(/\*\*SLIDE_3_SEVERITY\*\*(.*?)\*\*SLIDE_4_RECOMMENDATIONS\*\*/s);
+      if (severityMatch) {
+        slideContent.severity = severityMatch[1].trim();
+      }
+      
+      const recommendationsMatch = response.match(/\*\*SLIDE_4_RECOMMENDATIONS\*\*(.*?)$/s);
+      if (recommendationsMatch) {
+        slideContent.recommendations = recommendationsMatch[1].trim();
+      }
+      
+      // Create the 4 slides
+      sections.push({
+        type: 'symptoms',
+        title: 'Symptoms Reported',
+        content: slideContent.symptoms || symptoms || 'No symptoms specified',
         patientAge,
         patientGender
-      }
-    });
-
-    // Parse sections from response
-    if (response && typeof response === 'string') {
-      const lines = response.split('\n');
-      let currentSection = null;
-      let currentContent = [];
-
-      lines.forEach(line => {
-        const trimmedLine = line.trim();
-        
-        // Check for section headers
-        if (trimmedLine.includes('**PRELIMINARY DIAGNOSIS**')) {
-          if (currentSection) {
-            sections.push({ type: currentSection.type, title: currentSection.title, content: currentContent.join('\n') });
-          }
-          currentSection = { type: 'diagnosis', title: 'Preliminary Diagnosis' };
-          currentContent = [];
-        } else if (trimmedLine.includes('**POSSIBLE CONDITIONS**')) {
-          if (currentSection) {
-            sections.push({ type: currentSection.type, title: currentSection.title, content: currentContent.join('\n') });
-          }
-          currentSection = { type: 'conditions', title: 'Possible Conditions' };
-          currentContent = [];
-        } else if (trimmedLine.includes('**RECOMMENDATIONS**')) {
-          if (currentSection) {
-            sections.push({ type: currentSection.type, title: currentSection.title, content: currentContent.join('\n') });
-          }
-          currentSection = { type: 'recommendations', title: 'Recommendations' };
-          currentContent = [];
-        } else if (trimmedLine.includes('**PRECAUTIONS**')) {
-          if (currentSection) {
-            sections.push({ type: currentSection.type, title: currentSection.title, content: currentContent.join('\n') });
-          }
-          currentSection = { type: 'precautions', title: 'Precautions' };
-          currentContent = [];
-        } else if (currentSection && trimmedLine) {
-          currentContent.push(trimmedLine);
-        }
       });
-
-      // Add the last section
-      if (currentSection && currentContent.length > 0) {
-        sections.push({ type: currentSection.type, title: currentSection.title, content: currentContent.join('\n') });
-      }
+      
+      sections.push({
+        type: 'conditions', 
+        title: 'Possible Conditions',
+        content: slideContent.conditions || 'Analysis in progress...'
+      });
+      
+      sections.push({
+        type: 'severity',
+        title: 'Severity Assessment', 
+        content: slideContent.severity || 'Assessment pending...'
+      });
+      
+      sections.push({
+        type: 'recommendations',
+        title: 'Recommended Action',
+        content: slideContent.recommendations || 'Recommendations loading...'
+      });
+    } else {
+      // Fallback structure when no response available
+      sections.push({
+        type: 'symptoms',
+        title: 'Symptoms Reported',
+        content: symptoms || 'No symptoms specified',
+        patientAge,
+        patientGender
+      });
     }
 
     return sections;
@@ -171,33 +183,20 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
         return (
           <div className="slide-content symptoms-slide">
             <div className="slide-header">
-              <h2 className="slide-title">Patient Information & Symptoms</h2>
+              <div className="slide-icon">📋</div>
+              <h2 className="slide-title">Symptoms Reported</h2>
             </div>
-            <div className="patient-info-grid">
-              <div className="patient-detail">
-                <span className="detail-label">Age Group:</span>
-                <span className="detail-value">{slide.content.patientAge}</span>
-              </div>
-              <div className="patient-detail">
-                <span className="detail-label">Gender:</span>
-                <span className="detail-value">{slide.content.patientGender}</span>
-              </div>
-            </div>
-            <div className="symptoms-content">
-              <h3>Reported Symptoms:</h3>
-              <div className="symptoms-text">{slide.content.symptoms}</div>
-            </div>
-          </div>
-        );
-
-      case 'diagnosis':
-        return (
-          <div className="slide-content diagnosis-slide">
-            <div className="slide-header">
-              <h2 className="slide-title">Preliminary Diagnosis</h2>
-            </div>
-            <div className="diagnosis-content">
-              <div className="content-text">{slide.content}</div>
+            <div className="symptoms-list">
+              {typeof slide.content === 'string' 
+                ? slide.content.split('\n').filter(line => line.trim()).map((symptom, index) => (
+                    <div key={index} className="symptom-item">
+                      {symptom.replace('•', '').trim()}
+                    </div>
+                  ))
+                : slide.content.symptoms && (
+                    <div className="symptom-item">{slide.content.symptoms}</div>
+                  )
+              }
             </div>
           </div>
         );
@@ -206,10 +205,43 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
         return (
           <div className="slide-content conditions-slide">
             <div className="slide-header">
+              <div className="slide-icon">🔍</div>
               <h2 className="slide-title">Possible Conditions</h2>
             </div>
-            <div className="conditions-content">
-              <div className="content-text">{slide.content}</div>
+            <div className="conditions-list">
+              {slide.content.split(/\d+\.\s+/).filter(section => section.trim()).map((condition, index) => {
+                const [title, ...descriptionParts] = condition.split('\n').filter(line => line.trim());
+                const description = descriptionParts.join(' ').trim();
+                
+                return (
+                  <div key={index} className="condition-item">
+                    <div className="condition-number">{index + 1}</div>
+                    <div className="condition-content">
+                      <h4 className="condition-title">{title}</h4>
+                      {description && (
+                        <p className="condition-description">{description}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+
+      case 'severity':
+        return (
+          <div className="slide-content severity-slide">
+            <div className="slide-header">
+              <div className="slide-icon">🚦</div>
+              <h2 className="slide-title">Severity Assessment</h2>
+            </div>
+            <div className="severity-content">
+              {slide.content.split('\n').filter(line => line.trim()).map((point, index) => (
+                <div key={index} className="severity-point">
+                  {point.replace('•', '').trim()}
+                </div>
+              ))}
             </div>
           </div>
         );
@@ -218,22 +250,15 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
         return (
           <div className="slide-content recommendations-slide">
             <div className="slide-header">
-              <h2 className="slide-title">Medical Recommendations</h2>
+              <div className="slide-icon">✅</div>
+              <h2 className="slide-title">Recommended Action</h2>
             </div>
-            <div className="recommendations-content">
-              <div className="content-text">{slide.content}</div>
-            </div>
-          </div>
-        );
-
-      case 'precautions':
-        return (
-          <div className="slide-content precautions-slide">
-            <div className="slide-header">
-              <h2 className="slide-title">Important Precautions</h2>
-            </div>
-            <div className="precautions-content">
-              <div className="content-text">{slide.content}</div>
+            <div className="recommendations-list">
+              {slide.content.split('\n').filter(line => line.trim()).map((recommendation, index) => (
+                <div key={index} className="recommendation-item">
+                  {recommendation.replace('•', '').trim()}
+                </div>
+              ))}
             </div>
           </div>
         );
@@ -335,17 +360,17 @@ const AIHealth = () => {
     e.preventDefault();
     
     if (!symptoms.trim()) {
-      showToast('Please describe your symptoms', 'error');
+      showToast.error('Please describe your symptoms');
       return;
     }
 
     if (!patientAge) {
-      showToast('Please select your age group', 'error');
+      showToast.error('Please select your age group');
       return;
     }
 
     if (!patientGender) {
-      showToast('Please select your gender', 'error');
+      showToast.error('Please select your gender');
       return;
     }
 
@@ -363,14 +388,14 @@ const AIHealth = () => {
       if (result.success) {
         setDiagnosis(result.data.diagnosis);
         setFormattedResponse(result.data.formatted_response);
-        showToast('Analysis completed successfully', 'success');
+        showToast.success('Analysis completed successfully');
       } else {
         throw new Error(result.error || 'Failed to get diagnosis');
       }
     } catch (error) {
       console.error('Diagnosis error:', error);
       setError(error.message || 'Failed to analyze symptoms. Please try again.');
-      showToast('Analysis failed. Please try again.', 'error');
+      showToast.error('Analysis failed. Please try again.');
     } finally {
       setLoading(false);
     }

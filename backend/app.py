@@ -823,19 +823,21 @@ class EnhancedAIEngine:
         return formatted_response
     
     def format_diagnosis_response(self, diagnosis, confidence, symptoms, alternatives, recommendations, age, gender, method='Enhanced AI Analysis', user_original_terms=None):
-        """Format diagnosis response in the requested professional medical style"""
+        """Format diagnosis response for 4-slide slideshow structure"""
         
         # Format symptoms list - prioritize user's original terms
         symptoms_text = ""
         if user_original_terms:
             # Use the user's original mentioned terms
-            symptoms_text = "\n".join([f"• {term}" for term in user_original_terms])
+            symptoms_list = [f"• {term.title()}" for term in user_original_terms]
         elif symptoms:
             # Fallback to normalized symptoms if no original terms available
-            symptoms_text = "\n".join([f"• {symptom.replace('_', ' ').title()}" for symptom in symptoms])
+            symptoms_list = [f"• {symptom.replace('_', ' ').title()}" for symptom in symptoms]
+        else:
+            symptoms_list = ["• No specific symptoms detected"]
         
-        # Get severity assessment
-        severity = self.assess_severity(diagnosis, confidence, symptoms)
+        # Get severity assessment with detailed information
+        severity_info = self.get_detailed_severity_assessment(diagnosis, confidence, symptoms)
         
         # Ensure we have exactly 3 diagnoses total (1 primary + 2 alternatives)
         all_diagnoses = [{'diagnosis': diagnosis, 'likelihood': confidence}]
@@ -850,11 +852,8 @@ class EnhancedAIEngine:
         
         all_diagnoses.extend(unique_alternatives[:2])
         
-        # Only use specific diagnoses from dataset - no generic fallbacks
-        # If we don't have enough specific diagnoses, return what we have
-        
-        # Format possible conditions (only valid specific diagnoses)
-        conditions_text = ""
+        # Format possible conditions with detailed descriptions
+        conditions_list = []
         valid_diagnoses = []
         
         for diag_item in all_diagnoses:
@@ -862,50 +861,53 @@ class EnhancedAIEngine:
             if diag_name and diag_name.strip() and diag_name != 'Unknown Condition':
                 valid_diagnoses.append(diag_item)
         
-        # Use the valid diagnoses we have (up to 3)
+        # Create exactly 3 conditions for the slideshow
         for i, diag_item in enumerate(valid_diagnoses[:3], 1):
-            diag_name = diag_item.get('diagnosis', '')
-            
-            # Clean up diagnosis name
-            diag_name = diag_name.replace('_', ' ').title()
-            conditions_text += f"{i}. {diag_name}\n\n"
-            
-            # Add description (remove asterisk prefix)
+            diag_name = diag_item.get('diagnosis', '').replace('_', ' ').title()
             desc = self.get_condition_description(diag_item.get('diagnosis', ''))
-            if desc:
-                # Clean description of markdown asterisks
-                clean_desc = desc.replace('*', '').strip()
-                conditions_text += f"   {clean_desc}\n\n"
-            else:
-                conditions_text += f"   A medical condition that matches your symptoms.\n\n"
+            
+            if not desc:
+                desc = "Medical condition requiring professional evaluation."
+            
+            # Clean description of markdown asterisks
+            clean_desc = desc.replace('*', '').strip()
+            conditions_list.append({
+                'name': diag_name,
+                'description': clean_desc
+            })
         
-        # Format recommendations with proper sections
-        action_recommendations = self.format_action_recommendations(diagnosis, confidence, symptoms)
+        # Ensure we have at least 3 conditions (fill with generic if needed)
+        while len(conditions_list) < 3:
+            conditions_list.append({
+                'name': 'Unknown Condition', 
+                'description': 'Medical condition requiring professional evaluation.'
+            })
         
-        # Create the formatted response (disclaimer removed as requested)
-        response_text = f"""Thanks for sharing the symptoms. Based on what you described —
+        # Format recommendations with detailed actions
+        action_recommendations = self.format_detailed_recommendations(diagnosis, confidence, symptoms)
+        
+        # Create structured response for slideshow format
+        response_text = f"""**SLIDE_1_SYMPTOMS**
+{chr(10).join(symptoms_list)}
 
-### Symptoms Reported:
+**SLIDE_2_CONDITIONS**
+1. {conditions_list[0]['name']}
 
-{symptoms_text}
+{conditions_list[0]['description']}
 
----
+2. {conditions_list[1]['name']}
 
-### 🔎 Possible Conditions:
+{conditions_list[1]['description']}
 
-{conditions_text}---
+3. {conditions_list[2]['name']}
 
-### 🚦 Severity Assessment:
+{conditions_list[2]['description']}
 
-{severity}
+**SLIDE_3_SEVERITY**
+{severity_info}
 
----
-
-### ✅ Recommended Action:
-
-{action_recommendations}
-
----"""
+**SLIDE_4_RECOMMENDATIONS**
+{action_recommendations}"""
 
         # Determine the proper method name for display
         if method == 'ML Only':
@@ -1085,6 +1087,52 @@ class EnhancedAIEngine:
             return 'MEDIUM'
         else:
             return 'LOW'
+
+    def get_detailed_severity_assessment(self, diagnosis, confidence, symptoms):
+        """Get detailed severity assessment for slideshow format"""
+        urgent_conditions = ['Pneumonia', 'Heart Attack', 'Stroke', 'Severe Infection', 'Tuberculosis']
+        urgent_symptoms = ['chest_pain', 'shortness_of_breath', 'severe_headache', 'loss_of_consciousness']
+        warning_symptoms = ['fever', 'fatigue', 'dizziness', 'nausea']
+        
+        assessment_parts = []
+        
+        # Check for urgent indicators
+        if diagnosis in urgent_conditions or any(symptom in symptoms for symptom in urgent_symptoms):
+            assessment_parts.append("• Your symptoms include potential warning signs.")
+            assessment_parts.append("• This is moderate to severe and needs medical attention.")
+            severity_level = "HIGH"
+        elif any(symptom in symptoms for symptom in warning_symptoms) and confidence > 0.7:
+            assessment_parts.append("• Your symptoms suggest a moderate condition.")
+            assessment_parts.append("• Medical evaluation is recommended for proper care.")
+            severity_level = "MEDIUM"
+        else:
+            assessment_parts.append("• Your symptoms appear to be mild to moderate.")
+            assessment_parts.append("• Monitor closely and seek care if worsening.")
+            severity_level = "LOW"
+        
+        return "\n".join(assessment_parts)
+
+    def format_detailed_recommendations(self, diagnosis, confidence, symptoms):
+        """Format detailed recommendations for slideshow format"""
+        urgent_conditions = ['Pneumonia', 'Heart Attack', 'Stroke', 'Severe Infection', 'Tuberculosis']
+        urgent_symptoms = ['chest_pain', 'shortness_of_breath', 'severe_headache']
+        
+        recommendations = []
+        
+        # Urgent care recommendations
+        if diagnosis in urgent_conditions or any(symptom in symptoms for symptom in urgent_symptoms):
+            recommendations.append("• If symptoms are worsening or severe, seek urgent care or ER immediately.")
+            recommendations.append("• If mild but persistent, book a doctor's appointment soon for proper evaluation.")
+            recommendations.append("• Monitor closely for any changes in breathing, chest pain, or severe worsening.")
+            recommendations.append("• Stay hydrated, rest, and avoid strenuous activities.")
+        else:
+            # Regular care recommendations
+            recommendations.append("• Monitor symptoms for the next few days.")
+            recommendations.append("• If symptoms persist beyond expected timeframe or worsen, consult a healthcare provider.")
+            recommendations.append("• Stay hydrated, get adequate rest, and follow general wellness practices.")
+            recommendations.append("• Seek medical care if new or concerning symptoms develop.")
+        
+        return "\n".join(recommendations)
 
     def get_recommendations(self, diagnosis, confidence):
         """Get treatment recommendations based on diagnosis"""
