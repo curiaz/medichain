@@ -936,8 +936,15 @@ class EnhancedAIEngine:
         }
     
     def get_condition_description(self, condition):
-        """Get accurate medical descriptions based on the diagnosis result"""
-        # Comprehensive medical descriptions for all conditions that can appear in ML results
+        """Get accurate medical descriptions from the enhanced dataset CSV"""
+        # First try to get description from CSV data
+        for row in self.dataset:
+            if row.get('diagnosis', '').strip() == condition.strip():
+                desc = row.get('diagnosis_description', '').strip()
+                if desc:
+                    return desc
+        
+        # Fallback to hardcoded descriptions for conditions not in CSV
         descriptions = {
             # Respiratory Conditions
             'Common Cold': 'Viral upper respiratory infection with nasal congestion, runny nose, mild fever, and fatigue. Usually resolves in 7-10 days with rest and supportive care.',
@@ -1113,22 +1120,36 @@ class EnhancedAIEngine:
         return "\n".join(assessment_parts)
 
     def format_detailed_recommendations(self, diagnosis, confidence, symptoms):
-        """Format detailed recommendations for slideshow format"""
-        urgent_conditions = ['Pneumonia', 'Heart Attack', 'Stroke', 'Severe Infection', 'Tuberculosis']
-        urgent_symptoms = ['chest_pain', 'shortness_of_breath', 'severe_headache']
+        """Format detailed recommendations for slideshow format using CSV data"""
+        # First try to get recommendations from CSV data
+        csv_recommendation = None
+        for row in self.dataset:
+            if row.get('diagnosis', '').strip() == diagnosis.strip():
+                rec = row.get('recommended_action', '').strip()
+                if rec:
+                    csv_recommendation = rec
+                    break
         
         recommendations = []
         
-        # Urgent care recommendations
+        if csv_recommendation:
+            # Use CSV recommendation as primary source
+            recommendations.append(f"• {csv_recommendation}")
+        
+        # Add additional context-based recommendations
+        urgent_conditions = ['Pneumonia', 'Heart Attack', 'Stroke', 'Severe Infection', 'Tuberculosis']
+        urgent_symptoms = ['chest_pain', 'shortness_of_breath', 'severe_headache']
+        
+        # Add general care recommendations
         if diagnosis in urgent_conditions or any(symptom in symptoms for symptom in urgent_symptoms):
-            recommendations.append("• If symptoms are worsening or severe, seek urgent care or ER immediately.")
-            recommendations.append("• If mild but persistent, book a doctor's appointment soon for proper evaluation.")
+            if not csv_recommendation:
+                recommendations.append("• If symptoms are worsening or severe, seek urgent care or ER immediately.")
             recommendations.append("• Monitor closely for any changes in breathing, chest pain, or severe worsening.")
             recommendations.append("• Stay hydrated, rest, and avoid strenuous activities.")
         else:
-            # Regular care recommendations
-            recommendations.append("• Monitor symptoms for the next few days.")
-            recommendations.append("• If symptoms persist beyond expected timeframe or worsen, consult a healthcare provider.")
+            if not csv_recommendation:
+                recommendations.append("• Monitor symptoms for the next few days.")
+                recommendations.append("• If symptoms persist beyond expected timeframe or worsen, consult a healthcare provider.")
             recommendations.append("• Stay hydrated, get adequate rest, and follow general wellness practices.")
             recommendations.append("• Seek medical care if new or concerning symptoms develop.")
         

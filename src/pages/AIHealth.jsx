@@ -7,6 +7,7 @@ import AIProgressBar from '../components/AIProgressBar';
 import { showToast } from '../components/CustomToast';
 import '../assets/styles/AIHealth_Modern.css';
 import '../assets/styles/AIHealth_Slides.css';
+import '../assets/styles/NewDiagnosisButton.css';
 
 // Icons
 const HeartIcon = () => (
@@ -186,17 +187,19 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
               <div className="slide-icon">📋</div>
               <h2 className="slide-title">Symptoms Reported</h2>
             </div>
-            <div className="symptoms-list">
+            <div className="symptoms-summary">
               {typeof slide.content === 'string' 
-                ? slide.content.split('\n').filter(line => line.trim()).map((symptom, index) => (
-                    <div key={index} className="symptom-item">
-                      {symptom.replace('•', '').trim()}
-                    </div>
-                  ))
-                : slide.content.symptoms && (
-                    <div className="symptom-item">{slide.content.symptoms}</div>
-                  )
+                ? slide.content.split('\n').filter(line => line.trim()).join(', ').replace(/•/g, '').trim()
+                : slide.content.symptoms || symptoms
               }
+            </div>
+            <div className="patient-info">
+              <div className="patient-detail">
+                <span className="detail-label">Age:</span> {slide.patientAge || 'Not specified'}
+              </div>
+              <div className="patient-detail">
+                <span className="detail-label">Gender:</span> {slide.patientGender || 'Not specified'}
+              </div>
             </div>
           </div>
         );
@@ -278,45 +281,51 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
   };
 
   return (
-    <div className="slideshow-container">
-      <div className={`slide ${isTransitioning ? 'transitioning' : ''}`}>
-        {renderSlideContent(currentSlideData)}
+    <div className="ai-analysis-container">
+      {/* Slide Number Navigation */}
+      <div className="slide-numbers">
+        {slides.map((_, index) => (
+          <button
+            key={index}
+            className={`slide-number ${currentSlide === index ? 'active' : ''}`}
+            onClick={() => goToSlide(index)}
+            disabled={isTransitioning}
+          >
+            {index + 1}
+          </button>
+        ))}
       </div>
-
-      {/* Navigation Controls */}
-      <div className="slideshow-navigation">
+      
+      {/* Main Content Area */}
+      <div className="slide-content-wrapper">
+        <div className={`slide ${isTransitioning ? 'transitioning' : ''}`}>
+          {renderSlideContent(currentSlideData)}
+        </div>
+      </div>
+      
+      {/* Bottom Navigation */}
+      <div className="slide-navigation">
         <button 
           onClick={prevSlide} 
           disabled={currentSlide === 0 || isTransitioning}
-          className="nav-btn prev-btn"
+          className="nav-arrow prev"
         >
-          <ChevronLeftIcon />
+          ◀
         </button>
-
-        <div className="slide-indicators">
-          {slides.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => goToSlide(index)}
-              className={`indicator ${index === currentSlide ? 'active' : ''}`}
-              disabled={isTransitioning}
-            />
-          ))}
-        </div>
-
+        
+        <span className="slide-indicator">
+          {currentSlide + 1} of {slides.length}
+        </span>
+        
         <button 
           onClick={nextSlide} 
           disabled={currentSlide === slides.length - 1 || isTransitioning}
-          className="nav-btn next-btn"
+          className="nav-arrow next"
         >
-          <ChevronRightIcon />
+          ▶
         </button>
       </div>
-
-      {/* Slide Counter */}
-      <div className="slide-counter">
-        {currentSlide + 1} / {slides.length}
-      </div>
+      
     </div>
   );
 };
@@ -627,7 +636,7 @@ const AIHealth = () => {
                   <div className="results-icon">
                     <ActivityIcon />
                   </div>
-                  <h3>AI Medical Analysis</h3>
+                  <h3>AI Health Analysis</h3>
                 </div>
                 <MedicalAnalysisSlideshow
                   formattedResponse={formattedResponse}
@@ -636,16 +645,22 @@ const AIHealth = () => {
                   patientAge={patientAge}
                   patientGender={patientGender}
                 />
+                <div className="results-footer">
+                  <button 
+                    className="submit-button new-diagnosis-btn"
+                    onClick={handleNewDiagnosis}
+                  >
+                    <ClipboardIcon />
+                    <span>New Diagnosis</span>
+                  </button>
+                </div>
               </div>
             )}
 
             {!loading && !diagnosis && !error && (
               <div className="results-container">
                 <div className="results-header">
-                  <div className="results-icon">
-                    <SparklesIcon />
-                  </div>
-                  <h3>AI Health Analysis</h3>
+                  <h2>AI Health Analysis</h2>
                   <p>Enter your symptoms to receive detailed medical analysis and recommendations.</p>
                 </div>
               </div>
