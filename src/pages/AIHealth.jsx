@@ -388,173 +388,222 @@ const AIHealth = () => {
   return (
     <div className="ai-health-page">
       {/* Header */}
-      <header className="page-header">
-        <div className="header-content">
-          <div className="header-left">
-            <h1 className="page-title">
-              <HeartIcon />
-              AI Health Assistant
-            </h1>
-            <p className="page-subtitle">Advanced Medical Analysis & Consultation</p>
+      <header className="header">
+        <div className="logo-container">
+          <div className="logo-icon">
+            <HeartIcon />
           </div>
-          
-          <div className="header-right">
-            <div className="ai-status-indicator">
-              <div className={`status-dot ${aiStatus === 'connected' ? 'online' : 'offline'}`}></div>
-              <span>AI {aiStatus === 'connected' ? 'Online' : 'Offline'}</span>
+          <h1>AI Health Assistant</h1>
+        </div>
+        <div style={{ color: '#718096', fontSize: '16px' }}>Advanced Medical Analysis & Consultation</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ 
+              width: '8px', 
+              height: '8px', 
+              borderRadius: '50%', 
+              backgroundColor: aiStatus === 'connected' ? '#10b981' : '#ef4444' 
+            }}></div>
+            <span style={{ fontSize: '14px', color: '#4a5568' }}>
+              AI {aiStatus === 'connected' ? 'Online' : 'Offline'}
+            </span>
+          </div>
+          {!user && (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={() => navigate('/login')} 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '4px', 
+                  padding: '6px 12px', 
+                  background: '#0288d1', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '6px', 
+                  fontSize: '14px' 
+                }}
+              >
+                <LoginIcon />
+                Login
+              </button>
+              <button 
+                onClick={() => navigate('/register')} 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '4px', 
+                  padding: '6px 12px', 
+                  background: '#10b981', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '6px', 
+                  fontSize: '14px' 
+                }}
+              >
+                <UserPlusIcon />
+                Register
+              </button>
             </div>
-            
-            {!user && (
-              <div className="auth-buttons">
-                <button 
-                  onClick={() => navigate('/login')} 
-                  className="auth-btn login-btn"
-                >
-                  <LoginIcon />
-                  Login
-                </button>
-                <button 
-                  onClick={() => navigate('/register')} 
-                  className="auth-btn register-btn"
-                >
-                  <UserPlusIcon />
-                  Register
-                </button>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </header>
 
       {/* Main Content */}
       <main className="main-content">
-        <div className="content-container">
+        {/* Disclaimer Notice */}
+        <div className="disclaimer-notice">
+          <div className="disclaimer-header">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            Disclaimer:
+          </div>
+          <div className="disclaimer-content">
+            <p>Our system is designed to provide symptom-based health insights using AI trained on medical datasets. It may suggest possible conditions, recommended actions, and general treatment information. However, the system is not a substitute for professional medical advice, diagnosis, or treatment.</p>
+            <p>The outputs are predictions based on patterns in medical data and should be used only as a supportive tool, not as a final medical decision-maker. Always consult a licensed healthcare provider before starting, changing, or stopping any medical treatment.</p>
+          </div>
+        </div>
+
+        {/* Content Layout */}
+        <div className="content-layout">
           {/* Left Section - Input Form */}
-          <div className="left-section">
-            <div className="form-container">
-              <div className="form-header">
+          <div className="form-container" style={{ animation: 'slideInFromLeft 0.6s ease-out' }}>
+            <div className="form-header">
+              <div className="form-icon">
                 <SparklesIcon />
-                <h2>Describe Your Symptoms</h2>
-                <p>Provide detailed information for accurate analysis</p>
               </div>
+              <h2>Describe Your Symptoms</h2>
+              <p>Tell us what symptoms you're experiencing for AI-powered analysis</p>
+            </div>
 
-              <form onSubmit={handleSubmit} className="symptom-form">
-                {/* Patient Information */}
-                <div className="form-section">
-                  <div className="section-title">Patient Information</div>
-                  <div className="input-row">
-                    <div className="input-group">
-                      <label className="input-label">
-                        <UserIcon />
-                        Age Group
-                      </label>
-                      <select 
-                        className="modern-select" 
-                        value={patientAge} 
-                        onChange={(e) => setPatientAge(e.target.value)}
-                      >
-                        <option value="">Select age group</option>
-                        <option value="Child (2 - 17 years)">Child (2 - 17 years)</option>
-                        <option value="Adult (18 - 64 years)">Adult (18 - 64 years)</option>
-                        <option value="Senior (65+ years)">Senior (65+ years)</option>
-                      </select>
-                    </div>
-                    
-                    <div className="input-group">
-                      <label className="input-label">
-                        <UserIcon />
-                        Gender
-                      </label>
-                      <select 
-                        className="modern-select" 
-                        value={patientGender} 
-                        onChange={(e) => setPatientGender(e.target.value)}
-                      >
-                        <option value="">Select gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Symptoms Input */}
+            <form onSubmit={handleSubmit} className="modern-form">
+              {/* Patient Information Row */}
+              <div className="form-row">
                 <div className="input-group">
                   <label className="input-label">
-                    <ClipboardIcon />
-                    Describe Your Symptoms
+                    <UserIcon />
+                    Age Group
                   </label>
-                  <textarea
-                    className="modern-textarea"
-                    value={symptoms}
-                    onChange={(e) => setSymptoms(e.target.value)}
-                    placeholder="Please describe your symptoms in detail... (e.g., I have severe headache for 3 days, fatigue, mild dizziness and shortness of breath)"
-                    rows={6}
-                  />
-                </div>
-
-                {/* Submit Button */}
-                <div className="form-actions">
-                  <button
-                    type="submit"
-                    disabled={loading || !symptoms.trim() || !patientAge || !patientGender}
-                    className={`submit-btn ${loading ? 'loading' : ''}`}
+                  <select 
+                    className="modern-select" 
+                    value={patientAge} 
+                    onChange={(e) => setPatientAge(e.target.value)}
                   >
-                    {loading ? (
-                      <>
-                        <LoadingSpinner size="small" />
-                        <span>Analyzing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <SparklesIcon />
-                        <span>Analyze Symptoms</span>
-                      </>
-                    )}
-                  </button>
-                  
-                  {diagnosis && (
-                    <button
-                      type="button"
-                      onClick={handleNewDiagnosis}
-                      className="secondary-btn"
-                    >
-                      New Consultation
-                    </button>
-                  )}
+                    <option value="">Select age group</option>
+                    <option value="Child (2 - 17 years)">Child (2 - 17 years)</option>
+                    <option value="Adult (18 - 64 years)">Adult (18 - 64 years)</option>
+                    <option value="Senior (65+ years)">Senior (65+ years)</option>
+                  </select>
                 </div>
+                
+                <div className="input-group">
+                  <label className="input-label">
+                    <UserIcon />
+                    Gender
+                  </label>
+                  <select 
+                    className="modern-select" 
+                    value={patientGender} 
+                    onChange={(e) => setPatientGender(e.target.value)}
+                  >
+                    <option value="">Select gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+              </div>
 
-                {/* Progress Indicator */}
-                {loading && (
-                  <div className="progress-container">
-                    <AIProgressBar />
-                  </div>
+              {/* Symptoms Input */}
+              <div className="input-group">
+                <label className="input-label">
+                  <ClipboardIcon />
+                  Describe Your Symptoms
+                </label>
+                <textarea
+                  className="modern-textarea"
+                  value={symptoms}
+                  onChange={(e) => setSymptoms(e.target.value)}
+                  placeholder="Please describe your symptoms in detail... (e.g., I have severe headache for 3 days, fatigue, mild dizziness and shortness of breath)"
+                  rows={6}
+                />
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading || !symptoms.trim() || !patientAge || !patientGender}
+                className="submit-button"
+              >
+                {loading ? (
+                  <>
+                    <LoadingSpinner size="small" />
+                    <span>Analyzing...</span>
+                  </>
+                ) : (
+                  <>
+                    <SparklesIcon />
+                    <span>Analyze Symptoms</span>
+                  </>
                 )}
-              </form>
-            </div>
+              </button>
+              
+              {diagnosis && (
+                <button
+                  type="button"
+                  onClick={handleNewDiagnosis}
+                  style={{
+                    marginTop: '12px',
+                    padding: '12px 24px',
+                    background: '#e2e8f0',
+                    color: '#4a5568',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    width: '100%'
+                  }}
+                >
+                  New Consultation
+                </button>
+              )}
+
+              {/* Progress Indicator */}
+              {loading && (
+                <div style={{ marginTop: '20px' }}>
+                  <AIProgressBar />
+                </div>
+              )}
+            </form>
           </div>
 
           {/* Right Section - Analysis Results */}
-          <div className="right-section">
+          <div className="results-side">
             {loading && (
-              <div className="analysis-loading">
-                <div className="loading-content">
-                  <LoadingSpinner />
-                  <h3>AI Analysis in Progress</h3>
-                  <p>Analyzing your symptoms with advanced medical AI...</p>
+              <div className="simple-loading">
+                <LoadingSpinner size="large" />
+                <div className="loading-text">AI Analysis in Progress</div>
+                <p>Analyzing your symptoms with advanced medical AI...</p>
+                <div className="loading-bar">
+                  <div className="loading-progress" style={{ width: '75%' }}></div>
                 </div>
               </div>
             )}
 
             {error && (
               <div className="error-container">
-                <div className="error-header">Analysis Error</div>
-                <div className="error-content">{error}</div>
+                <div style={{ color: '#c53030', fontWeight: '600', marginBottom: '8px' }}>Analysis Error</div>
+                <div>{error}</div>
               </div>
             )}
 
             {diagnosis && formattedResponse && !loading && (
-              <div className="results-container">
+              <div className="results-container" style={{ animation: 'slideInFromRight 0.6s ease-out' }}>
+                <div className="results-header">
+                  <div className="results-icon">
+                    <ActivityIcon />
+                  </div>
+                  <h3>AI Medical Analysis</h3>
+                </div>
                 <MedicalAnalysisSlideshow
                   formattedResponse={formattedResponse}
                   diagnosis={diagnosis}
@@ -566,25 +615,13 @@ const AIHealth = () => {
             )}
 
             {!loading && !diagnosis && !error && (
-              <div className="welcome-panel">
-                <div className="welcome-content">
-                  <SparklesIcon />
+              <div className="results-container">
+                <div className="results-header">
+                  <div className="results-icon">
+                    <SparklesIcon />
+                  </div>
                   <h3>AI Health Analysis</h3>
                   <p>Enter your symptoms to receive detailed medical analysis and recommendations.</p>
-                  <div className="features-grid">
-                    <div className="feature-item">
-                      <ActivityIcon />
-                      <span>Advanced AI Diagnosis</span>
-                    </div>
-                    <div className="feature-item">
-                      <ClipboardIcon />
-                      <span>Detailed Analysis</span>
-                    </div>
-                    <div className="feature-item">
-                      <UserIcon />
-                      <span>Personalized Results</span>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
@@ -593,19 +630,17 @@ const AIHealth = () => {
 
         {/* System Information Footer */}
         <div className="system-info">
-          <div className="system-grid">
-            <div className="system-item">
-              <ActivityIcon />
-              AI Status: {aiStatus === 'connected' ? 'Online' : 'Checking...'}
-            </div>
-            <div className="system-item">
-              <SparklesIcon />
-              Enhanced AI Engine v2.1
-            </div>
-            <div className="system-item">
-              <ClipboardIcon />
-              Medical Database: 1700+ Conditions
-            </div>
+          <div className="system-info-item">
+            <ActivityIcon />
+            AI Status: {aiStatus === 'connected' ? 'Online' : 'Checking...'}
+          </div>
+          <div className="system-info-item">
+            <SparklesIcon />
+            Enhanced AI Engine v2.1
+          </div>
+          <div className="system-info-item">
+            <ClipboardIcon />
+            Medical Database: 1700+ Conditions
           </div>
         </div>
       </main>
