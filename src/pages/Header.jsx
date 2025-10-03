@@ -18,6 +18,10 @@ const Header = () => {
     navigate('/profile')
   }
 
+  const handleSettingsClick = () => {
+    navigate('/settings')
+  }
+
   return (
     <header className="dashboard-header">
       <div className="header-left">
@@ -53,7 +57,7 @@ const Header = () => {
       </div>
 
       <div className="header-right">
-        <button className="icon-button" title="Settings">
+        <button className="icon-button" title="Settings" onClick={handleSettingsClick}>
           <Settings size={20} />
         </button>
         <button className="icon-button" title="Profile" onClick={handleProfileClick}>

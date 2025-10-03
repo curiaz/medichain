@@ -1260,6 +1260,7 @@ from profile_routes import profile_bp
 from profile_management import profile_mgmt_bp
 from patient_profile_routes import patient_profile_bp
 from doctor_verification import doctor_verification_bp
+from settings_routes import settings_bp
 from db.supabase_client import SupabaseClient
 
 # Import new healthcare system routes
@@ -1298,6 +1299,7 @@ app.register_blueprint(profile_bp)
 app.register_blueprint(profile_mgmt_bp)
 app.register_blueprint(patient_profile_bp)
 app.register_blueprint(doctor_verification_bp)  # Doctor signup and verification
+app.register_blueprint(settings_bp)  # Settings and preferences
 
 # Register new healthcare system blueprints
 app.register_blueprint(healthcare_auth_bp)

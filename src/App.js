@@ -11,6 +11,7 @@ import AIHealth from './pages/AIHealth'; // New standalone AI Health page
 import PatientAIHistory from './pages/PatientAIHistory'; // For doctors to view patient AI history
 import HealthRecord from './pages/HealthRecord'; // Patient health record page
 import ProfilePage from './pages/ProfilePage'; // Profile management page
+import SettingsPage from './pages/SettingsPage'; // Settings page
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
@@ -102,6 +103,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute>
+                  <SettingsPage />
                 </ProtectedRoute>
               } 
             />
