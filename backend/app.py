@@ -9,6 +9,8 @@ import pickle
 import numpy as np
 from collections import Counter
 from datetime import datetime
+import base64
+import secrets
 
 # Load environment variables
 load_dotenv()
@@ -1287,6 +1289,41 @@ CORS(app, resources={
 # Configure Flask
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
+
+# Initialize encryption helper (MedicalRecordCrypto)
+try:
+    # Local import to avoid circular imports during module import time for blueprints
+    from core.crypto_utils import MedicalRecordCrypto
+
+    _enc_b64 = os.getenv('MEDICHAIN_ENC_KEY_BASE64')
+    _key_bytes = None
+    if _enc_b64:
+        try:
+            _key_bytes = base64.b64decode(_enc_b64)
+            if len(_key_bytes) != 32:
+                print(f"⚠️ MEDICHAIN_ENC_KEY_BASE64 decoded length is {len(_key_bytes)} bytes, expected 32. Ignoring and using fallback.")
+                _key_bytes = None
+        except Exception as _e:
+            print(f"❌ Failed to decode MEDICHAIN_ENC_KEY_BASE64: {_e}")
+            _key_bytes = None
+
+    if _key_bytes is None:
+        if not app.config['DEBUG']:
+            raise RuntimeError('MEDICHAIN_ENC_KEY_BASE64 environment variable is required in production')
+        # generate ephemeral key for local/dev usage
+        _key_bytes = secrets.token_bytes(32)
+        print('🔐 No MEDICHAIN_ENC_KEY_BASE64 set; generated ephemeral encryption key for DEBUG mode only.')
+
+    crypto = MedicalRecordCrypto(encryption_key=_key_bytes)
+    # Attach to app for easy access in routes: from flask import current_app; current_app.extensions['crypto']
+    app.extensions = getattr(app, 'extensions', {})
+    app.extensions['crypto'] = crypto
+    app.config['CRYPTO'] = crypto
+    print('✅ MedicalRecordCrypto initialized and attached to Flask app')
+except Exception as exc:
+    # If anything goes wrong during initialization, surface the error in startup logs and re-raise
+    print(f"❌ Failed to initialize MedicalRecordCrypto: {exc}")
+    raise
 
 # Register blueprints
 app.register_blueprint(auth_firebase_bp)

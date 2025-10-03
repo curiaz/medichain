@@ -20,6 +20,9 @@ CREATE TABLE user_profiles (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     phone VARCHAR(20),
+    -- Human-friendly external patient identifier (stored as HMAC for lookup and AEAD-encrypted for display)
+    patient_id_hmac VARCHAR(64) UNIQUE,
+    patient_id_enc TEXT,
     date_of_birth DATE,
     gender VARCHAR(10) CHECK (gender IN ('male', 'female', 'other')),
     role VARCHAR(20) NOT NULL CHECK (role IN ('patient', 'doctor', 'admin')),

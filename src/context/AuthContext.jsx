@@ -14,6 +14,15 @@ const AuthContext = createContext();
 // API base URL - simple localhost for development
 const API_URL = 'http://localhost:5000/api';
 
+  // Generate a short, human-friendly role-prefixed ID.
+  // Examples: Doctors -> DR-ECSV1HW3, Patients -> PT-E4S1K9Z0
+  const generateMedicalId = (role = 'patient') => {
+    const prefix = role === 'doctor' ? 'DR' : 'PT';
+    // Create 8 uppercase alphanumeric chars
+    const rand = Math.random().toString(36).slice(2).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8).padEnd(8, '0');
+    return `${prefix}-${rand}`;
+  };
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -128,24 +137,41 @@ export const AuthProvider = ({ children }) => {
       // Get ID token
       const idToken = await userCredential.user.getIdToken();
       
-      // Register with backend
-      const response = await axios.post(`${API_URL}/auth/register`, {
+      // Prepare registration payload. If the user is a patient, generate a patient_id
+      const payload = {
         id_token: idToken,
         name: `${firstName} ${lastName}`,
         role: userType
-      });
+      };
+
+      let generatedPatientId = null;
+      if (userType === 'patient') {
+        generatedPatientId = generateMedicalId(userType);
+        payload.patient_id = generatedPatientId;
+      }
+
+      // Register with backend
+      const response = await axios.post(`${API_URL}/auth/register`, payload);
 
       if (response.data.success) {
         localStorage.setItem('medichain_token', idToken);
-        localStorage.setItem('medichain_user', JSON.stringify(response.data.user));
 
-        setUser(response.data.user);
+        // Ensure patient_id is present in local user object. If backend didn't include it,
+        // fall back to the generated value so the client consistently shows an ID.
+        const returnedUser = response.data.user || {};
+        if (!returnedUser.patient_id && generatedPatientId) {
+          returnedUser.patient_id = generatedPatientId;
+        }
+
+        localStorage.setItem('medichain_user', JSON.stringify(returnedUser));
+
+        setUser(returnedUser);
         setIsAuthenticated(true);
 
         return {
           success: true,
           message: 'Account created successfully!',
-          user: response.data.user
+          user: returnedUser
         };
       } else {
         throw new Error(response.data.error || 'Signup failed');
