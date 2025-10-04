@@ -66,7 +66,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       expect(screen.getByText('Reset Password')).toBeInTheDocument();
       expect(screen.getByText("Enter your email address and we'll send you a verification code")).toBeInTheDocument();
       expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /send verification code/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /send reset code/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /back to login/i })).toBeInTheDocument();
     });
 
@@ -94,7 +94,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
         </TestWrapper>
       );
 
-      const submitButton = screen.getByRole('button', { name: /send verification code/i });
+      const submitButton = screen.getByRole('button', { name: /send reset code/i });
       
       // Test empty email
       fireEvent.click(submitButton);
@@ -122,7 +122,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       );
 
       const emailInput = screen.getByLabelText(/email address/i);
-      const submitButton = screen.getByRole('button', { name: /send verification code/i });
+      const submitButton = screen.getByRole('button', { name: /send reset code/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
 
@@ -158,7 +158,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       );
 
       const emailInput = screen.getByLabelText(/email address/i);
-      const submitButton = screen.getByRole('button', { name: /send verification code/i });
+      const submitButton = screen.getByRole('button', { name: /send reset code/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
 
@@ -201,7 +201,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       const emailInput = screen.getByLabelText(/email address/i);
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       
-      const submitButton = screen.getByRole('button', { name: /send verification code/i });
+      const submitButton = screen.getByRole('button', { name: /send reset code/i });
       await act(async () => {
         fireEvent.click(submitButton);
       });
@@ -347,7 +347,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       const emailInput = screen.getByLabelText(/email address/i);
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       
-      const emailSubmit = screen.getByRole('button', { name: /send verification code/i });
+      const emailSubmit = screen.getByRole('button', { name: /send reset code/i });
       await act(async () => {
         fireEvent.click(emailSubmit);
       });
@@ -479,7 +479,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       );
 
       const emailInput = screen.getByLabelText(/email address/i);
-      const submitButton = screen.getByRole('button', { name: /send verification code/i });
+      const submitButton = screen.getByRole('button', { name: /send reset code/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       
@@ -504,7 +504,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       );
 
       expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /send verification code/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /send reset code/i })).toBeInTheDocument();
     });
 
     it('maintains proper focus management', async () => {
