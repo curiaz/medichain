@@ -25,13 +25,13 @@
 .header-left {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 3rem;
 }
 
 .logo-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
 }
 
 .logo-container div {
@@ -44,7 +44,7 @@
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
 .nav-link {
@@ -53,7 +53,7 @@
   font-weight: 600;
   font-size: 14px;
   letter-spacing: 0.5px;
-  padding: 8px 16px;
+  padding: 10px 20px;
   border-radius: 8px;
   transition: all 0.3s ease;
   text-transform: uppercase;
@@ -73,7 +73,7 @@
 .header-right {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .icon-button {
