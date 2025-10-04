@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react"
 import Header from "./Header"
 import { Users, Search, Calendar, RefreshCw, UserCheck, AlertCircle } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
-import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"
 import "../assets/styles/ModernDashboard.css"
 import "../assets/styles/DoctorDashboard.css"
@@ -10,7 +9,6 @@ import "../assets/styles/PatientList.css"
 
 const PatientList = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [patients, setPatients] = useState([])
   const [filteredPatients, setFilteredPatients] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
