@@ -139,7 +139,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       });
 
       // Should move to step 2
-      expect(screen.getByText('Verify Code')).toBeInTheDocument();
+      expect(screen.getByText('verify & continue')).toBeInTheDocument();
     });
 
     it('handles API errors gracefully', async () => {
@@ -208,11 +208,11 @@ describe('ResetPassword Component - OTP Enhanced', () => {
     });
 
     it('renders OTP verification form correctly', () => {
-      expect(screen.getByText('Verify Code')).toBeInTheDocument();
+      expect(screen.getByText('verify & continue')).toBeInTheDocument();
       expect(screen.getByText(/enter the 6-digit verification code sent to/i)).toBeInTheDocument();
       expect(screen.getByText('test@example.com')).toBeInTheDocument();
       expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /verify code/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /verify & continue/i })).toBeInTheDocument();
     });
 
     it('formats OTP input correctly', () => {
@@ -228,7 +228,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
     });
 
     it('validates OTP before submission', async () => {
-      const verifyButton = screen.getByRole('button', { name: /verify code/i });
+      const verifyButton = screen.getByRole('button', { name: /verify & continue/i });
       
       // Test empty OTP
       fireEvent.click(verifyButton);
@@ -251,7 +251,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       });
 
       const otpInput = screen.getByLabelText(/verification code/i);
-      const verifyButton = screen.getByRole('button', { name: /verify code/i });
+      const verifyButton = screen.getByRole('button', { name: /verify & continue/i });
 
       fireEvent.change(otpInput, { target: { value: '123456' } });
 
@@ -281,7 +281,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       });
 
       const otpInput = screen.getByLabelText(/verification code/i);
-      const verifyButton = screen.getByRole('button', { name: /verify code/i });
+      const verifyButton = screen.getByRole('button', { name: /verify & continue/i });
 
       fireEvent.change(otpInput, { target: { value: '123456' } });
 
@@ -294,7 +294,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       });
     });
 
-    it('allows resending OTP', async () => {
+    it('allows reSending...async () => {
       mockedAxios.post.mockResolvedValueOnce({
         data: { success: true, message: 'New OTP sent' }
       });
@@ -355,7 +355,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       const otpInput = screen.getByLabelText(/verification code/i);
       fireEvent.change(otpInput, { target: { value: '123456' } });
       
-      const otpSubmit = screen.getByRole('button', { name: /verify code/i });
+      const otpSubmit = screen.getByRole('button', { name: /verify & continue/i });
       await act(async () => {
         fireEvent.click(otpSubmit);
       });
@@ -489,7 +489,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
 
       // Should show loading state
       expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
-      expect(screen.getByText('Sending OTP...')).toBeInTheDocument();
+      expect(screen.getByText('Sending...')).toBeInTheDocument();
       expect(submitButton).toBeDisabled();
       expect(emailInput).toBeDisabled();
     });
