@@ -5,7 +5,6 @@ import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"
 import VerificationStatus from "../components/VerificationStatus"
-import MedichainLogo from "../components/MedichainLogo"
 import "../assets/styles/ModernDashboard.css"
 import "../assets/styles/DoctorDashboard.css"
 
@@ -76,10 +75,7 @@ const DoctorDashboard = () => {
       <main className="dashboard-main-content">
         <div className="dashboard-header-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
           <div className="dashboard-title-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-              <MedichainLogo size={60} usePng={true} />
-              <h1 className="dashboard-title">DOCTOR DASHBOARD</h1>
-            </div>
+            <h1 className="dashboard-title" style={{ marginBottom: '16px' }}>DOCTOR DASHBOARD</h1>
             {user && user.profile && (
               <div className="user-welcome" style={{ textAlign: 'center' }}>
                 <span>Welcome back, <strong>Dr. {user.profile.first_name || user.profile.name}</strong></span>

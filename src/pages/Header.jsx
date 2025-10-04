@@ -2,6 +2,7 @@ import React from "react"
 import { NavLink, useNavigate } from "react-router-dom"
 import { Settings, User, LogOut } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
+import MedichainLogo from "../components/MedichainLogo"
 import "../assets/styles/Header.css"
 
 const Header = () => {
@@ -21,8 +22,9 @@ const Header = () => {
   return (
     <header className="dashboard-header">
       <div className="header-left">
-        {/* Text-based Logo */}
-        <div className="logo-container">
+        {/* Logo with Text */}
+        <div className="logo-container" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <MedichainLogo size={40} usePng={true} />
           <div>
             MEDICHAIN
           </div>
