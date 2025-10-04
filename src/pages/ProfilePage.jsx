@@ -44,13 +44,10 @@ const ProfilePage = () => {
     data_export_enabled: true
   });
 
-  // eslint-disable-next-line no-unused-vars
-  const [documents, setDocuments] = useState([]);
-  // eslint-disable-next-line no-unused-vars
-  const [uploading, setUploading] = useState(false);
+  const [documents, setDocuments] = useState([]); // eslint-disable-line no-unused-vars
+  const [uploading, setUploading] = useState(false); // eslint-disable-line no-unused-vars  
   const [saving, setSaving] = useState(false);
-  // eslint-disable-next-line no-unused-vars
-  const [auditTrail, setAuditTrail] = useState([]);
+  const [auditTrail, setAuditTrail] = useState([]); // eslint-disable-line no-unused-vars
 
   const loadProfile = useCallback(async () => {
     console.log('🚀 LOADING PROFILE - ENHANCED MODE');
