@@ -1,0 +1,128 @@
+/* PatientList.css - Additional styles for Patient List page */
+
+.patient-list-container {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.patient-grid {
+  animation: staggerIn 0.8s ease-out;
+}
+
+.patient-card {
+  animation: slideInUp 0.5s ease-out;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.patient-card:hover {
+  animation: none;
+}
+
+.patient-avatar {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.search-container input:focus {
+  transform: scale(1.02);
+}
+
+.refresh-btn:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.controls-section {
+  animation: fadeInDown 0.6s ease-out 0.2s both;
+}
+
+.stats-grid {
+  animation: fadeInUp 0.6s ease-out 0.3s both;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes staggerIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .controls-section {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .search-container {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .patient-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .patient-card {
+    padding: 16px;
+  }
+  
+  .patient-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+}
