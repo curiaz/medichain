@@ -92,12 +92,20 @@ const PatientList = () => {
       <Header />
 
       <main className="dashboard-main-content">
-        {error && (
-          <div className="error-message" style={{ color: '#e74c3c', fontSize: '0.9rem', margin: '16px 0', textAlign: 'center' }}>
-            <AlertCircle size={16} style={{ marginRight: '4px' }} />
-            {error}
-          </div>
-        )}
+        <div style={{
+          backgroundColor: '#ffffff',
+          margin: '20px',
+          borderRadius: '16px',
+          padding: '24px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+          border: '1px solid #f1f5f9'
+        }}>
+          {error && (
+            <div className="error-message" style={{ color: '#e74c3c', fontSize: '0.9rem', margin: '16px 0', textAlign: 'center' }}>
+              <AlertCircle size={16} style={{ marginRight: '4px' }} />
+              {error}
+            </div>
+          )}
         
         {/* Search and Controls Section */}
         <div className="controls-section" style={{ margin: '24px 0', display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
@@ -255,8 +263,8 @@ const PatientList = () => {
                     e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.05)'
                   }}
                 >
-                  <div style={{ position: 'relative', minHeight: '60px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ position: 'relative', minHeight: '100px', paddingBottom: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
                       <div
                         className="patient-avatar"
                         style={{
@@ -301,7 +309,7 @@ const PatientList = () => {
                     
                     <div style={{ 
                       position: 'absolute', 
-                      bottom: '0', 
+                      bottom: '8px', 
                       left: '50%', 
                       transform: 'translateX(-50%)',
                       display: 'flex', 
@@ -318,6 +326,7 @@ const PatientList = () => {
               ))}
             </div>
           )}
+        </div>
         </div>
       </main>
     </div>
