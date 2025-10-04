@@ -33,7 +33,8 @@ const AIAssistant = () => {
     try {
       setAiStatus('checking');
       const response = await aiService.checkStatus();
-      setAiStatus(response.status === 'ready' ? 'ready' : 'error');
+      console.log('AI Status Response:', response);
+      setAiStatus(response.status || 'error');
     } catch (error) {
       console.error('AI status check failed:', error);
       setAiStatus('error');

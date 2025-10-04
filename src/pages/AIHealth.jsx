@@ -347,9 +347,15 @@ const AIHealth = () => {
   useEffect(() => {
     const checkAIStatus = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/health');
+        const response = await fetch('http://localhost:5000/api/ai/health');
         if (response.ok) {
-          setAiStatus('connected');
+          const data = await response.json();
+          // Check if AI system is actually healthy and loaded
+          if (data.status === 'healthy' && data.dataset_loaded) {
+            setAiStatus('connected');
+          } else {
+            setAiStatus('error');
+          }
         } else {
           setAiStatus('error');
         }
