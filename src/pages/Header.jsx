@@ -21,49 +21,51 @@ const Header = () => {
 
   return (
     <header className="dashboard-header">
-      <div className="header-left">
-        {/* Logo with Text */}
-        <div className="logo-container" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <MedichainLogo size={40} usePng={true} />
-          <div>
-            MEDICHAIN
+      <div className="dashboard-header-container">
+        <div className="header-left">
+          {/* Logo with Text */}
+          <div className="logo-container" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <MedichainLogo size={40} usePng={true} />
+            <div>
+              MEDICHAIN
+            </div>
           </div>
+
+          <nav className="nav-links">
+            <NavLink 
+              to="/dashboard" 
+              className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
+            >
+              DASHBOARD
+            </NavLink>
+
+            <NavLink 
+              to="/patients" 
+              className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
+            >
+              PATIENTS
+            </NavLink>
+
+            <NavLink 
+              to="/prescriptions" 
+              className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
+            >
+              PRESCRIPTIONS
+            </NavLink>
+          </nav>
         </div>
 
-        <nav className="nav-links">
-          <NavLink 
-            to="/dashboard" 
-            className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
-          >
-            DASHBOARD
-          </NavLink>
-
-          <NavLink 
-            to="/patients" 
-            className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
-          >
-            PATIENTS
-          </NavLink>
-
-          <NavLink 
-            to="/prescriptions" 
-            className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
-          >
-            PRESCRIPTIONS
-          </NavLink>
-        </nav>
-      </div>
-
-      <div className="header-right">
-        <button className="icon-button" title="Settings">
-          <Settings size={20} />
-        </button>
-        <button className="icon-button" title="Profile" onClick={handleProfileClick}>
-          <User size={20} />
-        </button>
-        <button className="icon-button" onClick={handleLogout} title="Logout">
-          <LogOut size={20} />
-        </button>
+        <div className="header-right">
+          <button className="icon-button" title="Settings">
+            <Settings size={20} />
+          </button>
+          <button className="icon-button" title="Profile" onClick={handleProfileClick}>
+            <User size={20} />
+          </button>
+          <button className="icon-button" onClick={handleLogout} title="Logout">
+            <LogOut size={20} />
+          </button>
+        </div>
       </div>
     </header>
   )
