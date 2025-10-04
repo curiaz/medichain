@@ -22,15 +22,18 @@ const Header = () => {
   return (
     <header className="dashboard-header">
       <div className="dashboard-header-container">
+        {/* Left: Logo */}
         <div className="header-left">
-          {/* Logo with Text */}
-          <div className="logo-container" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="logo-container" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <MedichainLogo size={40} usePng={true} />
             <div>
               MEDICHAIN
             </div>
           </div>
+        </div>
 
+        {/* Center: Navigation */}
+        <div className="header-center">
           <nav className="nav-links">
             <NavLink 
               to="/dashboard" 
@@ -55,6 +58,7 @@ const Header = () => {
           </nav>
         </div>
 
+        {/* Right: Action Buttons */}
         <div className="header-right">
           <button className="icon-button" title="Settings">
             <Settings size={20} />
