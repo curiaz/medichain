@@ -255,8 +255,8 @@ const PatientList = () => {
                     e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.05)'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0 }}>
+                  <div style={{ position: 'relative', minHeight: '60px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                       <div
                         className="patient-avatar"
                         style={{
@@ -299,8 +299,17 @@ const PatientList = () => {
                       </div>
                     </div>
                     
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#64748b', flexShrink: 0 }}>
-                      <Calendar size={14} />
+                    <div style={{ 
+                      position: 'absolute', 
+                      bottom: '0', 
+                      right: '0', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '6px', 
+                      fontSize: '12px', 
+                      color: '#64748b' 
+                    }}>
+                      <Calendar size={12} />
                       <span>Joined {formatJoinedDate(patient.joined)}</span>
                     </div>
                   </div>
