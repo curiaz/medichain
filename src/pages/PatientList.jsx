@@ -302,7 +302,8 @@ const PatientList = () => {
                     <div style={{ 
                       position: 'absolute', 
                       bottom: '0', 
-                      right: '0', 
+                      left: '50%', 
+                      transform: 'translateX(-50%)',
                       display: 'flex', 
                       alignItems: 'center', 
                       gap: '6px', 
