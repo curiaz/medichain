@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../config/supabase';
 import { 
   User, Heart, FileText, Lock, Key, History, 
-  Edit3, Save, X, Camera, Plus, Trash2, 
-  AlertCircle, CheckCircle, UploadIcon, ArrowLeft
+  Edit3, Save, X, Camera,
+  AlertCircle, CheckCircle, ArrowLeft
 } from 'lucide-react';
 import './ProfilePage.css';
 
@@ -31,7 +31,7 @@ const ProfilePage = () => {
     medical_notes: ''
   });
 
-  const [privacySettings, setPrivacySettings] = useState({
+  const [privacySettings] = useState({
     profile_visibility: 'private',
     medical_info_visible_to_doctors: true,
     medical_info_visible_to_hospitals: false,
@@ -44,39 +44,15 @@ const ProfilePage = () => {
     data_export_enabled: true
   });
 
+  // eslint-disable-next-line no-unused-vars
   const [documents, setDocuments] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [auditTrail, setAuditTrail] = useState([]);
 
-  useEffect(() => {
-    if (user) {
-      loadProfile();
-    }
-  }, [user]);
-
-  const createBasicFallback = (user) => {
-    console.log('🔧 Creating fallback for user:', user);
-    const firstName = user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'User';
-    const lastName = user.displayName?.split(' ')[1] || '';
-    const email = user.email || '';
-    
-    console.log('🔧 Generated data:', { firstName, lastName, email });
-    
-    return {
-      first_name: firstName,
-      last_name: lastName,
-      phone: '',
-      email: email,
-      medical_conditions: [],
-      allergies: [],
-      current_medications: [],
-      blood_type: '',
-      medical_notes: ''
-    };
-  };
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     console.log('🚀 LOADING PROFILE - ENHANCED MODE');
     console.log('👤 User object:', user);
     
@@ -90,6 +66,8 @@ const ProfilePage = () => {
         setLoading(false);
         return;
       }
+
+
       
       // Debug: Log the complete user object structure
       console.log('🔍 Complete user object structure:', JSON.stringify(user, null, 2));
@@ -204,7 +182,13 @@ const ProfilePage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+    }
+  }, [user, loadProfile]);
 
   const handlePersonalInfoUpdate = async () => {
     try {
@@ -264,6 +248,7 @@ const ProfilePage = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleMedicalInfoUpdate = async () => {
     try {
       setSaving(true);
@@ -318,6 +303,7 @@ const ProfilePage = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handlePrivacySettingsUpdate = async () => {
     try {
       setSaving(true);
@@ -352,6 +338,7 @@ const ProfilePage = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleDocumentUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -376,6 +363,7 @@ const ProfilePage = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleDocumentDelete = async (documentId) => {
     try {
       setError('');
