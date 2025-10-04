@@ -237,16 +237,18 @@ export const aiService = {
   healthCheck: async () => {
     try {
       const response = await api.get('/api/ai/health');
+      // Backend returns status: 'healthy' when AI system is ready
+      const isHealthy = response.data.status === 'healthy' && response.data.dataset_loaded;
       return {
         success: true,
         data: response.data,
-        status: 'connected'
+        status: isHealthy ? 'ready' : 'error'
       };
     } catch (error) {
       return {
         success: false,
         error: 'AI service unavailable',
-        status: 'disconnected'
+        status: 'error'
       };
     }
   },
