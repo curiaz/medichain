@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Menu, X, User, LogOut, Home, Users, FileText, Calendar, Activity, ChevronDown, TrendingUp, Heart, Brain, Database } from 'lucide-react';
+import { Menu, X, User, LogOut, Home, Users, FileText, Calendar, Activity, ChevronDown, TrendingUp, Heart, Brain, Database, Bell } from 'lucide-react';
 
 const DashboardLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -21,9 +21,9 @@ const DashboardLayout = ({ children }) => {
 
   const patientMenu = [
     { name: 'Dashboard', icon: Home, path: '/dashboard', color: 'text-blue-500' },
-    { name: 'My Records', icon: FileText, path: '/my-records', color: 'text-green-500' },
+    { name: 'Health Record', icon: FileText, path: '/health-record', color: 'text-green-500' },
     { name: 'Appointments', icon: Calendar, path: '/appointments', color: 'text-orange-500' },
-    { name: 'Prescriptions', icon: Heart, path: '/prescriptions', color: 'text-red-500' },
+    { name: 'Notifications', icon: Bell, path: '/notifications', color: 'text-red-500' },
     { name: 'AI Assistant', icon: Brain, path: '/ai-assistant', color: 'text-purple-500' },
     { name: 'Health Tracking', icon: Activity, path: '/health-tracking', color: 'text-pink-500' },
   ];

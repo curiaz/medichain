@@ -27,6 +27,7 @@ const HealthRecord = () => {
             {user && user.profile && (
               <div className="user-welcome">
                 <span>Health record for <strong>{user.profile.first_name ? `${user.profile.first_name} ${user.profile.last_name}` : user.profile.name}</strong></span>
+                <span className="user-role">Medical Records Portal</span>
               </div>
             )}
           </div>
