@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            background: #f5f5f5;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .error {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+        .success {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔔 Notification API Test</h1>
+    
+    <div class="test-section">
+        <h2>API Base URL</h2>
+        <p id="baseUrl">http://localhost:5002</p>
+        <button onclick="changePort()">Switch to Port 5001</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Endpoints</h2>
+        <button onclick="testHealth()">Test Health Check</button>
+        <button onclick="testNotifications()">Get Notifications</button>
+        <button onclick="testStats()">Get Stats</button>
+        <button onclick="testDebug()">Debug Database</button>
+        
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Network Diagnostics</h2>
+        <button onclick="testCORS()">Test CORS</button>
+        <button onclick="testConnectivity()">Test Connectivity</button>
+        
+        <div id="diagnostics" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        let baseUrl = 'http://localhost:5002';
+        
+        function changePort() {
+            baseUrl = baseUrl.includes('5002') ? 'http://localhost:5001' : 'http://localhost:5002';
+            document.getElementById('baseUrl').textContent = baseUrl;
+        }
+        
+        function showResult(data, isError = false) {
+            const result = document.getElementById('result');
+            result.style.display = 'block';
+            result.className = `result ${isError ? 'error' : 'success'}`;
+            result.textContent = JSON.stringify(data, null, 2);
+        }
+        
+        function showDiagnostics(data, isError = false) {
+            const diagnostics = document.getElementById('diagnostics');
+            diagnostics.style.display = 'block';
+            diagnostics.className = `result ${isError ? 'error' : 'success'}`;
+            diagnostics.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        }
+        
+        async function testHealth() {
+            try {
+                console.log('Testing health endpoint...');
+                const response = await fetch(`${baseUrl}/health`);
+                const data = await response.json();
+                showResult({ status: response.status, data });
+            } catch (error) {
+                console.error('Health test failed:', error);
+                showResult({ error: error.message }, true);
+            }
+        }
+        
+        async function testNotifications() {
+            try {
+                console.log('Testing notifications endpoint...');
+                const response = await fetch(`${baseUrl}/api/notifications?user_id=default_user`);
+                const data = await response.json();
+                showResult({ status: response.status, data });
+            } catch (error) {
+                console.error('Notifications test failed:', error);
+                showResult({ error: error.message }, true);
+            }
+        }
+        
+        async function testStats() {
+            try {
+                console.log('Testing stats endpoint...');
+                const response = await fetch(`${baseUrl}/api/notifications/stats?user_id=default_user`);
+                const data = await response.json();
+                showResult({ status: response.status, data });
+            } catch (error) {
+                console.error('Stats test failed:', error);
+                showResult({ error: error.message }, true);
+            }
+        }
+        
+        async function testDebug() {
+            try {
+                console.log('Testing debug endpoint...');
+                const response = await fetch(`${baseUrl}/debug/db`);
+                const data = await response.json();
+                showResult({ status: response.status, data });
+            } catch (error) {
+                console.error('Debug test failed:', error);
+                showResult({ error: error.message }, true);
+            }
+        }
+        
+        async function testCORS() {
+            try {
+                const response = await fetch(`${baseUrl}/health`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': 'http://localhost:3000',
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+                
+                showDiagnostics(`CORS Test Result:
+Status: ${response.status}
+Headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}`);
+                
+            } catch (error) {
+                showDiagnostics(`CORS Test Failed: ${error.message}`, true);
+            }
+        }
+        
+        async function testConnectivity() {
+            const tests = [
+                { port: 5001, name: 'Notification Server (5001)' },
+                { port: 5002, name: 'Debug Server (5002)' },
+                { port: 3000, name: 'React App (3000)' }
+            ];
+            
+            let results = 'Connectivity Test Results:\n\n';
+            
+            for (const test of tests) {
+                try {
+                    const startTime = Date.now();
+                    const response = await fetch(`http://localhost:${test.port}/health`, {
+                        method: 'HEAD',
+                        timeout: 5000
+                    });
+                    const duration = Date.now() - startTime;
+                    results += `✅ ${test.name}: Connected (${duration}ms)\n`;
+                } catch (error) {
+                    results += `❌ ${test.name}: ${error.message}\n`;
+                }
+            }
+            
+            showDiagnostics(results);
+        }
+        
+        // Auto-test on load
+        window.onload = function() {
+            console.log('Page loaded, running initial tests...');
+            testHealth();
+        };
+    </script>
+</body>
+</html>

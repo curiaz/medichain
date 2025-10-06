@@ -1,617 +1,528 @@
-#!/usr/bin/env python3
-"""
-Comprehensive AI Diagnosis System with Enhanced Confidence
-Core AI diagnosis logic for MediChain with confidence boosting
-"""
 
-import logging
-import pickle
-import re
-from datetime import datetime
-from typing import Dict, List
+"""
+MediChain Comprehensive AI Diagnosis System v3.0
+Enhanced with patient conditions and comprehensive prescriptions
+"""
 
 import numpy as np
-
-from medication_recommendations import MedicationRecommendations
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+import pandas as pd
+import joblib
+import json
+import os
+import re
+from typing import Dict, List, Union, Optional
 
 class ComprehensiveAIDiagnosis:
-    """Enhanced AI diagnosis system with confidence boosting mechanisms"""
-
-    def __init__(
-        self,
-        model_path="final_comprehensive_model.pkl",
-        encoder_path="final_comprehensive_encoder.pkl",
-        features_path="final_comprehensive_features.pkl",
-    ):
+    def __init__(self, model_path=None,
+                 encoder_path=None,
+                 features_path=None,
+                 categorical_encoders_path=None,
+                 prescriptions_path=None,
+                 symptom_columns_path=None,
+                 enhanced_database_path=None):
         """Initialize the comprehensive AI diagnosis system"""
+
+        # Set default paths relative to the backend directory
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        if model_path is None:
+            model_path = os.path.join(backend_dir, 'final_comprehensive_model.pkl')
+        if encoder_path is None:
+            encoder_path = os.path.join(backend_dir, 'final_comprehensive_encoder.pkl')
+        if features_path is None:
+            features_path = os.path.join(backend_dir, 'final_comprehensive_features.pkl')
+        if categorical_encoders_path is None:
+            categorical_encoders_path = os.path.join(backend_dir, 'final_comprehensive_categorical_encoders.pkl')
+        if prescriptions_path is None:
+            prescriptions_path = os.path.join(backend_dir, 'final_comprehensive_prescriptions.pkl')
+        if symptom_columns_path is None:
+            symptom_columns_path = os.path.join(backend_dir, 'final_comprehensive_symptom_columns.pkl')
+        if enhanced_database_path is None:
+            enhanced_database_path = os.path.join(backend_dir, 'enhanced_conditions_database.json')
 
         try:
             # Load model components
-            with open(model_path, "rb") as f:
-                self.model = pickle.load(f)
-            with open(encoder_path, "rb") as f:
-                self.label_encoder = pickle.load(f)
-            with open(features_path, "rb") as f:
-                self.feature_names = pickle.load(f)
+            self.model = joblib.load(model_path)
+            self.diagnosis_encoder = joblib.load(encoder_path) 
+            self.feature_columns = joblib.load(features_path)
+            self.categorical_encoders = joblib.load(categorical_encoders_path)
+            self.prescriptions_map = joblib.load(prescriptions_path)
+            self.symptom_columns = joblib.load(symptom_columns_path)
 
-            logger.info("Model loaded successfully")
-            logger.info(f"Features: {len(self.feature_names)}")
-            logger.info(f"Supported diagnoses: {len(self.label_encoder.classes_)}")
+            # Load enhanced conditions database with medications
+            try:
+                with open(enhanced_database_path, 'r', encoding='utf-8') as f:
+                    self.enhanced_conditions = json.load(f)
+                print(f"✅ Enhanced conditions database loaded: {len(self.enhanced_conditions)} conditions")
+            except FileNotFoundError:
+                print("⚠️ Enhanced conditions database not found, using fallback")
+                self.enhanced_conditions = {}
 
-            # Initialize symptom parser
-            self.symptom_parser = EnhancedSymptomParser()
-
-            # Initialize medication recommendations
-            self.medication_recommendations = MedicationRecommendations()
-
-        except Exception as e:
-            logger.error(f"Error loading model: {e}")
-            raise
-
-    def diagnose(self, symptoms_text: str, duration_text: str = "", intensity_text: str = "") -> Dict:
-        """
-        Comprehensive diagnosis with natural language processing and confidence boosting
-
-        Args:
-            symptoms_text: Natural language description of symptoms
-            duration_text: Duration information (optional)
-            intensity_text: Intensity information (optional)
-
-        Returns:
-            Dictionary with diagnosis results and enhanced confidence
-        """
-        try:
-            # Parse symptoms and extract features
-            parsed_result = self.symptom_parser.parse_comprehensive(symptoms_text, duration_text, intensity_text)
-
-            # Create feature vector
-            feature_vector = self._create_feature_vector(parsed_result)
-
-            # Make prediction
-            prediction = self.model.predict([feature_vector])[0]
-            probabilities = self.model.predict_proba([feature_vector])[0]
-
-            # Get base confidence
-            base_confidence = float(probabilities[prediction])
-
-            # Apply confidence boosting
-            boosted_confidence = self._apply_confidence_boosting(base_confidence, parsed_result, feature_vector)
-
-            # Get diagnosis name
-            diagnosis = self.label_encoder.inverse_transform([prediction])[0]
-
-            # Get top 3 predictions with boosted confidence
-            top_indices = np.argsort(probabilities)[-3:][::-1]
-            top_predictions = []
-
-            for idx in top_indices:
-                pred_diagnosis = self.label_encoder.inverse_transform([idx])[0]
-                pred_confidence = float(probabilities[idx]) * 100  # Convert to percentage
-
-                # Apply boosting to primary prediction
-                if idx == prediction:
-                    pred_confidence = boosted_confidence * 100  # Convert to percentage
-
-                # Get medication recommendations for this diagnosis
-                med_recommendations = self.medication_recommendations.get_recommendations(pred_diagnosis)
-
-                top_predictions.append(
-                    {
-                        "diagnosis": pred_diagnosis,
-                        "confidence": pred_confidence,
-                        "medications": med_recommendations["medications"][:3],  # Top 3 medications
-                        "dosage": med_recommendations["dosage"],
-                        "duration": med_recommendations["duration"],
-                        "instructions": med_recommendations["instructions"],
-                    }
-                )
-
-            # Get comprehensive medication recommendations for all top predictions
-            medication_summary = self.medication_recommendations.get_multiple_recommendations(top_predictions)
-
-            result = {
-                "primary_diagnosis": diagnosis,
-                "confidence": boosted_confidence * 100,  # Convert to percentage
-                "base_confidence": base_confidence * 100,  # Convert to percentage
-                "top_predictions": top_predictions,
-                "medication_recommendations": medication_summary,
-                "parsed_symptoms": parsed_result["symptoms"],
-                "duration_days": parsed_result["duration_days"],
-                "intensity": parsed_result["intensity"],
-                "feature_vector": dict(zip(self.feature_names, feature_vector)),
-                "confidence_level": self._get_confidence_level(boosted_confidence),
-                "timestamp": datetime.now().isoformat(),
+            # Symptom keyword mapping for natural language processing
+            self.symptom_keywords = {
+                'fever': ['fever', 'hot', 'temperature', 'burning up', 'feverish', 'pyrexia'],
+                'cough': ['cough', 'coughing', 'hack', 'whooping', 'productive cough', 'dry cough'],
+                'fatigue': ['tired', 'fatigue', 'exhausted', 'weak', 'lethargic', 'worn out', 'drained'],
+                'shortness_of_breath': ['breathless', 'short of breath', 'breathing difficulty', 'dyspnea', 'wheezing'],
+                'headache': ['headache', 'head pain', 'migraine', 'head pressure', 'cephalgia'],
+                'sore_throat': ['sore throat', 'throat pain', 'scratchy throat', 'pharyngitis'],
+                'nausea': ['nausea', 'nauseous', 'sick to stomach', 'queasy', 'vomiting', 'throw up'],
+                'dizziness': ['dizzy', 'dizziness', 'lightheaded', 'vertigo', 'spinning'],
+                'body_aches': ['body aches', 'muscle pain', 'joint pain', 'myalgia', 'arthralgia'],
+                'runny_nose': ['runny nose', 'nasal discharge', 'stuffed nose', 'congestion'],
+                'chest_pain': ['chest pain', 'chest tightness', 'chest pressure', 'angina'],
+                'diarrhea': ['diarrhea', 'loose stools', 'watery stool', 'frequent bowel movements'],
+                'loss_of_taste': ['loss of taste', 'can\'t taste', 'no taste', 'ageusia'],
+                'loss_of_smell': ['loss of smell', 'can\'t smell', 'no smell', 'anosmia']
             }
 
-            logger.info(f"Diagnosis: {diagnosis} (confidence: {boosted_confidence:.3f})")
-            return result
+            self.model_version = 'MediChain-Comprehensive-v3.0-NLP'
+            print(f"SUCCESS: {self.model_version} loaded successfully!")
+            
+            # Load NLP condition extraction patterns
+            self.condition_patterns = self._load_condition_patterns()
 
         except Exception as e:
-            logger.error(f"Error in diagnosis: {e}")
-            return {"error": str(e), "timestamp": datetime.now().isoformat()}
+            print(f"ERROR loading model: {e}")
+            raise e
 
-    def _create_feature_vector(self, parsed_result: Dict) -> List[float]:
-        """Create feature vector from parsed symptoms"""
-
-        # Define expected symptom features (matching model training)
-        expected_symptoms = [
-            "fever",
-            "cough",
-            "fatigue",
-            "shortness_of_breath",
-            "headache",
-            "sore_throat",
-            "nausea",
-            "dizziness",
-            "body_aches",
-            "runny_nose",
-            "chest_pain",
-            "diarrhea",
-            "loss_of_taste",
-            "loss_of_smell",
-        ]
-
-        # Create symptom vector
-        symptom_vector = []
-        for symptom in expected_symptoms:
-            if symptom in parsed_result["symptoms"]:
-                symptom_vector.append(1.0)
-            else:
-                symptom_vector.append(0.0)
-
-        # Add duration (numeric)
-        duration_days = float(parsed_result.get("duration_days", 7))  # Default 7 days
-        symptom_vector.append(duration_days)
-
-        # Add intensity (numeric)
-        intensity_mapping = {"mild": 1.0, "moderate": 2.0, "severe": 3.0}
-        intensity_numeric = intensity_mapping.get(parsed_result.get("intensity", "moderate"), 2.0)
-        symptom_vector.append(intensity_numeric)
-
-        return symptom_vector
-
-    def _apply_confidence_boosting(self, base_confidence: float, parsed_result: Dict, feature_vector: List[float]) -> float:
-        """Apply confidence boosting based on various factors"""
-
-        boosted_confidence = base_confidence
-
-        # 1. High symptom count boost (more symptoms = higher confidence)
-        symptom_count = sum(feature_vector[:14])  # First 14 are symptom features
-        if symptom_count >= 4:
-            boosted_confidence *= 1.20  # 20% boost for 4+ symptoms
-        elif symptom_count >= 3:
-            boosted_confidence *= 1.10  # 10% boost for 3 symptoms
-
-        # 2. Duration specificity boost
-        duration_days = parsed_result.get("duration_days", 7)
-        if duration_days != 7:  # Not default value
-            boosted_confidence *= 1.08  # 8% boost for specified duration
-
-        # 3. Intensity specificity boost
-        intensity = parsed_result.get("intensity", "moderate")
-        if intensity != "moderate":  # Not default value
-            boosted_confidence *= 1.06  # 6% boost for specified intensity
-
-        # 4. Symptom combination patterns boost
-        symptoms = parsed_result["symptoms"]
-        confident_combinations = [
-            ["fever", "cough", "fatigue"],  # Flu-like
-            ["headache", "nausea", "dizziness"],  # Migraine
-            ["chest_pain", "shortness_of_breath"],  # Respiratory
-            ["loss_of_taste", "loss_of_smell"],  # COVID-like
-            ["sore_throat", "fever", "body_aches"],  # Strep-like
-        ]
-
-        for combo in confident_combinations:
-            if all(symptom in symptoms for symptom in combo):
-                boosted_confidence *= 1.15  # 15% boost for known patterns
-                break
-
-        # Cap confidence at 0.95 (never 100% certain in medical diagnosis)
-        boosted_confidence = min(boosted_confidence, 0.95)
-
-        return boosted_confidence
-
-    def _get_confidence_level(self, confidence: float) -> str:
-        """Get human-readable confidence level"""
-        if confidence >= 0.85:
-            return "Very High"
-        elif confidence >= 0.75:
-            return "High"
-        elif confidence >= 0.60:
-            return "Medium"
-        elif confidence >= 0.45:
-            return "Moderate"
-        else:
-            return "Low"
-
-
-class EnhancedSymptomParser:
-    """Enhanced symptom parser with comprehensive natural language processing"""
-
-    def __init__(self):
-        # Comprehensive symptom keywords
-        self.symptom_keywords = {
-            "fever": [
-                "fever",
-                "temperature",
-                "hot",
-                "burning up",
-                "feverish",
-                "high temp",
-                "pyrexia",
-                "febrile",
-                "warm",
-                "overheated",
-                "elevated temperature",
-                "running a fever",
-            ],
-            "cough": [
-                "cough",
-                "coughing",
-                "hack",
-                "dry cough",
-                "wet cough",
-                "productive cough",
-                "persistent cough",
-                "hacking",
-                "barking cough",
-                "chronic cough",
-                "whooping",
-                "tickle in throat",
-            ],
-            "fatigue": [
-                "tired",
-                "fatigue",
-                "exhausted",
-                "weakness",
-                "weary",
-                "drained",
-                "lethargic",
-                "sleepy",
-                "worn out",
-                "depleted",
-                "energy loss",
-                "run down",
-                "beat",
-                "wiped out",
-            ],
-            "shortness_of_breath": [
-                "shortness of breath",
-                "breathless",
-                "difficulty breathing",
-                "hard to breathe",
-                "winded",
-                "dyspnea",
-                "suffocating",
-                "gasping",
-                "out of breath",
-                "breathing problems",
-                "air hunger",
-            ],
-            "headache": [
-                "headache",
-                "head pain",
-                "migraine",
-                "head hurts",
-                "skull pain",
-                "cranial pain",
-                "temple pain",
-                "forehead pain",
-                "tension headache",
-                "cluster headache",
-                "throbbing head",
-            ],
-            "sore_throat": [
-                "sore throat",
-                "throat pain",
-                "scratchy throat",
-                "throat hurts",
-                "pharyngitis",
-                "swollen throat",
-                "raw throat",
-                "burning throat",
-                "irritated throat",
-                "throat inflammation",
-            ],
-            "nausea": [
-                "nausea",
-                "nauseous",
-                "queasy",
-                "sick to stomach",
-                "feeling sick",
-                "want to vomit",
-                "motion sickness",
-                "car sick",
-                "upset stomach",
-                "stomach churning",
-                "feel like throwing up",
-            ],
-            "dizziness": [
-                "dizzy",
-                "dizziness",
-                "lightheaded",
-                "vertigo",
-                "spinning",
-                "unsteady",
-                "balance problems",
-                "wobbly",
-                "off balance",
-                "room spinning",
-                "head spinning",
-                "faint feeling",
-            ],
-            "body_aches": [
-                "body aches",
-                "muscle aches",
-                "joint pain",
-                "aching",
-                "soreness",
-                "stiffness",
-                "muscle pain",
-                "joint aches",
-                "myalgia",
-                "all over pain",
-                "generalized pain",
-                "muscle soreness",
-            ],
-            "runny_nose": [
-                "runny nose",
-                "nasal discharge",
-                "stuffy nose",
-                "congestion",
-                "blocked nose",
-                "rhinorrhea",
-                "sniffles",
-                "post nasal drip",
-                "nasal congestion",
-                "stuffed up",
-                "nose running",
-            ],
-            "chest_pain": [
-                "chest pain",
-                "chest discomfort",
-                "chest tightness",
-                "heart pain",
-                "sternum pain",
-                "ribcage pain",
-                "breathing pain",
-                "chest pressure",
-                "chest burning",
-                "sharp chest pain",
-            ],
-            "diarrhea": [
-                "diarrhea",
-                "loose stools",
-                "watery stools",
-                "frequent bowel",
-                "runny stools",
-                "liquid stool",
-                "bowel problems",
-                "stomach runs",
-                "loose bowel movements",
-                "frequent bathroom trips",
-            ],
-            "loss_of_taste": [
-                "loss of taste",
-                "can't taste",
-                "no taste",
-                "taste gone",
-                "taste loss",
-                "ageusia",
-                "taste buds not working",
-                "food tasteless",
-                "metallic taste",
-                "altered taste",
-            ],
-            "loss_of_smell": [
-                "loss of smell",
-                "can't smell",
-                "no smell",
-                "smell gone",
-                "smell loss",
-                "anosmia",
-                "nose not working",
-                "odor loss",
-            ],
-        }
-
-        # Enhanced duration patterns
-        self.duration_patterns = [
-            (r"(\d+)\s*(day|days)", lambda m: int(m.group(1))),
-            (r"(\d+)\s*(week|weeks)", lambda m: int(m.group(1)) * 7),
-            (r"(\d+)\s*(month|months)", lambda m: int(m.group(1)) * 30),
-            (r"since\s+(\d+)\s*(day|days)\s+ago", lambda m: int(m.group(1))),
-            (r"for\s+(\d+)\s*(day|days)", lambda m: int(m.group(1))),
-            (r"about\s+(\d+)\s*(day|days)", lambda m: int(m.group(1))),
-            (r"yesterday", lambda m: 1),
-            (r"today", lambda m: 1),
-            (r"few days", lambda m: 3),
-            (r"several days", lambda m: 5),
-            (r"last week", lambda m: 7),
-            (r"this week", lambda m: 3),
-            (r"two weeks", lambda m: 14),
-            (r"last month", lambda m: 30),
-        ]
-
-        # Enhanced intensity patterns
-        self.intensity_patterns = {
-            "mild": [
-                "mild",
-                "slight",
-                "minor",
-                "light",
-                "gentle",
-                "low",
-                "barely",
-                "little bit",
-                "somewhat",
-                "not too bad",
-            ],
-            "moderate": [
-                "moderate",
-                "medium",
-                "average",
-                "normal",
-                "typical",
-                "noticeable",
-                "considerable",
-                "fair",
-                "decent",
-            ],
-            "severe": [
-                "severe",
-                "intense",
-                "extreme",
-                "terrible",
-                "awful",
-                "excruciating",
-                "unbearable",
-                "very",
-                "really bad",
-                "horrible",
-            ],
-        }
-
-    def parse_comprehensive(self, symptoms_text: str, duration_text: str = "", intensity_text: str = "") -> Dict:
-        """Parse comprehensive symptom information with enhanced NLP"""
-
-        # Combine all text for parsing
-        full_text = f"{symptoms_text} {duration_text} {intensity_text}".lower()
-
-        # Extract symptoms
-        detected_symptoms = self._extract_symptoms(full_text)
-
-        # Extract duration
-        duration_days = self._extract_duration(full_text)
-
-        # Extract intensity
-        intensity = self._extract_intensity(full_text)
-
-        return {
-            "symptoms": detected_symptoms,
-            "duration_days": duration_days,
-            "intensity": intensity,
-            "raw_text": symptoms_text,
-        }
-
-    def _extract_symptoms(self, text: str) -> List[str]:
-        """Extract symptoms from text using comprehensive keyword matching"""
-        detected = []
+    def parse_natural_language_symptoms(self, text: str) -> Dict[str, int]:
+        """Parse symptoms from natural language text"""
+        text = text.lower()
+        detected_symptoms = {}
 
         for symptom, keywords in self.symptom_keywords.items():
+            detected_symptoms[symptom] = 0
             for keyword in keywords:
                 if keyword in text:
-                    detected.append(symptom)
+                    detected_symptoms[symptom] = 1
                     break
 
-        return detected
-
-    def _extract_duration(self, text: str) -> int:
-        """Extract duration in days from text"""
-
-        for pattern, converter in self.duration_patterns:
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                try:
-                    return converter(match)
-                except BaseException:
-                    continue
-
-        # Default to 7 days if no duration found
-        return 7
-
-    def _extract_intensity(self, text: str) -> str:
-        """Extract intensity from text using enhanced pattern matching"""
-
-        # Score-based approach for better accuracy
-        intensity_scores = {"mild": 0, "moderate": 0, "severe": 0}
-
-        for intensity, keywords in self.intensity_patterns.items():
+        return detected_symptoms
+    
+    def _load_condition_patterns(self):
+        """Load condition keyword patterns for NLP extraction"""
+        return {
+            'Common Cold': ['cold', 'runny nose', 'sneezing', 'congestion', 'nasal discharge'],
+            'Flu': ['flu', 'influenza', 'fever', 'body aches', 'chills', 'muscle pain'],
+            'COVID-19': ['covid', 'coronavirus', 'loss of taste', 'loss of smell', 'dry cough'],
+            'Pneumonia': ['pneumonia', 'chest infection', 'productive cough', 'lung infection'],
+            'Bronchitis': ['bronchitis', 'persistent cough', 'phlegm', 'chest congestion'],
+            'Asthma': ['asthma', 'wheezing', 'breathing problems', 'shortness of breath'],
+            'Allergies': ['allergies', 'sneezing', 'itchy eyes', 'seasonal', 'hay fever'],
+            'Sinusitis': ['sinus', 'facial pressure', 'nasal congestion', 'sinus pressure'],
+            'Migraine': ['migraine', 'severe headache', 'light sensitivity', 'photophobia'],
+            'Tension Headache': ['tension headache', 'pressure headache', 'stress headache'],
+            'Gastroenteritis': ['stomach bug', 'food poisoning', 'stomach flu', 'gastroenteritis'],
+            'UTI': ['urinary', 'burning urination', 'frequent urination', 'bladder infection'],
+            'Strep Throat': ['strep', 'severe sore throat', 'throat infection', 'strep throat'],
+            'Ear Infection': ['ear infection', 'ear pain', 'hearing problems', 'earache'],
+            'Hypertension': ['high blood pressure', 'hypertension', 'elevated bp', 'blood pressure'],
+            'Diabetes': ['diabetes', 'high blood sugar', 'frequent urination', 'excessive thirst'],
+            'Anxiety': ['anxiety', 'panic', 'worry', 'nervousness', 'anxious'],
+            'Depression': ['depression', 'sadness', 'low mood', 'hopelessness', 'depressed'],
+            'Arthritis': ['arthritis', 'joint pain', 'stiffness', 'joint swelling'],
+            'Back Pain': ['back pain', 'lower back', 'spine pain', 'backache'],
+            'Heart Attack': ['chest pain', 'heart attack', 'cardiac', 'crushing chest pain'],
+            'Appendicitis': ['appendix', 'lower right pain', 'abdominal pain', 'appendicitis'],
+            'Kidney Stones': ['kidney stones', 'flank pain', 'kidney pain', 'severe side pain'],
+            'Food Poisoning': ['food poisoning', 'vomiting', 'diarrhea', 'stomach cramps'],
+            'Dehydration': ['dehydration', 'thirsty', 'dry mouth', 'lightheaded']
+        }
+    
+    def extract_conditions_from_text(self, user_input):
+        """Extract possible conditions from user input using NLP and keyword matching"""
+        
+        user_text = user_input.lower()
+        possible_conditions = []
+        
+        # Extract conditions based on keyword matching
+        for condition, keywords in self.condition_patterns.items():
+            matches = []
             for keyword in keywords:
-                if keyword in text:
-                    intensity_scores[intensity] += 1
+                if keyword in user_text:
+                    matches.append(keyword)
+            
+            if matches:
+                possible_conditions.append({
+                    'condition': condition,
+                    'matched_keywords': matches,
+                    'reasoning': f"Detected: {', '.join(matches)}",
+                    'relevance': 'High' if len(matches) >= 2 else 'Medium'
+                })
+        
+        # Sort by number of matched keywords (most relevant first)
+        possible_conditions.sort(key=lambda x: len(x['matched_keywords']), reverse=True)
+        
+        return possible_conditions[:3]  # Return top 3 matches
 
-        # Return intensity with highest score
-        if max(intensity_scores.values()) > 0:
-            return max(intensity_scores.items(), key=lambda x: x[1])[0]
+    def convert_age_to_group(self, age):
+        """Convert numeric age to age group"""
+        if age is None:
+            return 'adult'
+        
+        if isinstance(age, str):
+            # If it's already an age group string, return as is
+            if age.lower() in ['child', 'teen', 'adult', 'senior']:
+                return age.lower()
+            # Try to convert to number
+            try:
+                age = int(age)
+            except ValueError:
+                return 'adult'
+        
+        if age < 13:
+            return 'child'
+        elif age < 20:
+            return 'teen'
+        elif age < 65:
+            return 'adult'
+        else:
+            return 'senior'
+    
+    def encode_patient_conditions(self, patient_data: Dict) -> Dict:
+        """Encode patient condition data using trained encoders"""
+        encoded_data = {}
+        
+        for col, encoder in self.categorical_encoders.items():
+            value = patient_data.get(col, 'none')  # Default to 'none' instead of 'unknown'
+            try:
+                encoded_data[col + '_encoded'] = encoder.transform([value])[0]
+            except ValueError:
+                # Handle unseen values by using the first class (index 0)
+                encoded_data[col + '_encoded'] = 0
+        
+        return encoded_data
+    
+    def predict_comprehensive_diagnosis(self, input_data: Union[str, Dict], 
+                                     patient_conditions: Optional[Dict] = None) -> Dict:
+        """
+        Comprehensive diagnosis prediction with enhanced features
 
-        return "moderate"  # Default
+        Args:
+            input_data: Natural language text or symptom dictionary
+            patient_conditions: Patient info (age_group, gender, etc.)
 
-    def _was_duration_detected(self, text: str) -> bool:
-        """Check if duration was actually detected from text"""
-        text = text.lower()
-        for pattern, _ in self.duration_patterns:
-            if re.search(pattern, text, re.IGNORECASE):
-                return True
-        return False
+        Returns:
+            Comprehensive diagnosis with prescriptions and recommendations
+        """
 
-    def _was_intensity_detected(self, text: str) -> bool:
-        """Check if intensity was actually detected from text"""
-        text = text.lower()
-        for keywords in self.intensity_patterns.values():
-            for keyword in keywords:
-                if keyword in text:
-                    return True
-        return False
+        # Handle natural language input
+        if isinstance(input_data, str):
+            symptom_flags = self.parse_natural_language_symptoms(input_data)
+        else:
+            symptom_flags = input_data
 
+        # Ensure all symptom columns are present
+        for symptom in self.symptom_columns:
+            if symptom not in symptom_flags:
+                symptom_flags[symptom] = 0
 
-# Example usage and testing
-def test_comprehensive_diagnosis():
-    """Test the comprehensive diagnosis system"""
+        # Default patient conditions if not provided
+        if patient_conditions is None:
+            patient_conditions = {
+                'age_group': 'adult',
+                'gender': 'male',  # Use valid gender instead of 'unknown'
+                'underlying_conditions': 'none',
+                'recent_exposure': 'none',
+                'symptom_onset': 'gradual',
+                'progression': 'stable',
+                'duration_days': 7,
+                'intensity': 'moderate'
+            }
 
-    print("🧪 Testing Comprehensive AI Diagnosis System")
-    print("=" * 60)
+        # Encode patient conditions
+        encoded_conditions = self.encode_patient_conditions(patient_conditions)
 
-    try:
-        # Initialize diagnosis system
-        ai_diagnosis = ComprehensiveAIDiagnosis()
-
-        # Test cases
-        test_cases = [
-            {
-                "symptoms": "severe headache and fever for 3 days, feeling very tired",
-                "duration": "3 days",
-                "intensity": "severe",
-            },
-            {
-                "symptoms": "mild cough and runny nose since yesterday, sore throat",
-                "duration": "1 day",
-                "intensity": "mild",
-            },
-            {
-                "symptoms": "chest pain, shortness of breath, very intense for about a week",
-                "duration": "1 week",
-                "intensity": "severe",
-            },
-        ]
-
-        for i, case in enumerate(test_cases):
-            print(f"\n--- Test Case {i + 1} ---")
-            print(f"Input: {case['symptoms']}")
-
-            result = ai_diagnosis.diagnose(case["symptoms"], case["duration"], case["intensity"])
-
-            if "error" not in result:
-                print(f"Diagnosis: {result['primary_diagnosis']}")
-                print(f"Confidence: {result['confidence']:.3f} ({result['confidence_level']})")
-                print(f"Base Confidence: {result['base_confidence']:.3f}")
-                print(f"Duration: {result['duration_days']} days")
-                print(f"Intensity: {result['intensity']}")
-                print(f"Symptoms: {result['parsed_symptoms']}")
+        # Prepare feature vector with proper column names
+        feature_data = {}
+        for col in self.feature_columns:
+            if col in symptom_flags:
+                feature_data[col] = float(symptom_flags[col])
+            elif col in patient_conditions:
+                feature_data[col] = float(patient_conditions[col])
+            elif col in encoded_conditions:
+                feature_data[col] = float(encoded_conditions[col])
             else:
-                print(f"Error: {result['error']}")
+                feature_data[col] = 0.0
 
-        print("\n✅ Testing completed successfully!")
+        # Create DataFrame with proper feature names to avoid sklearn warnings
+        X_input = pd.DataFrame([feature_data], columns=self.feature_columns)
+        prediction_id = self.model.predict(X_input)[0]
+        prediction_proba = self.model.predict_proba(X_input)[0]
+
+        # Get top 3 predictions
+        top_3_indices = np.argsort(prediction_proba)[-3:][::-1]
+        top_3_predictions = []
+
+        for idx in top_3_indices:
+            diagnosis_name = self.diagnosis_encoder.inverse_transform([idx])[0]
+            confidence = prediction_proba[idx]
+            top_3_predictions.append({
+                'diagnosis': diagnosis_name,
+                'confidence': confidence,
+                'confidence_percent': f"{confidence*100:.1f}%"
+            })
+
+        # Primary diagnosis
+        primary_diagnosis = self.diagnosis_encoder.inverse_transform([prediction_id])[0]
+        primary_confidence = max(prediction_proba)
+
+        # Get prescription info
+        prescription_info = self.prescriptions_map.get(prediction_id, {
+            'medications': [{'name': 'Consult healthcare provider', 'dosage': 'As directed', 'duration': 7}],
+            'diagnosis_description': f'{primary_diagnosis} - Professional medical evaluation recommended.',
+            'recommended_action': 'Schedule appointment with healthcare provider for proper assessment.',
+            'severity': 'varies',
+            'follow_up_days': 7,
+            'emergency_signs': ['worsening symptoms', 'severe pain', 'difficulty breathing']
+        })
+
+        # Calculate severity based on symptoms
+        active_symptoms = sum(1 for v in symptom_flags.values() if v == 1)
+        if active_symptoms >= 8:
+            severity = "Severe"
+        elif active_symptoms >= 5:
+            severity = "Moderate"  
+        elif active_symptoms >= 2:
+            severity = "Mild"
+        else:
+            severity = "Very Mild"
+
+        # Prepare comprehensive result
+        result = {
+            'primary_diagnosis': primary_diagnosis,
+            'confidence': primary_confidence,
+            'confidence_percent': f"{primary_confidence*100:.1f}%",
+            'severity': severity,
+            'active_symptoms_count': active_symptoms,
+            'top_3_predictions': top_3_predictions,
+            'medications': prescription_info.get('medications', []),
+            'diagnosis_description': prescription_info.get('diagnosis_description', ''),
+            'recommended_action': prescription_info.get('recommended_action', ''),
+            'follow_up_days': prescription_info.get('follow_up_days', 7),
+            'emergency_signs': prescription_info.get('emergency_signs', []),
+            'patient_conditions': patient_conditions,
+            'detected_symptoms': symptom_flags,
+            'model_version': self.model_version,
+            'timestamp': pd.Timestamp.now().isoformat()
+        }
+
+        return result
+
+    def get_enhanced_condition_info(self, condition_name: str) -> Dict:
+        """Get detailed information about a medical condition from enhanced database"""
+        if condition_name in self.enhanced_conditions:
+            return self.enhanced_conditions[condition_name]
+        else:
+            return {
+                "description": f"Medical condition: {condition_name}",
+                "medications": [{"name": "Consult healthcare provider", "dosage": "As prescribed", "purpose": "Professional guidance needed"}],
+                "recommended_actions": ["Seek medical evaluation", "Follow prescribed treatment plan"],
+                "when_to_see_doctor": "For proper diagnosis and treatment plan",
+                "severity": "Consult doctor",
+                "duration": "Variable"
+            }
+
+    def predict_enhanced_diagnosis(self, input_data: Union[str, Dict],
+                                 patient_conditions: Optional[Dict] = None) -> Dict:
+        """
+        Enhanced diagnosis prediction with detailed medications and recommendations
+        
+        Returns comprehensive diagnosis with:
+        - Detailed medical description
+        - Over-the-counter medications with dosages
+        - Recommended home care actions  
+        - Severity and duration information
+        - When to see a doctor guidelines
+        """
+        
+        # Get basic diagnosis first
+        basic_result = self.predict_comprehensive_diagnosis(input_data, patient_conditions)
+        
+        # Get enhanced condition information
+        condition_info = self.get_enhanced_condition_info(basic_result['primary_diagnosis'])
+        
+        # Create enhanced result with all information
+        enhanced_result = {
+            # Basic diagnosis info
+            'diagnosis': basic_result['primary_diagnosis'],
+            'confidence': basic_result['confidence'],
+            'confidence_percent': basic_result['confidence_percent'],
+            'top_predictions': basic_result['top_3_predictions'],
+            
+            # Enhanced condition details
+            'description': condition_info.get('description', ''),
+            'severity': condition_info.get('severity', basic_result['severity']),
+            'duration': condition_info.get('duration', 'Variable'),
+            
+            # Medications and treatment
+            'medications': condition_info.get('medications', []),
+            'recommended_actions': condition_info.get('recommended_actions', []),
+            'when_to_see_doctor': condition_info.get('when_to_see_doctor', 'If symptoms persist or worsen'),
+            
+            # Additional info
+            'active_symptoms_count': basic_result['active_symptoms_count'],
+            'detected_symptoms': basic_result['detected_symptoms'],
+            'patient_conditions': basic_result['patient_conditions'],
+            
+            # System info
+            'model_version': f"{self.model_version}-Enhanced",
+            'timestamp': basic_result['timestamp'],
+            'disclaimer': "This is for informational purposes only. Always consult healthcare professionals for medical advice."
+        }
+        
+        return enhanced_result
+
+    def predict_nlp_diagnosis(self, input_data: Union[str, Dict],
+                             patient_conditions: Optional[Dict] = None) -> Dict:
+        """
+        NLP-based diagnosis prediction without confidence levels
+        
+        Uses natural language processing to extract possible conditions
+        based on keyword matching from the dataset patterns.
+        
+        Returns:
+        - Possible conditions based on NLP extraction
+        - Matched keywords and reasoning
+        - Enhanced condition information
+        - No confidence scores or percentages
+        """
+        
+        # Extract conditions using NLP
+        if isinstance(input_data, str):
+            nlp_conditions = self.extract_conditions_from_text(input_data)
+            symptom_flags = self.parse_natural_language_symptoms(input_data)
+        else:
+            # Handle dictionary input (convert to string first for NLP)
+            symptom_text = ', '.join([k.replace('_', ' ') for k, v in input_data.items() if v == 1])
+            nlp_conditions = self.extract_conditions_from_text(symptom_text)
+            symptom_flags = input_data
+        
+        # Default patient conditions if not provided
+        if patient_conditions is None:
+            patient_conditions = {
+                'age_group': 'adult',
+                'gender': 'male',
+                'underlying_conditions': 'none'
+            }
+        
+        # Calculate severity based on symptoms (without confidence)
+        active_symptoms = sum(1 for v in symptom_flags.values() if v == 1)
+        if active_symptoms >= 8:
+            severity = "Severe"
+        elif active_symptoms >= 5:
+            severity = "Moderate"  
+        elif active_symptoms >= 2:
+            severity = "Mild"
+        else:
+            severity = "Very Mild"
+        
+        # Prepare result without confidence levels
+        if nlp_conditions:
+            primary_condition = nlp_conditions[0]
+            primary_diagnosis = primary_condition['condition']
+            
+            # Get enhanced condition information
+            condition_info = self.get_enhanced_condition_info(primary_diagnosis)
+            
+            # Format alternative conditions without confidence
+            alternative_conditions = []
+            for i, cond in enumerate(nlp_conditions[1:3], 1):  # Get up to 2 alternatives
+                alternative_conditions.append({
+                    'diagnosis': cond['condition'],
+                    'reasoning': cond['reasoning'],
+                    'relevance': cond['relevance']
+                })
+            
+            result = {
+                # Primary diagnosis (no confidence)
+                'diagnosis': primary_diagnosis,
+                'primary_diagnosis': primary_diagnosis,
+                'reasoning': primary_condition['reasoning'],
+                'relevance': primary_condition['relevance'],
+                
+                # Enhanced condition details
+                'description': condition_info.get('description', ''),
+                'severity': condition_info.get('severity', severity),
+                'duration': condition_info.get('duration', 'Variable'),
+                
+                # Alternative conditions (no confidence)
+                'top_predictions': alternative_conditions,
+                'alternative_conditions': alternative_conditions,
+                
+                # Medications and treatment
+                'medications': condition_info.get('medications', []),
+                'recommended_actions': condition_info.get('recommended_actions', []),
+                'when_to_see_doctor': condition_info.get('when_to_see_doctor', 'If symptoms persist or worsen'),
+                
+                # Symptom information
+                'active_symptoms_count': active_symptoms,
+                'detected_symptoms': symptom_flags,
+                'matched_keywords': primary_condition['matched_keywords'],
+                
+                # System info
+                'model_version': f"{self.model_version}-NLP",
+                'timestamp': pd.Timestamp.now().isoformat(),
+                'method': 'NLP Keyword Matching',
+                'disclaimer': "This analysis is based on keyword matching. Always consult healthcare professionals for medical advice."
+            }
+        else:
+            # No conditions matched - provide general response
+            result = {
+                'diagnosis': 'General Health Assessment',
+                'primary_diagnosis': 'General Health Assessment',
+                'reasoning': 'No specific condition patterns detected',
+                'relevance': 'Low',
+                'description': 'Your symptoms do not clearly match common condition patterns.',
+                'severity': severity,
+                'medications': [{'name': 'Consult healthcare provider', 'dosage': 'As directed', 'purpose': 'Professional evaluation needed'}],
+                'recommended_actions': ['Monitor symptoms', 'Stay hydrated', 'Get adequate rest', 'Consult a healthcare professional'],
+                'when_to_see_doctor': 'If symptoms persist or worsen',
+                'active_symptoms_count': active_symptoms,
+                'detected_symptoms': symptom_flags,
+                'matched_keywords': [],
+                'top_predictions': [],
+                'alternative_conditions': [],
+                'model_version': f"{self.model_version}-NLP",
+                'timestamp': pd.Timestamp.now().isoformat(),
+                'method': 'NLP Keyword Matching',
+                'disclaimer': "No specific patterns detected. Consult healthcare professionals for proper evaluation."
+            }
+        
+        return result
+
+    # Legacy method for backwards compatibility
+    def diagnose(self, symptoms_text: str, **kwargs) -> Dict:
+        """Legacy diagnosis method for backwards compatibility"""
+        patient_info = {
+            'age_group': kwargs.get('age_group', 'adult'),
+            'gender': kwargs.get('gender', 'male'),  # Use valid gender
+            'underlying_conditions': kwargs.get('underlying_conditions', 'none'),
+            'recent_exposure': kwargs.get('recent_exposure', 'none'),
+            'symptom_onset': kwargs.get('symptom_onset', 'gradual'),
+            'progression': kwargs.get('progression', 'stable'),
+            'duration_days': kwargs.get('duration_days', 7),
+            'intensity': kwargs.get('intensity', 'moderate')
+        }
+
+        return self.predict_comprehensive_diagnosis(symptoms_text, patient_info)
+
+# Example usage
+if __name__ == "__main__":
+    try:
+        ai = ComprehensiveAIDiagnosis()
+
+        # Test with natural language
+        result = ai.predict_comprehensive_diagnosis(
+            "I have fever, bad cough, and can't taste anything",
+            {'age_group': 'adult', 'gender': 'male', 'underlying_conditions': 'none'}
+        )
+
+        print("Test Result:")
+        print(f"Diagnosis: {result['primary_diagnosis']}")
+        print(f"Confidence: {result['confidence_percent']}")
+        print(f"Severity: {result['severity']}")
 
     except Exception as e:
-        print(f"❌ Testing failed: {e}")
-
-
-if __name__ == "__main__":
-    test_comprehensive_diagnosis()
+        print(f"Error testing AI: {e}")

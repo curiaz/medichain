@@ -101,27 +101,63 @@ export const aiService = {
           .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
           .join(' ');
         
+        // Extract confidence from either confidence field or confidence_percent
+        let confidence = 0;
+        if (aiData.confidence) {
+          confidence = Math.round(aiData.confidence * 100);
+        } else if (aiData.confidence_percent) {
+          confidence = parseFloat(aiData.confidence_percent.replace('%', ''));
+        }
+        
+        // Format medications from the API response
+        const medications = aiData.medications ? 
+          aiData.medications.map(med => `${med.name} - ${med.dosage} for ${med.duration} days`) :
+          ['Consult a doctor for proper medication'];
+        
+        // Create formatted response for display
+        const formattedResponse = {
+          primary_diagnosis: {
+            condition: formattedDiagnosis,
+            confidence: confidence,
+            severity: aiData.severity || 'Moderate'
+          },
+          top_diagnoses: aiData.top_3_predictions || [],
+          medications: medications,
+          description: aiData.diagnosis_description || `${formattedDiagnosis} - Consult healthcare provider for proper diagnosis and treatment.`,
+          recommendations: [aiData.recommended_action || 'Monitor symptoms and seek medical attention if condition worsens.'],
+          emergency_signs: aiData.emergency_signs || ['severe symptoms', 'worsening condition'],
+          follow_up_days: aiData.follow_up_days || 7,
+          active_symptoms: aiData.active_symptoms_count || 0,
+          detected_symptoms: aiData.detected_symptoms || {},
+          patient_info: aiData.patient_conditions || {},
+          model_version: aiData.model_version || 'MediChain-AI',
+          timestamp: aiData.timestamp || new Date().toISOString()
+        };
+
         return {
           success: true,
           data: {
+            // Pass through original API fields for enhanced display
+            ...aiData,
+            
+            // Add formatted/legacy fields for backward compatibility
             diagnosis: formattedDiagnosis,
-            confidence: Math.round(aiData.confidence || 0),
+            formatted_response: formattedResponse,  // This is required for display
+            confidence: confidence,
             top_predictions: aiData.top_predictions || [],
             differential_diagnoses: aiData.top_3_predictions || aiData.top_predictions || [],
             prescription: {
-              medications: ['Consult a doctor for proper medication'],
-              treatments: ['Rest and hydration'],
-              instructions: 'Follow up with healthcare provider for accurate treatment plan'
+              medications: medications,
+              treatments: [aiData.recommended_action || 'Rest and hydration'],
+              instructions: aiData.diagnosis_description || 'Follow up with healthcare provider for accurate treatment plan'
             },
-            recommendations: [
+            recommendations: aiData.emergency_signs || [
               'Stay hydrated',
-              'Get adequate rest',
+              'Get adequate rest', 
               'Monitor symptoms for changes',
               'Contact a healthcare professional if symptoms worsen'
             ],
-            ai_model_version: 'MediChain-AI',
-            timestamp: new Date().toISOString(),
-            severity: 'Moderate',
+            ai_model_version: aiData.model_version || 'MediChain-AI',
             urgency: 'normal'
           }
         };

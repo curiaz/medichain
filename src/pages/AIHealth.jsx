@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { aiService } from '../services/aiService';
+import notificationService from '../services/notificationService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import AIProgressBar from '../components/AIProgressBar';
 import { showToast } from '../components/CustomToast';
@@ -65,7 +66,7 @@ const UserPlusIcon = () => (
 );
 
 // Medical Analysis Slideshow Component
-const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, patientAge, patientGender }) => {
+const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, patientAge, patientGender, diagnosisResults }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   
@@ -115,8 +116,14 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
       sections.push({
         type: 'conditions', 
         title: 'Possible Conditions',
-        content: slideContent.conditions || 'Analysis in progress...'
+        content: slideContent.conditions || 'Analysis in progress...',
+        diagnosisData: diagnosisResults || {}
       });
+      
+      // Debug: Log diagnosis data structure
+      if (diagnosisResults) {
+        console.log('DiagnosisResults structure:', diagnosisResults);
+      }
       
       sections.push({
         type: 'severity',
@@ -130,13 +137,37 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
         content: slideContent.recommendations || 'Recommendations loading...'
       });
     } else {
-      // Fallback structure when no response available
+      // Fallback structure when no formatted response available - create all 4 slides
       sections.push({
         type: 'symptoms',
         title: 'Symptoms Reported',
         content: symptoms || 'No symptoms specified',
         patientAge,
         patientGender
+      });
+      
+      sections.push({
+        type: 'conditions', 
+        title: 'Possible Conditions',
+        content: 'Analysis complete - showing results...',
+        diagnosisData: diagnosisResults || {}
+      });
+      
+      // Debug: Log diagnosis data in fallback
+      if (diagnosisResults) {
+        console.log('DiagnosisResults (fallback):', diagnosisResults);
+      }
+      
+      sections.push({
+        type: 'severity',
+        title: 'Severity Assessment', 
+        content: 'Assessment available...'
+      });
+      
+      sections.push({
+        type: 'recommendations',
+        title: 'Recommended Action',
+        content: 'Recommendations available...'
       });
     }
 
@@ -211,24 +242,100 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
               <div className="slide-icon">🔍</div>
               <h2 className="slide-title">Possible Conditions</h2>
             </div>
-            <div className="conditions-list">
-              {slide.content.split(/\d+\.\s+/).filter(section => section.trim()).map((condition, index) => {
-                const [title, ...descriptionParts] = condition.split('\n').filter(line => line.trim());
-                const description = descriptionParts.join(' ').trim();
-                
-                return (
-                  <div key={index} className="condition-item">
-                    <div className="condition-number">{index + 1}</div>
-                    <div className="condition-content">
-                      <h4 className="condition-title">{title}</h4>
-                      {description && (
-                        <p className="condition-description">{description}</p>
-                      )}
+            
+            {/* Primary Diagnosis */}
+            {slide.diagnosisData?.diagnosis && (
+              <div className="primary-condition">
+                <div className="condition-badge primary">
+                  <span className="condition-label">Primary Match</span>
+                </div>
+                <div className="condition-main">
+                  <h3 className="primary-diagnosis-name">{slide.diagnosisData.diagnosis}</h3>
+                  {slide.diagnosisData.reasoning && (
+                    <div className="diagnosis-reasoning">
+                      <span className="reasoning-label">Based on:</span>
+                      <p className="reasoning-text">{slide.diagnosisData.reasoning}</p>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  )}
+                  {slide.diagnosisData.matched_keywords && slide.diagnosisData.matched_keywords.length > 0 && (
+                    <div className="matched-keywords">
+                      <span className="keywords-label">Key indicators:</span>
+                      <div className="keywords-list">
+                        {slide.diagnosisData.matched_keywords.map((keyword, index) => (
+                          <span key={index} className="keyword-tag">{keyword}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {slide.diagnosisData.description && (
+                    <p className="diagnosis-description">{slide.diagnosisData.description}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Alternative Conditions */}
+            {slide.diagnosisData?.alternative_conditions && slide.diagnosisData.alternative_conditions.length > 0 && (
+              <div className="alternative-conditions">
+                <h4 className="alternatives-header">Other Possibilities:</h4>
+                <div className="alternatives-list">
+                  {slide.diagnosisData.alternative_conditions.map((condition, index) => (
+                    <div key={index} className="alternative-item">
+                      <div className="alternative-info">
+                        <span className="alternative-name">{condition.condition}</span>
+                        {condition.matched_keywords && condition.matched_keywords.length > 0 && (
+                          <div className="alt-keywords">
+                            <span className="alt-keywords-label">Matches:</span>
+                            <span className="alt-keywords-text">
+                              {condition.matched_keywords.join(', ')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Detected Symptoms */}
+            {slide.diagnosisData?.detected_symptoms && (
+              <div className="detected-symptoms">
+                <h4 className="symptoms-header">Key Symptoms Identified:</h4>
+                <div className="symptoms-tags">
+                  {Object.entries(slide.diagnosisData.detected_symptoms)
+                    .filter(([_, value]) => value === 1)
+                    .map(([symptom, _], index) => (
+                      <span key={index} className="symptom-tag">
+                        {symptom.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </span>
+                    ))
+                  }
+                </div>
+              </div>
+            )}
+            
+            {/* Fallback to text content if no structured data */}
+            {!slide.diagnosisData?.diagnosis && (
+              <div className="conditions-list">
+                {slide.content.split(/\d+\.\s+/).filter(section => section.trim()).map((condition, index) => {
+                  const [title, ...descriptionParts] = condition.split('\n').filter(line => line.trim());
+                  const description = descriptionParts.join(' ').trim();
+                  
+                  return (
+                    <div key={index} className="condition-item">
+                      <div className="condition-number">{index + 1}</div>
+                      <div className="condition-content">
+                        <h4 className="condition-title">{title}</h4>
+                        {description && (
+                          <p className="condition-description">{description}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         );
 
@@ -342,6 +449,7 @@ const AIHealth = () => {
   const [error, setError] = useState(null);
   const [aiStatus, setAiStatus] = useState('checking');
   const [formattedResponse, setFormattedResponse] = useState('');
+  const [diagnosisResults, setDiagnosisResults] = useState(null);
 
   // Check AI service status on component mount
   useEffect(() => {
@@ -403,7 +511,31 @@ const AIHealth = () => {
       if (result.success) {
         setDiagnosis(result.data.diagnosis);
         setFormattedResponse(result.data.formatted_response);
+        setDiagnosisResults(result.data); // Store complete results for enhanced display
         showToast.success('Analysis completed successfully');
+
+        // Create notification for completed diagnosis
+        try {
+          await notificationService.createMedicalNotification(
+            user?.uid || 'default_user',
+            'AI Diagnosis Complete',
+            `Your symptom analysis is ready. Primary condition: ${result.data.diagnosis || 'Multiple conditions identified'}`,
+            {
+              type: 'success',
+              priority: 'medium',
+              action_url: '/ai-health',
+              action_label: 'View Results',
+              metadata: {
+                symptoms: symptoms.trim(),
+                diagnosis: result.data.diagnosis,
+                timestamp: new Date().toISOString()
+              }
+            }
+          );
+        } catch (notificationError) {
+          console.error('Failed to create notification:', notificationError);
+          // Don't fail the diagnosis if notification creation fails
+        }
       } else {
         throw new Error(result.error || 'Failed to get diagnosis');
       }
@@ -422,6 +554,7 @@ const AIHealth = () => {
     setPatientGender('');
     setDiagnosis(null);
     setFormattedResponse('');
+    setDiagnosisResults(null);
     setError(null);
   };
 
@@ -650,6 +783,7 @@ const AIHealth = () => {
                   symptoms={symptoms}
                   patientAge={patientAge}
                   patientGender={patientGender}
+                  diagnosisResults={diagnosisResults}
                 />
                 <div className="results-footer">
                   <button 

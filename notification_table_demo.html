@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediChain Notification System Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            color: #2d3748;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+
+        .notification-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .notification-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .notification-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: top;
+        }
+
+        .notification-table tbody tr:hover {
+            background-color: #f7fafc;
+            transform: translateY(-1px);
+            transition: all 0.2s ease;
+        }
+
+        .priority-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .priority-urgent {
+            background-color: #fed7d7;
+            color: #c53030;
+        }
+
+        .priority-high {
+            background-color: #feebc8;
+            color: #dd6b20;
+        }
+
+        .priority-normal {
+            background-color: #e6fffa;
+            color: #38b2ac;
+        }
+
+        .priority-low {
+            background-color: #ebf8ff;
+            color: #3182ce;
+        }
+
+        .category-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: 500;
+            background-color: #f7fafc;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+        }
+
+        .type-badge {
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .type-info { background-color: #bee3f8; color: #2b6cb0; }
+        .type-success { background-color: #c6f6d5; color: #276749; }
+        .type-warning { background-color: #faf089; color: #744210; }
+        .type-error { background-color: #fed7d7; color: #c53030; }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-unread { background-color: #3182ce; }
+        .status-read { background-color: #a0aec0; }
+
+        .message-cell {
+            max-width: 300px;
+            word-wrap: break-word;
+        }
+
+        .message-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 4px;
+        }
+
+        .message-content {
+            color: #4a5568;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        .timestamp {
+            font-size: 0.8em;
+            color: #718096;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .action-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.2s ease;
+        }
+
+        .btn-read {
+            background-color: #e6fffa;
+            color: #38b2ac;
+        }
+
+        .btn-read:hover {
+            background-color: #b2f5ea;
+        }
+
+        .btn-delete {
+            background-color: #fed7d7;
+            color: #c53030;
+        }
+
+        .btn-delete:hover {
+            background-color: #fbb6ce;
+        }
+
+        .metadata {
+            font-size: 0.8em;
+            color: #718096;
+            font-style: italic;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #718096;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .api-section {
+            background: #2d3748;
+            color: white;
+            border-radius: 12px;
+            padding: 30px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .api-endpoint {
+            background: #4a5568;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .method {
+            color: #68d391;
+            font-weight: bold;
+        }
+
+        .url {
+            color: #90cdf4;
+        }
+
+        .schema-section {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 30px;
+            border-left: 4px solid #667eea;
+        }
+
+        .schema-table {
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .schema-table th,
+        .schema-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .schema-table th {
+            background-color: #edf2f7;
+            font-weight: 600;
+        }
+
+        .data-type {
+            color: #805ad5;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔔 MediChain Notification System</h1>
+            <p>Comprehensive notification management with database integration</p>
+        </div>
+
+        <!-- Statistics Section -->
+        <div class="demo-section">
+            <h2 class="section-title">📊 Notification Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">6</div>
+                    <div class="stat-label">Total Notifications</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">3</div>
+                    <div class="stat-label">Unread</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">2</div>
+                    <div class="stat-label">High Priority</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">4</div>
+                    <div class="stat-label">Active Categories</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Table -->
+        <div class="demo-section">
+            <h2 class="section-title">📋 Notification Database Table</h2>
+            <table class="notification-table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Title & Message</th>
+                        <th>Type</th>
+                        <th>Category</th>
+                        <th>Priority</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                        <th>Metadata</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <span class="status-indicator status-read"></span>
+                            Read
+                        </td>
+                        <td class="message-cell">
+                            <div class="message-title">Welcome to MediChain</div>
+                            <div class="message-content">Welcome to our healthcare platform! Your account has been successfully created.</div>
+                        </td>
+                        <td>
+                            <span class="type-badge type-success">Success</span>
+                        </td>
+                        <td>
+                            <span class="category-badge">System</span>
+                        </td>
+                        <td>
+                            <span class="priority-badge priority-normal">Normal</span>
+                        </td>
+                        <td class="timestamp">Oct 7, 2025<br>2:00 AM</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="action-btn btn-delete">Delete</button>
+                            </div>
+                        </td>
+                        <td class="metadata">{"source": "registration"}</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="status-indicator status-unread"></span>
+                            Unread
+                        </td>
+                        <td class="message-cell">
+                            <div class="message-title">AI Diagnosis Complete</div>
+                            <div class="message-content">Your symptom analysis is ready for review. Please check your results.</div>
+                        </td>
+                        <td>
+                            <span class="type-badge type-info">Info</span>
+                        </td>
+                        <td>
+                            <span class="category-badge">Medical</span>
+                        </td>
+                        <td>
+                            <span class="priority-badge priority-high">High</span>
+                        </td>
+                        <td class="timestamp">Oct 7, 2025<br>1:30 AM</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="action-btn btn-read">Mark Read</button>
+                                <button class="action-btn btn-delete">Delete</button>
+                            </div>
+                        </td>
+                        <td class="metadata">{"diagnosis_id": "123", "condition": "Common Cold"}</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="status-indicator status-unread"></span>
+                            Unread
+                        </td>
+                        <td class="message-cell">
+                            <div class="message-title">Medication Reminder</div>
+                            <div class="message-content">Time to take your prescribed medication: Acetaminophen 500mg</div>
+                        </td>
+                        <td>
+                            <span class="type-badge type-warning">Warning</span>
+                        </td>
+                        <td>
+                            <span class="category-badge">Medication</span>
+                        </td>
+                        <td>
+                            <span class="priority-badge priority-high">High</span>
+                        </td>
+                        <td class="timestamp">Oct 7, 2025<br>12:00 AM</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="action-btn btn-read">Mark Read</button>
+                                <button class="action-btn btn-delete">Delete</button>
+                            </div>
+                        </td>
+                        <td class="metadata">{"medication": "Acetaminophen", "dosage": "500mg"}</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="status-indicator status-unread"></span>
+                            Unread
+                        </td>
+                        <td class="message-cell">
+                            <div class="message-title">Appointment Scheduled</div>
+                            <div class="message-content">Your appointment with Dr. Smith is confirmed for tomorrow at 2:00 PM</div>
+                        </td>
+                        <td>
+                            <span class="type-badge type-info">Info</span>
+                        </td>
+                        <td>
+                            <span class="category-badge">Appointment</span>
+                        </td>
+                        <td>
+                            <span class="priority-badge priority-normal">Normal</span>
+                        </td>
+                        <td class="timestamp">Oct 6, 2025<br>11:30 PM</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="action-btn btn-read">Mark Read</button>
+                                <button class="action-btn btn-delete">Delete</button>
+                            </div>
+                        </td>
+                        <td class="metadata">{"appointment_id": "456", "doctor": "Dr. Smith"}</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="status-indicator status-read"></span>
+                            Read
+                        </td>
+                        <td class="message-cell">
+                            <div class="message-title">System Maintenance</div>
+                            <div class="message-content">Scheduled maintenance will occur tonight from 2:00 AM to 4:00 AM EST</div>
+                        </td>
+                        <td>
+                            <span class="type-badge type-warning">Warning</span>
+                        </td>
+                        <td>
+                            <span class="category-badge">System</span>
+                        </td>
+                        <td>
+                            <span class="priority-badge priority-low">Low</span>
+                        </td>
+                        <td class="timestamp">Oct 6, 2025<br>6:00 PM</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="action-btn btn-delete">Delete</button>
+                            </div>
+                        </td>
+                        <td class="metadata">{"maintenance_window": "2025-10-08 02:00 - 04:00"}</td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="status-indicator status-read"></span>
+                            Read
+                        </td>
+                        <td class="message-cell">
+                            <div class="message-title">Test Notification</div>
+                            <div class="message-content">This is a test notification for development purposes.</div>
+                        </td>
+                        <td>
+                            <span class="type-badge type-info">Info</span>
+                        </td>
+                        <td>
+                            <span class="category-badge">System</span>
+                        </td>
+                        <td>
+                            <span class="priority-badge priority-normal">Normal</span>
+                        </td>
+                        <td class="timestamp">Oct 6, 2025<br>5:00 PM</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="action-btn btn-delete">Delete</button>
+                            </div>
+                        </td>
+                        <td class="metadata">{"test": true}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Database Schema -->
+        <div class="demo-section schema-section">
+            <h2 class="section-title">🗄️ Database Schema</h2>
+            <p>The notification system uses a comprehensive SQLite database schema with the following structure:</p>
+            
+            <table class="schema-table">
+                <thead>
+                    <tr>
+                        <th>Column</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>id</strong></td>
+                        <td><span class="data-type">INTEGER PRIMARY KEY</span></td>
+                        <td>Auto-incrementing unique identifier</td>
+                    </tr>
+                    <tr>
+                        <td><strong>user_id</strong></td>
+                        <td><span class="data-type">TEXT NOT NULL</span></td>
+                        <td>Firebase UID or user identifier</td>
+                    </tr>
+                    <tr>
+                        <td><strong>title</strong></td>
+                        <td><span class="data-type">TEXT NOT NULL</span></td>
+                        <td>Notification title/subject</td>
+                    </tr>
+                    <tr>
+                        <td><strong>message</strong></td>
+                        <td><span class="data-type">TEXT NOT NULL</span></td>
+                        <td>Notification content/body</td>
+                    </tr>
+                    <tr>
+                        <td><strong>type</strong></td>
+                        <td><span class="data-type">TEXT</span></td>
+                        <td>Visual type: info, success, warning, error, alert</td>
+                    </tr>
+                    <tr>
+                        <td><strong>category</strong></td>
+                        <td><span class="data-type">TEXT</span></td>
+                        <td>Functional category: medical, appointment, system, etc.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>priority</strong></td>
+                        <td><span class="data-type">TEXT</span></td>
+                        <td>Priority level: low, normal, high, urgent</td>
+                    </tr>
+                    <tr>
+                        <td><strong>is_read</strong></td>
+                        <td><span class="data-type">INTEGER</span></td>
+                        <td>Read status (0=unread, 1=read)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>metadata</strong></td>
+                        <td><span class="data-type">TEXT</span></td>
+                        <td>JSON field for additional context data</td>
+                    </tr>
+                    <tr>
+                        <td><strong>created_at</strong></td>
+                        <td><span class="data-type">TEXT</span></td>
+                        <td>Timestamp when notification was created</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- API Endpoints -->
+        <div class="api-section">
+            <h2 style="color: white; margin-bottom: 20px;">🔌 API Endpoints</h2>
+            
+            <div class="api-endpoint">
+                <span class="method">GET</span> <span class="url">/api/notifications</span>
+                <div style="margin-top: 8px; color: #cbd5e0;">Retrieve user notifications with pagination and filtering</div>
+            </div>
+            
+            <div class="api-endpoint">
+                <span class="method">POST</span> <span class="url">/api/notifications</span>
+                <div style="margin-top: 8px; color: #cbd5e0;">Create a new notification</div>
+            </div>
+            
+            <div class="api-endpoint">
+                <span class="method">PUT</span> <span class="url">/api/notifications/{id}</span>
+                <div style="margin-top: 8px; color: #cbd5e0;">Update notification (mark as read, archive, etc.)</div>
+            </div>
+            
+            <div class="api-endpoint">
+                <span class="method">DELETE</span> <span class="url">/api/notifications/{id}</span>
+                <div style="margin-top: 8px; color: #cbd5e0;">Delete a notification</div>
+            </div>
+            
+            <div class="api-endpoint">
+                <span class="method">GET</span> <span class="url">/api/notifications/stats</span>
+                <div style="margin-top: 8px; color: #cbd5e0;">Get notification statistics for a user</div>
+            </div>
+            
+            <div class="api-endpoint">
+                <span class="method">POST</span> <span class="url">/api/notifications/bulk</span>
+                <div style="margin-top: 8px; color: #cbd5e0;">Perform bulk operations (mark all as read, etc.)</div>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="demo-section">
+            <h2 class="section-title">✨ Key Features</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div>
+                    <h3 style="color: #667eea; margin-bottom: 10px;">🔄 Real-time Updates</h3>
+                    <p>Notifications are updated in real-time with automatic refresh and push capabilities.</p>
+                </div>
+                <div>
+                    <h3 style="color: #667eea; margin-bottom: 10px;">🎯 Priority System</h3>
+                    <p>Four priority levels (low, normal, high, urgent) with visual indicators and sorting.</p>
+                </div>
+                <div>
+                    <h3 style="color: #667eea; margin-bottom: 10px;">🏷️ Smart Categorization</h3>
+                    <p>Organized by category (medical, appointment, system, medication) for easy filtering.</p>
+                </div>
+                <div>
+                    <h3 style="color: #667eea; margin-bottom: 10px;">📊 Analytics & Stats</h3>
+                    <p>Comprehensive statistics tracking for notification engagement and patterns.</p>
+                </div>
+                <div>
+                    <h3 style="color: #667eea; margin-bottom: 10px;">🔍 Advanced Filtering</h3>
+                    <p>Filter by read/unread status, category, priority, and date ranges.</p>
+                </div>
+                <div>
+                    <h3 style="color: #667eea; margin-bottom: 10px;">⚡ Bulk Operations</h3>
+                    <p>Mark all as read, delete multiple, and other batch operations for efficiency.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add interactive functionality
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const action = this.textContent;
+                const row = this.closest('tr');
+                
+                if (action === 'Mark Read') {
+                    const statusIndicator = row.querySelector('.status-indicator');
+                    const statusText = statusIndicator.nextSibling;
+                    statusIndicator.className = 'status-indicator status-read';
+                    statusText.textContent = ' Read';
+                    this.style.display = 'none';
+                } else if (action === 'Delete') {
+                    row.style.animation = 'fadeOut 0.3s ease';
+                    setTimeout(() => row.remove(), 300);
+                }
+            });
+        });
+
+        // Add CSS for fade out animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeOut {
+                from { opacity: 1; transform: translateX(0); }
+                to { opacity: 0; transform: translateX(-20px); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

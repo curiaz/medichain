@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react"
 import Header from "./Header"
 import { Bell, Check, X, AlertCircle, Info, Heart, Calendar, FileText, Settings } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
+import notificationService from "../services/notificationService"
 import "../assets/styles/ModernDashboard.css"
 
 const Notifications = () => {
@@ -9,86 +10,120 @@ const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState({ total: 0, unread: 0 });
 
   useEffect(() => {
     // Load notifications when component mounts
     if (user?.uid) {
       loadNotifications();
+      loadNotificationStats();
     }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadNotificationStats = async () => {
+    try {
+      const result = await notificationService.getNotificationStats(user?.uid || 'default_user');
+      if (result.success && result.data) {
+        setStats(result.data.stats);
+      }
+    } catch (err) {
+      console.error('Error loading notification stats:', err);
+    }
+  };
 
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      // TODO: Implement notifications loading from database
-      // For now, using mock data
-      const mockNotifications = [
-        {
-          id: 1,
-          type: 'appointment',
-          title: 'Appointment Reminder',
-          message: 'Your appointment with Dr. Smith is scheduled for tomorrow at 2:00 PM',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-          read: false,
-          priority: 'high'
-        },
-        {
-          id: 2,
-          type: 'diagnosis',
-          title: 'AI Diagnosis Available',
-          message: 'Your recent symptom analysis is ready for review',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-          read: true,
-          priority: 'medium'
-        },
-        {
-          id: 3,
-          type: 'medication',
-          title: 'Medication Reminder',
-          message: 'Time to take your prescribed medication',
-          timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-          read: false,
-          priority: 'high'
-        },
-        {
-          id: 4,
-          type: 'system',
-          title: 'System Update',
-          message: 'MediChain platform has been updated with new features',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48), // 2 days ago
-          read: true,
-          priority: 'low'
-        }
-      ];
-      setNotifications(mockNotifications);
       console.log('Loading notifications for user:', user?.uid);
+      
+      const result = await notificationService.getNotifications({
+        user_id: user?.uid || 'default_user',
+        page: 1,
+        per_page: 50
+      });
+
+      if (result.success && result.data) {
+        // Transform backend data to match frontend format
+        const transformedNotifications = result.data.notifications?.map(notif => ({
+          id: notif.id,
+          type: notif.category || 'system',
+          title: notif.title,
+          message: notif.message,
+          timestamp: new Date(notif.created_at),
+          read: notif.is_read,
+          priority: notif.priority,
+          action_url: notif.action_url,
+          action_label: notif.action_label
+        })) || [];
+
+        setNotifications(transformedNotifications);
+        console.log('Loaded notifications:', transformedNotifications.length);
+      } else {
+        console.error('Failed to load notifications:', result.error);
+        // Fallback to empty array on error
+        setNotifications([]);
+      }
     } catch (err) {
       console.error('Error loading notifications:', err);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const markAsRead = (notificationId) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === notificationId 
-          ? { ...notif, read: true }
-          : notif
-      )
-    );
+  const markAsRead = async (notificationId) => {
+    try {
+      const result = await notificationService.markAsRead(notificationId, user?.uid || 'default_user');
+      
+      if (result.success) {
+        setNotifications(prev => 
+          prev.map(notif => 
+            notif.id === notificationId 
+              ? { ...notif, read: true }
+              : notif
+          )
+        );
+        console.log('Marked notification as read:', notificationId);
+      } else {
+        console.error('Failed to mark notification as read:', result.error);
+      }
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, read: true }))
-    );
+  const markAllAsRead = async () => {
+    try {
+      const result = await notificationService.markAllAsRead(user?.uid || 'default_user');
+      
+      if (result.success) {
+        setNotifications(prev => 
+          prev.map(notif => ({ ...notif, read: true }))
+        );
+        console.log('Marked all notifications as read');
+      } else {
+        console.error('Failed to mark all notifications as read:', result.error);
+      }
+    } catch (err) {
+      console.error('Error marking all notifications as read:', err);
+    }
   };
 
-  const deleteNotification = (notificationId) => {
-    setNotifications(prev => 
-      prev.filter(notif => notif.id !== notificationId)
-    );
+  const deleteNotification = async (notificationId) => {
+    try {
+      const result = await notificationService.deleteNotification(notificationId, user?.uid || 'default_user');
+      
+      if (result.success) {
+        setNotifications(prev => 
+          prev.filter(notif => notif.id !== notificationId)
+        );
+        console.log('Deleted notification:', notificationId);
+      } else {
+        console.error('Failed to delete notification:', result.error);
+      }
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+    }
   };
 
   const filteredNotifications = notifications.filter(notif => {
@@ -164,10 +199,46 @@ const Notifications = () => {
           <div className="main-and-sidebar-grid">
             <div className="main-content-area">
               <div className="content-card">
-                <h3>
-                  <Bell size={24} />
-                  Your Notifications
-                </h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h3>
+                    <Bell size={24} />
+                    Your Notifications
+                  </h3>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                      className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
+                      onClick={() => setFilter('all')}
+                      style={{
+                        padding: '8px 16px',
+                        border: filter === 'all' ? '2px solid #2563eb' : '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        backgroundColor: filter === 'all' ? '#eff6ff' : 'white',
+                        color: filter === 'all' ? '#2563eb' : '#6b7280',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: filter === 'all' ? '600' : '400'
+                      }}
+                    >
+                      All ({notifications.length})
+                    </button>
+                    <button 
+                      className={`filter-btn ${filter === 'unread' ? 'active' : ''}`}
+                      onClick={() => setFilter('unread')}
+                      style={{
+                        padding: '8px 16px',
+                        border: filter === 'unread' ? '2px solid #2563eb' : '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        backgroundColor: filter === 'unread' ? '#eff6ff' : 'white',
+                        color: filter === 'unread' ? '#2563eb' : '#6b7280',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: filter === 'unread' ? '600' : '400'
+                      }}
+                    >
+                      Unread ({unreadCount})
+                    </button>
+                  </div>
+                </div>
                 <div className="notifications-list">
                   {loading ? (
                     <div className="loading-state">
@@ -224,10 +295,6 @@ const Notifications = () => {
                       </div>
                     ))
                   )}
-                  <div className="coming-soon">
-                    <p>🔔 Advanced notification system is being developed</p>
-                    <p>Soon you'll receive real-time alerts for appointments, medication reminders, and health updates</p>
-                  </div>
                 </div>
               </div>
             </div>
@@ -265,7 +332,7 @@ const Notifications = () => {
                   Quick Actions
                 </h3>
                 <div className="quick-actions">
-                  <button className="quick-action-btn">
+                  <button className="quick-action-btn" onClick={markAllAsRead}>
                     <Check size={16} />
                     Mark All Read
                   </button>
