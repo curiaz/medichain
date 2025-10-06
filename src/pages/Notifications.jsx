@@ -10,7 +10,7 @@ const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({ total: 0, unread: 0 });
+  const [, setStats] = useState({ total: 0, unread: 0 });
 
   useEffect(() => {
     // Load notifications when component mounts

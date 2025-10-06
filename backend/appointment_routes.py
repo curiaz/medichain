@@ -9,7 +9,13 @@ from auth.firebase_auth import firebase_auth_required
 from db.supabase_client import SupabaseClient
 
 appointments_bp = Blueprint("appointments", __name__, url_prefix="/api/appointments")
-supabase = SupabaseClient()
+# Initialize Supabase client with error handling
+try:
+    supabase = SupabaseClient()
+    print("✅ Supabase client initialized for appointments")
+except Exception as e:
+    print(f"⚠️  Warning: Supabase client initialization failed in appointments: {e}")
+    supabase = None
 
 
 @appointments_bp.route("", methods=["GET"])

@@ -19,7 +19,13 @@ from auth.auth_utils import auth_utils
 from db.supabase_client import SupabaseClient
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
-supabase = SupabaseClient()
+# Initialize Supabase client with error handling
+try:
+    supabase = SupabaseClient()
+    print("✅ Supabase client initialized for auth routes")
+except Exception as e:
+    print(f"⚠️  Warning: Supabase client initialization failed in auth routes: {e}")
+    supabase = None
 
 
 def validate_password(password):

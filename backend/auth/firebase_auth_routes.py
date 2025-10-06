@@ -14,7 +14,13 @@ from auth.firebase_auth import (
 from db.supabase_client import SupabaseClient
 
 auth_firebase_bp = Blueprint("auth_firebase", __name__, url_prefix="/api/auth")
-supabase = SupabaseClient()
+# Initialize Supabase client with error handling
+try:
+    supabase = SupabaseClient()
+    print("✅ Supabase client initialized for Firebase auth routes")
+except Exception as e:
+    print(f"⚠️  Warning: Supabase client initialization failed in Firebase auth routes: {e}")
+    supabase = None
 
 
 def validate_password(password):

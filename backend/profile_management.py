@@ -13,7 +13,15 @@ import os
 from werkzeug.utils import secure_filename
 
 profile_mgmt_bp = Blueprint('profile_mgmt', __name__, url_prefix='/api/profile-management')
-supabase = SupabaseClient()
+
+# Initialize Supabase client with error handling
+try:
+    supabase = SupabaseClient()
+    print("✅ Supabase client initialized for profile management")
+except Exception as e:
+    print(f"⚠️  Warning: Supabase client initialization failed: {e}")
+    print("🔧 Profile management will use fallback/mock mode")
+    supabase = None
 
 # Allowed file extensions for document uploads
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx', 'txt'}

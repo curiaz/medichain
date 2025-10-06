@@ -6,7 +6,13 @@ import logging
 patient_profile_bp = Blueprint('patient_profile', __name__, url_prefix='/api/profile')
 
 # Initialize Supabase client
-supabase = SupabaseClient()
+# Initialize Supabase client with error handling
+try:
+    supabase = SupabaseClient()
+    print("✅ Supabase client initialized for patient profiles")
+except Exception as e:
+    print(f"⚠️  Warning: Supabase client initialization failed in patient profiles: {e}")
+    supabase = None
 
 @patient_profile_bp.route('/patient', methods=['GET'])
 def get_patient_profile():

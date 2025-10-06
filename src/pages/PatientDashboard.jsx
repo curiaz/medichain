@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 import Header from "./Header"
-import { Plus, Activity, Brain, FileText, Heart, Calendar, User, RefreshCw } from "lucide-react"
+import { Plus, Activity, Brain, FileText, Calendar, User, RefreshCw } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"
@@ -17,7 +17,7 @@ const toast = {
 const PatientDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
+  const [, setStats] = useState({
     totalConsultations: 0,
     aiDiagnoses: 0,
     lastCheckup: 0,

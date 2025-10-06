@@ -9,7 +9,13 @@ from auth.firebase_auth import firebase_auth_required, firebase_role_required
 from db.supabase_client import SupabaseClient
 
 medical_bp = Blueprint("medical", __name__, url_prefix="/api/medical")
-supabase = SupabaseClient()
+# Initialize Supabase client with error handling
+try:
+    supabase = SupabaseClient()
+    print("✅ Supabase client initialized for medical routes")
+except Exception as e:
+    print(f"⚠️  Warning: Supabase client initialization failed in medical routes: {e}")
+    supabase = None
 
 
 @medical_bp.route("/records", methods=["GET"])
