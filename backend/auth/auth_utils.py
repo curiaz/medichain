@@ -19,7 +19,14 @@ class AuthUtils:
     def __init__(self):
         # Use the provided JWT secret key
         self.secret_key = "isi4kI2GUSI1k841rTbeWHqVv00bN6KnBBkQJ/sfXRxdUckTXoCF1dlGmKgl1S9Qj/m4by03HN1h3x8x9woSnA=="
-        self.supabase = SupabaseClient()
+        
+        # Initialize Supabase client with error handling
+        try:
+            self.supabase = SupabaseClient()
+            print("✅ Supabase client initialized for auth utils")
+        except Exception as e:
+            print(f"⚠️  Warning: Supabase client initialization failed in auth utils: {e}")
+            self.supabase = None
 
     def hash_password(self, password: str) -> str:
         """Hash password using bcrypt"""

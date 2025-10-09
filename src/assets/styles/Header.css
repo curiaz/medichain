@@ -1,4 +1,4 @@
-/* Header.css */
+/* Header.css - Updated Layout */
 .dashboard-header {
   position: fixed;
   top: 0;
@@ -9,23 +9,38 @@
   backdrop-filter: blur(15px);
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 2rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-header-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 2rem;
+  align-items: center;
+  padding: 0 40px;
+  height: 100%;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  justify-content: flex-start;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2rem;
+  min-width: 500px;
 }
 
 .logo-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
 }
 
 .logo-container div {
@@ -38,7 +53,9 @@
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  justify-content: center;
+  gap: 2.5rem;
+  width: 100%;
 }
 
 .nav-link {
@@ -47,15 +64,9 @@
   font-weight: 600;
   font-size: 14px;
   letter-spacing: 0.5px;
-  padding: 8px 16px;
+  padding: 10px 20px;
   border-radius: 8px;
-  transition: all 0.3s ease;
   text-transform: uppercase;
-}
-
-.nav-link:hover {
-  color: #2196f3;
-  background: rgba(33, 150, 243, 0.1);
 }
 
 .nav-link.active {
@@ -67,7 +78,8 @@
 .header-right {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: flex-end;
+  gap: 1.5rem;
 }
 
 .icon-button {

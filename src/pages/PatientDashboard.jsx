@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 import Header from "./Header"
-import { Plus, Activity, Brain, FileText, Heart, Calendar, User, RefreshCw } from "lucide-react"
+import { Plus, Activity, Brain, FileText, Calendar, User, RefreshCw } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"
@@ -17,7 +17,7 @@ const toast = {
 const PatientDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
+  const [, setStats] = useState({
     totalConsultations: 0,
     aiDiagnoses: 0,
     lastCheckup: 0,
@@ -87,7 +87,7 @@ const PatientDashboard = () => {
             {user && user.profile && (
               <div className="user-welcome">
                 <span>Welcome back, <strong>{user.profile.first_name || user.profile.name}</strong></span>
-                <span className="user-role">Patient Portal</span>
+                <span className="user-role">Patient</span>
               </div>
             )}
             {error && (
@@ -97,60 +97,15 @@ const PatientDashboard = () => {
             )}
           </div>
           <div className="dashboard-actions">
-            <button className="primary-action-btn" onClick={handleNewAppointment}>
-              <Plus size={20} /> Book Appointment
-            </button>
             {loading && (
-              <div className="loading-indicator" style={{ marginLeft: '10px', fontSize: '0.9rem', color: '#666' }}>
-                <RefreshCw size={16} className="spinning" /> Loading stats...
+              <div className="loading-indicator" style={{ fontSize: '0.9rem', color: '#666' }}>
+                <RefreshCw size={16} /> Loading stats...
               </div>
             )}
           </div>
         </div>
 
         <div className="dashboard-grid">
-          <div className="stats-cards-row">
-            <div className="stat-card patient-stat">
-              <div className="stat-icon">
-                <Activity size={32} />
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">Total Consultations</span>
-                <span className="stat-value">{stats.totalConsultations}</span>
-              </div>
-            </div>
-            
-            <div className="stat-card patient-stat">
-              <div className="stat-icon">
-                <Brain size={32} />
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">AI Diagnoses</span>
-                <span className="stat-value">{stats.aiDiagnoses}</span>
-              </div>
-            </div>
-            
-            <div className="stat-card patient-stat">
-              <div className="stat-icon">
-                <Calendar size={32} />
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">Last Checkup</span>
-                <span className="stat-value">{stats.lastCheckup} days ago</span>
-              </div>
-            </div>
-            
-            <div className="stat-card patient-stat">
-              <div className="stat-icon">
-                <Heart size={32} />
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">Health Score</span>
-                <span className="stat-value">{stats.healthScore}%</span>
-              </div>
-            </div>
-          </div>
-
           <div className="main-and-sidebar-grid">
             <div className="main-content-area">
               <div className="patient-actions-grid">
@@ -203,35 +158,6 @@ const PatientDashboard = () => {
             </div>
 
             <div className="sidebar-area">
-              <div className="health-summary-card">
-                <h3 className="card-title">
-                  <Heart size={20} />
-                  Health Summary
-                </h3>
-                <div className="health-metrics">
-                  <div className="health-metric">
-                    <span className="metric-label">Overall Health</span>
-                    <div className="metric-value">
-                      <div className="health-score-bar">
-                        <div 
-                          className="health-score-fill" 
-                          style={{ width: `${stats.healthScore}%` }}
-                        ></div>
-                      </div>
-                      <span className="metric-text">{stats.healthScore}%</span>
-                    </div>
-                  </div>
-                  <div className="health-metric">
-                    <span className="metric-label">Last AI Consultation</span>
-                    <span className="metric-text">2 days ago</span>
-                  </div>
-                  <div className="health-metric">
-                    <span className="metric-label">Next Appointment</span>
-                    <span className="metric-text">Not scheduled</span>
-                  </div>
-                </div>
-              </div>
-
               <div className="user-info-card">
                 <h3 className="card-title">
                   <User size={20} />

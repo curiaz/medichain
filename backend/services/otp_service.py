@@ -18,7 +18,12 @@ class TemporaryOTPService:
     """Service for managing temporary OTP storage with 5-minute expiration"""
     
     def __init__(self):
-        self.supabase = SupabaseClient()
+        try:
+            self.supabase = SupabaseClient()
+            print("✅ Supabase client initialized for OTP service")
+        except Exception as e:
+            print(f"⚠️  Warning: Supabase client initialization failed in OTP service: {e}")
+            self.supabase = None
         self.table_name = "temporary_otp_storage"
     
     def generate_otp(self) -> str:

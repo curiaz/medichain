@@ -20,7 +20,13 @@ from auth.firebase_auth import firebase_auth_service
 from db.supabase_client import SupabaseClient
 
 doctor_verification_bp = Blueprint("doctor_verification", __name__, url_prefix="/api/auth")
-supabase = SupabaseClient()
+# Initialize Supabase client with error handling
+try:
+    supabase = SupabaseClient()
+    print("✅ Supabase client initialized for doctor verification")
+except Exception as e:
+    print(f"⚠️  Warning: Supabase client initialization failed in doctor verification: {e}")
+    supabase = None
 
 # Configuration
 UPLOAD_FOLDER = "uploads/doctor_verification"

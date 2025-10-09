@@ -73,30 +73,32 @@ const DoctorDashboard = () => {
       <Header />
 
       <main className="dashboard-main-content">
-        <div className="dashboard-header-section">
-          <div className="dashboard-title-section">
-            <h1 className="dashboard-title">DOCTOR DASHBOARD</h1>
+        <div className="dashboard-header-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <div className="dashboard-title-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <h1 className="dashboard-title" style={{ marginBottom: '16px' }}>DOCTOR DASHBOARD</h1>
             {user && user.profile && (
-              <div className="user-welcome">
+              <div className="user-welcome" style={{ textAlign: 'center' }}>
                 <span>Welcome back, <strong>Dr. {user.profile.first_name || user.profile.name}</strong></span>
                 <span className="user-role">MEDICAL PROFESSIONAL</span>
               </div>
             )}
             
             {/* Doctor Verification Status */}
-            <VerificationStatus 
-              status={user?.profile?.verification_status || user?.doctor_profile?.verification_status}
-              userType={user?.profile?.role}
-              doctorProfile={user?.doctor_profile}
-            />
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
+              <VerificationStatus 
+                status={user?.profile?.verification_status || user?.doctor_profile?.verification_status}
+                userType={user?.profile?.role}
+                doctorProfile={user?.doctor_profile}
+              />
+            </div>
             
             {error && (
-              <div className="error-message" style={{ color: '#e74c3c', fontSize: '0.9rem', marginTop: '8px' }}>
+              <div className="error-message" style={{ color: '#e74c3c', fontSize: '0.9rem', marginTop: '8px', textAlign: 'center' }}>
                 {error} - Using offline data
               </div>
             )}
           </div>
-          <div className="dashboard-actions">
+          <div className="dashboard-actions" style={{ display: 'flex', justifyContent: 'center' }}>
             {loading && (
               <div className="loading-indicator" style={{ fontSize: '0.9rem', color: '#666' }}>
                 <RefreshCw size={16} className="spinning" /> Loading stats...

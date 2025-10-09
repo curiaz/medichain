@@ -11,26 +11,12 @@ import AIHealth from './pages/AIHealth'; // New standalone AI Health page
 import PatientAIHistory from './pages/PatientAIHistory'; // For doctors to view patient AI history
 import HealthRecord from './pages/HealthRecord'; // Patient health record page
 import ProfilePage from './pages/ProfilePage'; // Profile management page
-import SettingsPage from './pages/SettingsPage'; // Settings page
+import PatientList from './pages/PatientList'; // Patient list management page
+import Notifications from './pages/Notifications'; // Notifications page
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
 // Placeholder components for development
-
-// Placeholder components for other routes
-const Patients = () => (
-  <div style={{ padding: '2rem', textAlign: 'center', marginTop: '80px' }}>
-    <h2>Patients</h2>
-    <p>Patients management coming soon...</p>
-  </div>
-);
-
-const Prescriptions = () => (
-  <div style={{ padding: '2rem', textAlign: 'center', marginTop: '80px' }}>
-    <h2>Prescriptions</h2>
-    <p>Prescriptions management coming soon...</p>
-  </div>
-);
 
 function App() {
   return (
@@ -61,7 +47,7 @@ function App() {
               path="/patients" 
               element={
                 <ProtectedRoute>
-                  <Patients />
+                  <PatientList />
                 </ProtectedRoute>
               } 
             />
@@ -90,10 +76,10 @@ function App() {
             />
             
             <Route 
-              path="/prescriptions" 
+              path="/notifications" 
               element={
                 <ProtectedRoute>
-                  <Prescriptions />
+                  <Notifications />
                 </ProtectedRoute>
               } 
             />

@@ -309,6 +309,33 @@ export class DatabaseService {
       return { success: false, error: error.message, data: [] };
     }
   }
+
+  // Get all patients in the system
+  static async getAllPatients() {
+    try {
+      const { data, error } = await supabase
+        .from(TABLES.USER_PROFILES)
+        .select('firebase_uid, first_name, last_name, email, created_at, avatar_url')
+        .eq('role', 'patient')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const patients = data?.map(patient => ({
+        id: patient.firebase_uid,
+        name: `${patient.first_name || ''} ${patient.last_name || ''}`.trim(),
+        email: patient.email,
+        joined: patient.created_at,
+        avatar_url: patient.avatar_url
+      })) || [];
+
+      return { success: true, data: patients };
+    } catch (error) {
+      console.error('Error fetching all patients:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  }
 }
 
 export default DatabaseService;

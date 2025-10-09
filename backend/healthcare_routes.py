@@ -65,8 +65,14 @@ def require_role(required_role):
 
 class MediChainDatabase:
     def __init__(self):
-        self.supabase = SupabaseClient()
-        self.client = self.supabase.client
+        try:
+            self.supabase = SupabaseClient()
+            self.client = self.supabase.client if self.supabase.client else None
+            print("✅ Supabase client initialized for healthcare database")
+        except Exception as e:
+            print(f"⚠️  Warning: Supabase client initialization failed in healthcare database: {e}")
+            self.supabase = None
+            self.client = None
     
     def create_patient_record(self, firebase_uid, email, full_name, date_of_birth=None, role='patient'):
         """Create a new patient record in Supabase"""

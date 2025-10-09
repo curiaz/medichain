@@ -1,0 +1,76 @@
+{
+  "model_version": "MediChain-Comprehensive-v3.0",
+  "training_date": "2025-10-05T22:35:37.600342",
+  "total_diagnoses": 65,
+  "total_features": 22,
+  "training_accuracy": 0.9755043227665706,
+  "testing_accuracy": 0.5360230547550432,
+  "symptom_columns": [
+    "fever",
+    "cough",
+    "fatigue",
+    "shortness_of_breath",
+    "headache",
+    "sore_throat",
+    "nausea",
+    "dizziness",
+    "body_aches",
+    "runny_nose",
+    "chest_pain",
+    "diarrhea",
+    "loss_of_taste",
+    "loss_of_smell"
+  ],
+  "patient_condition_columns": [
+    "age_group",
+    "gender",
+    "underlying_conditions",
+    "recent_exposure",
+    "symptom_onset",
+    "progression",
+    "duration_days",
+    "intensity"
+  ],
+  "feature_importance_top_10": [
+    {
+      "feature": "duration_days",
+      "importance": 0.13129149237130106
+    },
+    {
+      "feature": "underlying_conditions_encoded",
+      "importance": 0.060490730201159824
+    },
+    {
+      "feature": "age_group_encoded",
+      "importance": 0.053216881759878584
+    },
+    {
+      "feature": "recent_exposure_encoded",
+      "importance": 0.05222430402200395
+    },
+    {
+      "feature": "fatigue",
+      "importance": 0.04761230718147784
+    },
+    {
+      "feature": "intensity_encoded",
+      "importance": 0.04597785634445935
+    },
+    {
+      "feature": "headache",
+      "importance": 0.04535167032603269
+    },
+    {
+      "feature": "gender_encoded",
+      "importance": 0.04390451149158649
+    },
+    {
+      "feature": "progression_encoded",
+      "importance": 0.04385029164974557
+    },
+    {
+      "feature": "shortness_of_breath",
+      "importance": 0.04374422382494174
+    }
+  ]
+}

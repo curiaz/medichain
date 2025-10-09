@@ -10,6 +10,8 @@ import numpy as np
 from collections import Counter
 from datetime import datetime
 
+# Notification system is now embedded in this app file
+
 # Load environment variables
 load_dotenv()
 
@@ -39,7 +41,13 @@ class EnhancedAIEngine:
                 if self.dataset:
                     # Get symptom columns (exclude non-symptom fields)
                     all_columns = set(self.dataset[0].keys())
-                    exclude_columns = {'diagnosis', 'duration_days', 'intensity'}
+                    # Comprehensive list of non-symptom fields to exclude
+                    exclude_columns = {
+                        'diagnosis', 'duration_days', 'intensity', 'age_group', 'gender',
+                        'underlying_conditions', 'recent_exposure', 'symptom_onset', 'progression',
+                        'treatment_received', 'hospital_visit_required', 'recovery_time_days',
+                        'complications_risk', 'symptoms', 'diagnosis_description', 'recommended_action'
+                    }
                     self.symptom_columns = list(all_columns - exclude_columns)
                     
                     # Get all unique diagnoses
@@ -660,7 +668,7 @@ class EnhancedAIEngine:
         
         diagnosis_weights = {}
         for match in scores[:20]:  # Top 20 matches
-            if match['similarity'] > 0:
+            if match['similarity'] > 0.1:  # Only consider matches with significant similarity
                 diag = match['diagnosis']
                 weight = match['similarity']
                 diagnosis_weights[diag] = diagnosis_weights.get(diag, 0) + weight
@@ -669,7 +677,9 @@ class EnhancedAIEngine:
             return None
         
         best_diagnosis = max(diagnosis_weights.items(), key=lambda x: x[1])
-        confidence = min(best_diagnosis[1], 1.0)
+        # Scale confidence more realistically - max 0.85 for CSV-based diagnosis
+        raw_confidence = best_diagnosis[1]
+        confidence = min(raw_confidence * 0.7, 0.85)
         
         # Ensure we have a valid primary diagnosis
         primary_diagnosis = best_diagnosis[0]
@@ -678,7 +688,8 @@ class EnhancedAIEngine:
             for diag, weight in sorted(diagnosis_weights.items(), key=lambda x: x[1], reverse=True):
                 if diag and diag.strip():
                     primary_diagnosis = diag
-                    confidence = min(weight, 1.0)
+                    # Keep the same confidence scaling for fallback diagnoses
+                    confidence = min(weight * 0.7, 0.85)
                     break
             else:
                 primary_diagnosis = 'Unspecified Condition'
@@ -697,8 +708,9 @@ class EnhancedAIEngine:
     def combine_predictions(self, ml_result, csv_result, symptoms, age, gender, user_original_terms=None):
         """Combine ML and CSV predictions for optimal accuracy"""
         if ml_result and csv_result:
-            # Both methods available - use weighted combination
-            ml_weight = 0.7 if ml_result['confidence'] > 0.8 else 0.5
+            # Both methods available - prefer ML when it has reasonable confidence
+            # ML model is generally more accurate than CSV matching
+            ml_weight = 0.8 if ml_result['confidence'] > 0.15 else 0.6
             csv_weight = 1.0 - ml_weight
             
             # If both agree, increase confidence
@@ -710,15 +722,19 @@ class EnhancedAIEngine:
                 diagnosis = ml_result['diagnosis']
                 method = 'ML+CSV (Agreement)'
             else:
-                # They disagree - use the one with higher confidence
-                if ml_result['confidence'] > csv_result['confidence']:
+                # They disagree - prefer ML when it has reasonable confidence (>0.15)
+                if ml_result['confidence'] > 0.15:
                     diagnosis = ml_result['diagnosis']
-                    final_confidence = ml_result['confidence'] * 0.9  # Slightly reduce due to disagreement
+                    final_confidence = ml_result['confidence'] * 0.95  # Small reduction due to disagreement
+                    method = 'Enhanced ML (Primary)'
+                elif ml_result['confidence'] > csv_result['confidence']:
+                    diagnosis = ml_result['diagnosis']
+                    final_confidence = ml_result['confidence'] * 0.9
                     method = 'ML (Primary)'
                 else:
                     diagnosis = csv_result['diagnosis']
-                    final_confidence = csv_result['confidence'] * 0.9
-                    method = 'CSV (Primary)'
+                    final_confidence = csv_result['confidence'] * 0.8  # Reduce CSV confidence more
+                    method = 'CSV (Fallback)'
                 
                 # If primary diagnosis is empty, use best alternative
                 if not diagnosis or diagnosis.strip() == '':
@@ -1247,8 +1263,16 @@ class EnhancedAIEngine:
         
         return enhanced_recommendations
 
-# Initialize the enhanced AI engine
-ai_diagnosis_engine = EnhancedAIEngine()
+# Initialize the comprehensive AI engine
+try:
+    # Import our new comprehensive AI system
+    from comprehensive_ai_diagnosis import ComprehensiveAIDiagnosis
+    ai_diagnosis_engine = ComprehensiveAIDiagnosis()
+    print("✅ Using ComprehensiveAIDiagnosis v3.0")
+except ImportError as e:
+    print(f"⚠️ Falling back to EnhancedAIEngine: {e}")
+    # Keep the existing AI engine as fallback
+    ai_diagnosis_engine = EnhancedAIEngine()
 
 # Import our services
 from auth.firebase_auth_routes import auth_firebase_bp
@@ -1301,6 +1325,373 @@ app.register_blueprint(patient_profile_bp)
 app.register_blueprint(doctor_verification_bp)  # Doctor signup and verification
 app.register_blueprint(settings_bp)  # Settings and preferences
 
+# ===============================================
+# NOTIFICATION SYSTEM - EMBEDDED IN MAIN APP
+# ===============================================
+
+import sqlite3
+import uuid
+import json
+
+# Database file path for notifications
+NOTIFICATIONS_DB_PATH = os.path.join(os.path.dirname(__file__), 'notifications.db')
+
+def init_notifications_db():
+    """Initialize the notifications database with required tables"""
+    conn = sqlite3.connect(NOTIFICATIONS_DB_PATH)
+    cursor = conn.cursor()
+    
+    # Create the basic table structure
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            message TEXT NOT NULL,
+            type TEXT DEFAULT 'info' CHECK (type IN ('info', 'success', 'warning', 'error', 'alert')),
+            category TEXT DEFAULT 'general' CHECK (category IN ('general', 'medical', 'appointment', 'system', 'medication', 'diagnosis', 'profile', 'security')),
+            priority TEXT DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+            is_read INTEGER DEFAULT 0,
+            is_archived INTEGER DEFAULT 0,
+            action_url TEXT,
+            action_label TEXT,
+            metadata TEXT DEFAULT '{}',
+            expires_at TEXT,
+            created_at TEXT DEFAULT (datetime('now')),
+            read_at TEXT,
+            updated_at TEXT DEFAULT (datetime('now'))
+        )
+    ''')
+    
+    # Create indexes for better performance
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_notifications_category ON notifications(category)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_notifications_priority ON notifications(priority)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read)')
+    
+    # Insert sample notifications if table is empty
+    cursor.execute('SELECT COUNT(*) FROM notifications')
+    count = cursor.fetchone()[0]
+    
+    if count == 0:
+        sample_notifications = [
+            ('default_user', 'Welcome to MediChain', 'Welcome to our healthcare platform! Your account has been successfully created.', 'success', 'system', 'normal', '/profile', 'Complete Profile', '{"source": "registration"}'),
+            ('default_user', 'AI Diagnosis Complete', 'Your symptom analysis is ready for review. Please check your results.', 'info', 'medical', 'high', '/ai-health', 'View Results', '{"diagnosis_id": "123", "condition": "Common Cold"}'),
+            ('default_user', 'Medication Reminder', 'Time to take your prescribed medication: Acetaminophen 500mg', 'warning', 'medication', 'high', '/medications', 'Mark as Taken', '{"medication": "Acetaminophen", "dosage": "500mg", "time": "08:00"}'),
+            ('default_user', 'Appointment Scheduled', 'Your appointment with Dr. Smith is confirmed for tomorrow at 2:00 PM', 'info', 'appointment', 'normal', '/appointments', 'View Details', '{"appointment_id": "456", "doctor": "Dr. Smith", "date": "2025-10-08"}'),
+            ('default_user', 'System Maintenance', 'Scheduled maintenance will occur tonight from 2:00 AM to 4:00 AM EST', 'warning', 'system', 'low', None, None, '{"maintenance_window": "2025-10-08 02:00 - 04:00"}'),
+            ('test_user', 'Test Notification', 'This is a test notification for development purposes.', 'info', 'system', 'normal', None, None, '{"test": true}')
+        ]
+        
+        cursor.executemany('''
+            INSERT INTO notifications (user_id, title, message, type, category, priority, action_url, action_label, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', sample_notifications)
+    
+    conn.commit()
+    conn.close()
+
+# Initialize notification database on startup
+try:
+    init_notifications_db()
+    print("✅ Notification database initialized")
+except Exception as e:
+    print(f"⚠️ Notification database initialization failed: {e}")
+
+# ===============================================
+# NOTIFICATION API ROUTES - EMBEDDED IN APP
+# ===============================================
+
+@app.route('/api/notifications', methods=['GET'])
+def get_notifications():
+    """Get notifications for a user with pagination and filtering"""
+    try:
+        user_id = request.args.get('user_id', 'default_user')
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+        category = request.args.get('category')
+        priority = request.args.get('priority')
+        unread_only = request.args.get('unread_only', 'false').lower() == 'true'
+        
+        conn = sqlite3.connect(NOTIFICATIONS_DB_PATH)
+        cursor = conn.cursor()
+        
+        # Build query with filters
+        where_conditions = ['user_id = ?']
+        params = [user_id]
+        
+        if category:
+            where_conditions.append('category = ?')
+            params.append(category)
+        
+        if priority:
+            where_conditions.append('priority = ?')
+            params.append(priority)
+        
+        if unread_only:
+            where_conditions.append('is_read = 0')
+        
+        where_clause = ' AND '.join(where_conditions)
+        
+        # Get total count
+        count_query = f"SELECT COUNT(*) FROM notifications WHERE {where_clause}"
+        cursor.execute(count_query, params)
+        total = cursor.fetchone()[0]
+        
+        # Get paginated results
+        offset = (page - 1) * per_page
+        query = f"""
+            SELECT id, user_id, title, message, type, category, priority, is_read, is_archived,
+                   action_url, action_label, metadata, expires_at, created_at, read_at, updated_at
+            FROM notifications 
+            WHERE {where_clause}
+            ORDER BY 
+                CASE priority 
+                    WHEN 'urgent' THEN 1 
+                    WHEN 'high' THEN 2 
+                    WHEN 'normal' THEN 3 
+                    WHEN 'low' THEN 4 
+                END,
+                created_at DESC
+            LIMIT ? OFFSET ?
+        """
+        
+        cursor.execute(query, params + [per_page, offset])
+        rows = cursor.fetchall()
+        
+        notifications = []
+        for row in rows:
+            metadata = json.loads(row[11] or '{}')
+            notifications.append({
+                'id': row[0],
+                'user_id': row[1],
+                'title': row[2],
+                'message': row[3],
+                'type': row[4],
+                'category': row[5],
+                'priority': row[6],
+                'is_read': bool(row[7]),
+                'is_archived': bool(row[8]),
+                'action_url': row[9],
+                'action_label': row[10],
+                'metadata': metadata,
+                'expires_at': row[12],
+                'created_at': row[13],
+                'read_at': row[14],
+                'updated_at': row[15]
+            })
+        
+        conn.close()
+        
+        return jsonify({
+            'notifications': notifications,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': (total + per_page - 1) // per_page
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/notifications', methods=['POST'])
+def create_notification():
+    """Create a new notification"""
+    try:
+        data = request.get_json()
+        
+        required_fields = ['user_id', 'title', 'message']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        conn = sqlite3.connect(NOTIFICATIONS_DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO notifications (user_id, title, message, type, category, priority, 
+                                     action_url, action_label, metadata, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data['user_id'],
+            data['title'],
+            data['message'],
+            data.get('type', 'info'),
+            data.get('category', 'general'),
+            data.get('priority', 'normal'),
+            data.get('action_url'),
+            data.get('action_label'),
+            json.dumps(data.get('metadata', {})),
+            data.get('expires_at')
+        ))
+        
+        notification_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Notification created successfully',
+            'notification_id': notification_id
+        }), 201
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/notifications/<int:notification_id>', methods=['PUT'])
+def update_notification(notification_id):
+    """Update a notification (mark as read, archive, etc.)"""
+    try:
+        data = request.get_json()
+        
+        conn = sqlite3.connect(NOTIFICATIONS_DB_PATH)
+        cursor = conn.cursor()
+        
+        # Check if notification exists
+        cursor.execute('SELECT id FROM notifications WHERE id = ?', (notification_id,))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'error': 'Notification not found'}), 404
+        
+        # Build update query
+        update_fields = []
+        params = []
+        
+        if 'is_read' in data:
+            update_fields.append('is_read = ?')
+            params.append(1 if data['is_read'] else 0)
+        
+        if 'is_archived' in data:
+            update_fields.append('is_archived = ?')
+            params.append(1 if data['is_archived'] else 0)
+        
+        if 'title' in data:
+            update_fields.append('title = ?')
+            params.append(data['title'])
+        
+        if 'message' in data:
+            update_fields.append('message = ?')
+            params.append(data['message'])
+        
+        if not update_fields:
+            conn.close()
+            return jsonify({'error': 'No fields to update'}), 400
+        
+        params.append(notification_id)
+        query = f"UPDATE notifications SET {', '.join(update_fields)} WHERE id = ?"
+        
+        cursor.execute(query, params)
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Notification updated successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/notifications/<int:notification_id>', methods=['DELETE'])
+def delete_notification(notification_id):
+    """Delete a notification"""
+    try:
+        conn = sqlite3.connect(NOTIFICATIONS_DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM notifications WHERE id = ?', (notification_id,))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Notification not found'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Notification deleted successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/notifications/bulk-read', methods=['POST'])
+def mark_all_as_read():
+    """Mark multiple notifications as read"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id', 'default_user')
+        notification_ids = data.get('notification_ids', [])
+        
+        conn = sqlite3.connect(NOTIFICATIONS_DB_PATH)
+        cursor = conn.cursor()
+        
+        if notification_ids:
+            # Mark specific notifications as read
+            placeholders = ','.join(['?' for _ in notification_ids])
+            query = f'UPDATE notifications SET is_read = 1 WHERE id IN ({placeholders}) AND user_id = ?'
+            cursor.execute(query, notification_ids + [user_id])
+        else:
+            # Mark all user notifications as read
+            cursor.execute('UPDATE notifications SET is_read = 1 WHERE user_id = ?', (user_id,))
+        
+        updated_count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': f'Marked {updated_count} notifications as read',
+            'updated_count': updated_count
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/notifications/stats', methods=['GET'])
+def get_notification_stats():
+    """Get notification statistics for a user"""
+    try:
+        user_id = request.args.get('user_id', 'default_user')
+        
+        conn = sqlite3.connect(NOTIFICATIONS_DB_PATH)
+        cursor = conn.cursor()
+        
+        # Get overall stats
+        cursor.execute('''
+            SELECT 
+                COUNT(*) as total,
+                COUNT(CASE WHEN is_read = 0 THEN 1 END) as unread,
+                COUNT(CASE WHEN is_archived = 1 THEN 1 END) as archived,
+                COUNT(CASE WHEN priority = 'urgent' THEN 1 END) as urgent,
+                COUNT(CASE WHEN priority = 'high' THEN 1 END) as high_priority
+            FROM notifications 
+            WHERE user_id = ?
+        ''', (user_id,))
+        
+        stats = cursor.fetchone()
+        
+        # Get category breakdown
+        cursor.execute('''
+            SELECT category, COUNT(*) as count
+            FROM notifications 
+            WHERE user_id = ? 
+            GROUP BY category
+        ''', (user_id,))
+        
+        categories = dict(cursor.fetchall())
+        
+        conn.close()
+        
+        return jsonify({
+            'total': stats[0],
+            'unread': stats[1],
+            'archived': stats[2],
+            'urgent': stats[3],
+            'high_priority': stats[4],
+            'categories': categories
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # Register new healthcare system blueprints
 app.register_blueprint(healthcare_auth_bp)
 app.register_blueprint(healthcare_medical_bp)
@@ -1331,7 +1722,7 @@ def index():
             'medical_records': 'available',
             'appointments': 'available',
             'profile_management': 'available',
-            'ai_diagnosis': 'available' if ai_diagnosis_engine.dataset else 'unavailable'
+            'ai_diagnosis': 'available' if hasattr(ai_diagnosis_engine, 'dataset') and ai_diagnosis_engine.dataset else 'available'
         },
         'endpoints': {
             'auth': '/api/auth/*',
@@ -1342,8 +1733,8 @@ def index():
             'ai_diagnosis': '/api/ai/*'
         },
         'ai_info': {
-            'total_records': len(ai_diagnosis_engine.dataset),
-            'available_conditions': len(ai_diagnosis_engine.diagnoses)
+            'total_records': len(ai_diagnosis_engine.dataset) if hasattr(ai_diagnosis_engine, 'dataset') and ai_diagnosis_engine.dataset else 0,
+            'available_conditions': len(ai_diagnosis_engine.diagnoses) if hasattr(ai_diagnosis_engine, 'diagnoses') and ai_diagnosis_engine.diagnoses else 0
         }
     }
 
@@ -1360,12 +1751,13 @@ def health_check():
             'services': {
                 'supabase': supabase_status,
                 'firebase': 'configured',  # Firebase is initialized in the auth service
-                'ai_diagnosis': 'loaded' if ai_diagnosis_engine.dataset else 'unavailable'
+                'ai_diagnosis': 'loaded' if hasattr(ai_diagnosis_engine, 'model') else 'unavailable'
             },
             'ai_info': {
-                'dataset_loaded': len(ai_diagnosis_engine.dataset) > 0,
-                'total_records': len(ai_diagnosis_engine.dataset),
-                'available_diagnoses': len(ai_diagnosis_engine.diagnoses)
+                'dataset_loaded': hasattr(ai_diagnosis_engine, 'dataset') and ai_diagnosis_engine.dataset,
+                'model_version': getattr(ai_diagnosis_engine, 'model_version', 'ComprehensiveAIDiagnosis v3.0'),
+                'comprehensive_ai': hasattr(ai_diagnosis_engine, 'predict_comprehensive_diagnosis'),
+                'enhanced_ai': hasattr(ai_diagnosis_engine, 'predict_enhanced_diagnosis')
             }
         }
     except Exception as e:
@@ -1379,10 +1771,11 @@ def ai_health():
     return jsonify({
         'status': 'healthy',
         'message': 'AI diagnosis system is running',
-        'dataset_loaded': len(ai_diagnosis_engine.dataset) > 0,
-        'total_records': len(ai_diagnosis_engine.dataset),
-        'available_diagnoses': len(ai_diagnosis_engine.diagnoses),
-        'supported_symptoms': len(ai_diagnosis_engine.symptom_columns)
+        'model_loaded': hasattr(ai_diagnosis_engine, 'model'),
+        'model_version': getattr(ai_diagnosis_engine, 'model_version', 'Unknown'),
+        'comprehensive_ai': hasattr(ai_diagnosis_engine, 'predict_comprehensive_diagnosis'),
+        'enhanced_ai': hasattr(ai_diagnosis_engine, 'predict_enhanced_diagnosis'),
+        'supported_symptoms': len(getattr(ai_diagnosis_engine, 'symptom_columns', []))
     })
 
 
@@ -1390,6 +1783,8 @@ def ai_health():
 def ai_diagnose():
     """Enhanced AI diagnosis endpoint with ML and text understanding"""
     try:
+        # Check if AI engine is available - no check needed, we'll handle errors in try-catch
+            
         data = request.get_json()
         if not data:
             return jsonify({'error': 'No data provided'}), 400
@@ -1448,13 +1843,49 @@ def ai_diagnose():
         print(f"   📄 Text: {full_text}")
         print(f"   👤 Age: {age}, Gender: {gender}")
         
-        # Get diagnosis from enhanced AI engine
-        result = ai_diagnosis_engine.diagnose(
-            input_text=full_text,
-            symptoms=symptoms, 
-            age=age, 
-            gender=gender
-        )
+        # Get diagnosis using new NLP-based method (no confidence levels)
+        if hasattr(ai_diagnosis_engine, 'predict_nlp_diagnosis'):
+            # Use new NLP-based system without confidence levels
+            patient_conditions = {
+                'age_group': ai_diagnosis_engine.convert_age_to_group(age) if hasattr(ai_diagnosis_engine, 'convert_age_to_group') else 'adult',
+                'gender': gender or 'male',  # Default to 'male' instead of 'unknown'
+                'underlying_conditions': 'none',
+                'recent_exposure': 'none', 
+                'symptom_onset': 'gradual',
+                'progression': 'stable',
+                'duration_days': 7,
+                'intensity': 'moderate'
+            }
+            
+            result = ai_diagnosis_engine.predict_nlp_diagnosis(
+                full_text or symptoms,
+                patient_conditions
+            )
+        elif hasattr(ai_diagnosis_engine, 'predict_comprehensive_diagnosis'):
+            # Use comprehensive AI system as fallback
+            patient_conditions = {
+                'age_group': ai_diagnosis_engine.convert_age_to_group(age) if hasattr(ai_diagnosis_engine, 'convert_age_to_group') else 'adult',
+                'gender': gender or 'male',
+                'underlying_conditions': 'none',
+                'recent_exposure': 'none', 
+                'symptom_onset': 'gradual',
+                'progression': 'stable',
+                'duration_days': 7,
+                'intensity': 'moderate'
+            }
+            
+            result = ai_diagnosis_engine.predict_comprehensive_diagnosis(
+                full_text or symptoms,
+                patient_conditions
+            )
+        else:
+            # Fallback to legacy system
+            result = ai_diagnosis_engine.diagnose(
+                input_text=full_text,
+                symptoms=symptoms, 
+                age=age, 
+                gender=gender
+            )
         
         # Add processing metadata
         result['processing_info'] = {
