@@ -6,9 +6,11 @@ import notificationService from '../services/notificationService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import AIProgressBar from '../components/AIProgressBar';
 import { showToast } from '../components/CustomToast';
+import medichainLogo from '../assets/medichain_logo.png';
 import '../assets/styles/AIHealth_Modern.css';
 import '../assets/styles/AIHealth_Slides.css';
 import '../assets/styles/NewDiagnosisButton.css';
+import '../assets/styles/LandingPage.css';
 
 // Icons
 const HeartIcon = () => (
@@ -41,22 +43,16 @@ const ActivityIcon = () => (
   </svg>
 );
 
-// Chevron icons removed as they were not being used
-
-const LoginIcon = () => (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+const ArrowLeftIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
   </svg>
 );
 
-const UserPlusIcon = () => (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-  </svg>
-);
+// Unused icon components removed
 
 // Medical Analysis Slideshow Component
-const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, patientAge, patientGender, diagnosisResults }) => {
+const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, diagnosisResults }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   
@@ -69,8 +65,8 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
       const slideContent = {
         symptoms: '',
         conditions: '',
-        severity: '',
-        recommendations: ''
+        recommended_action: '',
+        medications: ''
       };
       
       // Extract content for each slide
@@ -79,28 +75,26 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
         slideContent.symptoms = symptomsMatch[1].trim();
       }
       
-      const conditionsMatch = response.match(/\*\*SLIDE_2_CONDITIONS\*\*(.*?)\*\*SLIDE_3_SEVERITY\*\*/s);
+      const conditionsMatch = response.match(/\*\*SLIDE_2_CONDITIONS\*\*(.*?)\*\*SLIDE_3_RECOMMENDED_ACTION\*\*/s);
       if (conditionsMatch) {
         slideContent.conditions = conditionsMatch[1].trim();
       }
       
-      const severityMatch = response.match(/\*\*SLIDE_3_SEVERITY\*\*(.*?)\*\*SLIDE_4_RECOMMENDATIONS\*\*/s);
-      if (severityMatch) {
-        slideContent.severity = severityMatch[1].trim();
+      const recommendedActionMatch = response.match(/\*\*SLIDE_3_RECOMMENDED_ACTION\*\*(.*?)\*\*SLIDE_4_MEDICATIONS\*\*/s);
+      if (recommendedActionMatch) {
+        slideContent.recommended_action = recommendedActionMatch[1].trim();
       }
       
-      const recommendationsMatch = response.match(/\*\*SLIDE_4_RECOMMENDATIONS\*\*(.*?)$/s);
-      if (recommendationsMatch) {
-        slideContent.recommendations = recommendationsMatch[1].trim();
+      const medicationsMatch = response.match(/\*\*SLIDE_4_MEDICATIONS\*\*(.*?)$/s);
+      if (medicationsMatch) {
+        slideContent.medications = medicationsMatch[1].trim();
       }
       
       // Create the 4 slides
       sections.push({
         type: 'symptoms',
         title: 'Symptoms Reported',
-        content: slideContent.symptoms || symptoms || 'No symptoms specified',
-        patientAge,
-        patientGender
+        content: slideContent.symptoms || symptoms || 'No symptoms specified'
       });
       
       sections.push({
@@ -112,28 +106,30 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
       
       // Debug: Log diagnosis data structure
       if (diagnosisResults) {
-        console.log('DiagnosisResults structure:', diagnosisResults);
+        console.log('🔍 DiagnosisResults structure:', diagnosisResults);
+        console.log('🔍 Detailed Results:', diagnosisResults.detailed_results);
+        console.log('🔍 Detailed Results Length:', diagnosisResults.detailed_results?.length);
       }
       
       sections.push({
-        type: 'severity',
-        title: 'Severity Assessment', 
-        content: slideContent.severity || 'Assessment pending...'
+        type: 'recommendations',
+        title: 'Recommended Action', 
+        content: slideContent.recommended_action || slideContent.severity || 'Action pending...',
+        diagnosisData: diagnosisResults || {}
       });
       
       sections.push({
-        type: 'recommendations',
-        title: 'Recommended Action',
-        content: slideContent.recommendations || 'Recommendations loading...'
+        type: 'medications',
+        title: 'Medication',
+        content: slideContent.medications || slideContent.recommendations || 'Medications loading...',
+        diagnosisData: diagnosisResults || {}
       });
     } else {
       // Fallback structure when no formatted response available - create all 4 slides
       sections.push({
         type: 'symptoms',
         title: 'Symptoms Reported',
-        content: symptoms || 'No symptoms specified',
-        patientAge,
-        patientGender
+        content: symptoms || 'No symptoms specified'
       });
       
       sections.push({
@@ -149,15 +145,17 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
       }
       
       sections.push({
-        type: 'severity',
-        title: 'Severity Assessment', 
-        content: 'Assessment available...'
+        type: 'recommendations',
+        title: 'Recommended Action', 
+        content: 'Action available...',
+        diagnosisData: diagnosisResults || {}
       });
       
       sections.push({
-        type: 'recommendations',
-        title: 'Recommended Action',
-        content: 'Recommendations available...'
+        type: 'medications',
+        title: 'Medication',
+        content: 'Medications available...',
+        diagnosisData: diagnosisResults || {}
       });
     }
 
@@ -215,17 +213,19 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
               }
             </div>
             <div className="patient-info">
-              <div className="patient-detail">
-                <span className="detail-label">Age:</span> {slide.patientAge || 'Not specified'}
-              </div>
-              <div className="patient-detail">
-                <span className="detail-label">Gender:</span> {slide.patientGender || 'Not specified'}
+              <div className="info-note">
+                AI Analysis based on reported symptoms only
               </div>
             </div>
           </div>
         );
 
       case 'conditions':
+        // Debug: Log slide data
+        console.log('🔍 Conditions slide data:', slide);
+        console.log('🔍 Slide diagnosisData:', slide.diagnosisData);
+        console.log('🔍 Detailed results available:', slide.diagnosisData?.detailed_results);
+        
         return (
           <div className="slide-content conditions-slide">
             <div className="slide-header">
@@ -233,80 +233,39 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
               <h2 className="slide-title">Possible Conditions</h2>
             </div>
             
-            {/* Primary Diagnosis */}
-            {slide.diagnosisData?.diagnosis && (
-              <div className="primary-condition">
-                <div className="condition-badge primary">
-                  <span className="condition-label">Primary Match</span>
-                </div>
-                <div className="condition-main">
-                  <h3 className="primary-diagnosis-name">{slide.diagnosisData.diagnosis}</h3>
-                  {slide.diagnosisData.reasoning && (
-                    <div className="diagnosis-reasoning">
-                      <span className="reasoning-label">Based on:</span>
-                      <p className="reasoning-text">{slide.diagnosisData.reasoning}</p>
+            {/* FORCE DISPLAY ALL 3 CONDITIONS FROM CSV */}
+            <div className="professional-predictions">
+              {slide.diagnosisData?.detailed_results?.length > 0 ? (
+                // ALWAYS show ALL detailed results (up to 3)
+                slide.diagnosisData.detailed_results.slice(0, 3).map((result, index) => (
+                  <div key={index} className={`professional-prediction-item ${index === 0 ? 'primary' : 'secondary'}`}>
+                    <div className={`professional-condition-header ${index === 0 ? 'primary' : 'alternative'}`}>
+                      <div className="condition-badge-inline">
+                        <span className="condition-rank">#{index + 1}</span>
+                        <span className="confidence-badge">{result.confidence}</span>
+                      </div>
+                      <h3 className="diagnosis-name">{result.condition}</h3>
                     </div>
-                  )}
-                  {slide.diagnosisData.matched_keywords && slide.diagnosisData.matched_keywords.length > 0 && (
-                    <div className="matched-keywords">
-                      <span className="keywords-label">Key indicators:</span>
-                      <div className="keywords-list">
-                        {slide.diagnosisData.matched_keywords.map((keyword, index) => (
-                          <span key={index} className="keyword-tag">{keyword}</span>
-                        ))}
+                    
+                    <div className="condition-details">
+                      <div className="reason-section">
+                        <p className="explanation-text">{result.reason}</p>
                       </div>
                     </div>
-                  )}
-                  {slide.diagnosisData.description && (
-                    <p className="diagnosis-description">{slide.diagnosisData.description}</p>
-                  )}
+                  </div>
+                ))
+              ) : (
+                // Debug display when no detailed_results
+                <div className="debug-info">
+                  <p>❌ No detailed_results found in diagnosisData</p>
+                  <p>Available data: {JSON.stringify(Object.keys(slide.diagnosisData || {}))}</p>
+                  <p>Primary condition: {slide.diagnosisData?.primary_condition}</p>
                 </div>
-              </div>
-            )}
-            
-            {/* Alternative Conditions */}
-            {slide.diagnosisData?.alternative_conditions && slide.diagnosisData.alternative_conditions.length > 0 && (
-              <div className="alternative-conditions">
-                <h4 className="alternatives-header">Other Possibilities:</h4>
-                <div className="alternatives-list">
-                  {slide.diagnosisData.alternative_conditions.map((condition, index) => (
-                    <div key={index} className="alternative-item">
-                      <div className="alternative-info">
-                        <span className="alternative-name">{condition.condition}</span>
-                        {condition.matched_keywords && condition.matched_keywords.length > 0 && (
-                          <div className="alt-keywords">
-                            <span className="alt-keywords-label">Matches:</span>
-                            <span className="alt-keywords-text">
-                              {condition.matched_keywords.join(', ')}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Detected Symptoms */}
-            {slide.diagnosisData?.detected_symptoms && (
-              <div className="detected-symptoms">
-                <h4 className="symptoms-header">Key Symptoms Identified:</h4>
-                <div className="symptoms-tags">
-                  {Object.entries(slide.diagnosisData.detected_symptoms)
-                    .filter(([_, value]) => value === 1)
-                    .map(([symptom, _], index) => (
-                      <span key={index} className="symptom-tag">
-                        {symptom.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </span>
-                    ))
-                  }
-                </div>
-              </div>
-            )}
+              )}
+            </div>
             
             {/* Fallback to text content if no structured data */}
-            {!slide.diagnosisData?.diagnosis && (
+            {!slide.diagnosisData?.detailed_results && !slide.diagnosisData?.primary_condition && (
               <div className="conditions-list">
                 {slide.content.split(/\d+\.\s+/).filter(section => section.trim()).map((condition, index) => {
                   const [title, ...descriptionParts] = condition.split('\n').filter(line => line.trim());
@@ -329,36 +288,135 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, pati
           </div>
         );
 
-      case 'severity':
-        return (
-          <div className="slide-content severity-slide">
-            <div className="slide-header">
-              <div className="slide-icon">🚦</div>
-              <h2 className="slide-title">Severity Assessment</h2>
-            </div>
-            <div className="severity-content">
-              {slide.content.split('\n').filter(line => line.trim()).map((point, index) => (
-                <div key={index} className="severity-point">
-                  {point.replace('•', '').trim()}
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
       case 'recommendations':
         return (
           <div className="slide-content recommendations-slide">
             <div className="slide-header">
-              <div className="slide-icon">✅</div>
+              <div className="slide-icon">�</div>
               <h2 className="slide-title">Recommended Action</h2>
             </div>
             <div className="recommendations-list">
-              {slide.content.split('\n').filter(line => line.trim()).map((recommendation, index) => (
-                <div key={index} className="recommendation-item">
-                  {recommendation.replace('•', '').trim()}
+              {/* Show combined recommended actions from all possible conditions */}
+              {slide.diagnosisData?.symptom_explanations && slide.diagnosisData.symptom_explanations.length > 0 ? (
+                slide.diagnosisData.symptom_explanations.map((explanation, index) => (
+                  explanation.recommended_action && (
+                    <div key={index} className="recommendation-item">
+                      <strong>{explanation.diagnosis}:</strong> {explanation.recommended_action}
+                    </div>
+                  )
+                ))
+              ) : (
+                slide.content.split('\n').filter(line => line.trim()).map((recommendation, index) => (
+                  <div key={index} className="recommendation-item">
+                    {recommendation.replace('•', '').trim()}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        );
+
+      case 'medications':
+        // Enhanced medications UI with creative design
+        const medicationsData = slide.diagnosisData?.medications_data || [];
+        
+        return (
+          <div className="slide-content medications-slide enhanced">
+            <div className="slide-header">
+              <div className="slide-icon">💊</div>
+              <h2 className="slide-title">Treatment & Medication</h2>
+              <p className="slide-subtitle">Based on your possible conditions</p>
+            </div>
+            
+            <div className="medications-grid">
+              {medicationsData.length > 0 ? (
+                medicationsData.map((medication, index) => (
+                  <div key={index} className="medication-card">
+                    <div className="card-header">
+                      <div className="condition-badge">
+                        <span className="condition-rank">#{medication.id}</span>
+                        <span className="condition-name">{medication.condition}</span>
+                      </div>
+                      <div className="confidence-indicator">
+                        <span className="confidence-text">{medication.confidence}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="medication-info">
+                      <div className="medicine-section">
+                        <div className="medicine-icon">🏥</div>
+                        <div className="medicine-details">
+                          <h4 className="medicine-name">{medication.medicine}</h4>
+                          <p className="medicine-description">{medication.description}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="dosage-grid">
+                        <div className="dosage-item adult">
+                          <div className="dosage-icon">👨‍⚕️</div>
+                          <div className="dosage-info">
+                            <span className="dosage-label">Adult Dose</span>
+                            <span className="dosage-value">{medication.adult_dose}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="dosage-item child">
+                          <div className="dosage-icon">👶</div>
+                          <div className="dosage-info">
+                            <span className="dosage-label">Child Dose</span>
+                            <span className="dosage-value">{medication.child_dose}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="dosage-item max">
+                          <div className="dosage-icon">⚠️</div>
+                          <div className="dosage-info">
+                            <span className="dosage-label">Max Daily</span>
+                            <span className="dosage-value">{medication.max_daily_dose}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {medication.notes && (
+                        <div className="medication-notes">
+                          <div className="notes-icon">📝</div>
+                          <p className="notes-text">{medication.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                // Fallback to text-based display
+                <div className="medications-fallback">
+                  {slide.content.split('\n').filter(line => line.trim()).map((medication, index) => {
+                    const cleanMedication = medication.replace('•', '').trim();
+                    if (cleanMedication.includes(':')) {
+                      const [name, dose] = cleanMedication.split(':');
+                      return (
+                        <div key={index} className="medication-item-simple">
+                          <div className="medication-name">{name.replace(/\*\*/g, '').trim()}</div>
+                          <div className="medication-dose">{dose.trim()}</div>
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div key={index} className="medication-item-simple">
+                          <div className="medication-name">{cleanMedication.replace(/\*\*/g, '')}</div>
+                        </div>
+                      );
+                    }
+                  })}
                 </div>
-              ))}
+              )}
+            </div>
+            
+            <div className="medication-disclaimer">
+              <div className="disclaimer-icon">⚕️</div>
+              <p className="disclaimer-text">
+                Always consult with a qualified healthcare provider before taking any medication. 
+                This is for informational purposes only.
+              </p>
             </div>
           </div>
         );
@@ -432,8 +490,7 @@ const AIHealth = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [symptoms, setSymptoms] = useState('');
-  const [patientAge, setPatientAge] = useState('');
-  const [patientGender, setPatientGender] = useState('');
+  // Age and gender removed - streamlined system v5.0
   const [diagnosis, setDiagnosis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -445,15 +502,10 @@ const AIHealth = () => {
   useEffect(() => {
     const checkAIStatus = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/ai/health');
-        if (response.ok) {
-          const data = await response.json();
-          // Check if AI system is actually healthy and loaded
-          if (data.status === 'healthy' && data.dataset_loaded) {
-            setAiStatus('connected');
-          } else {
-            setAiStatus('error');
-          }
+        const response = await aiService.checkHealth();
+        // Check if AI system is actually healthy and loaded
+        if (response.status === 'healthy' && response.ai_ready) {
+          setAiStatus('connected');
         } else {
           setAiStatus('error');
         }
@@ -477,15 +529,7 @@ const AIHealth = () => {
       return;
     }
 
-    if (!patientAge) {
-      showToast.error('Please select your age group');
-      return;
-    }
-
-    if (!patientGender) {
-      showToast.error('Please select your gender');
-      return;
-    }
+    // Age and gender validation removed - streamlined system v5.0
 
     setLoading(true);
     setError(null);
@@ -493,9 +537,7 @@ const AIHealth = () => {
 
     try {
       const result = await aiService.getDiagnosis({
-        symptoms: symptoms.trim(),
-        patientAge,
-        patientGender
+        symptoms: symptoms.trim()
       });
 
       if (result.success) {
@@ -504,28 +546,9 @@ const AIHealth = () => {
         setDiagnosisResults(result.data); // Store complete results for enhanced display
         showToast.success('Analysis completed successfully');
 
-        // Create notification for completed diagnosis
-        try {
-          await notificationService.createMedicalNotification(
-            user?.uid || 'default_user',
-            'AI Diagnosis Complete',
-            `Your symptom analysis is ready. Primary condition: ${result.data.diagnosis || 'Multiple conditions identified'}`,
-            {
-              type: 'success',
-              priority: 'medium',
-              action_url: '/ai-health',
-              action_label: 'View Results',
-              metadata: {
-                symptoms: symptoms.trim(),
-                diagnosis: result.data.diagnosis,
-                timestamp: new Date().toISOString()
-              }
-            }
-          );
-        } catch (notificationError) {
-          console.error('Failed to create notification:', notificationError);
-          // Don't fail the diagnosis if notification creation fails
-        }
+        // Notification creation temporarily disabled for streamlined system v5.0
+        // This prevents errors while the notification service is being updated
+        console.log('✅ Diagnosis completed successfully:', result.data.diagnosis);
       } else {
         throw new Error(result.error || 'Failed to get diagnosis');
       }
@@ -540,8 +563,7 @@ const AIHealth = () => {
 
   const handleNewDiagnosis = () => {
     setSymptoms('');
-    setPatientAge('');
-    setPatientGender('');
+    // Age and gender fields removed in v5.0
     setDiagnosis(null);
     setFormattedResponse('');
     setDiagnosisResults(null);
@@ -552,63 +574,21 @@ const AIHealth = () => {
     <div className="ai-health-page">
       {/* Header */}
       <header className="header">
-        <div className="logo-container">
-          <div className="logo-icon">
-            <HeartIcon />
-          </div>
-          <h1>AI Health Assistant</h1>
-        </div>
-        <div style={{ color: '#718096', fontSize: '16px' }}>Advanced Medical Analysis & Consultation</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ 
-              width: '8px', 
-              height: '8px', 
-              borderRadius: '50%', 
-              backgroundColor: aiStatus === 'connected' ? '#10b981' : '#ef4444' 
-            }}></div>
-            <span style={{ fontSize: '14px', color: '#4a5568' }}>
-              AI {aiStatus === 'connected' ? 'Online' : 'Offline'}
-            </span>
-          </div>
-          {!user && (
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                onClick={() => navigate('/login')} 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '4px', 
-                  padding: '6px 12px', 
-                  background: '#0288d1', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '6px', 
-                  fontSize: '14px' 
-                }}
-              >
-                <LoginIcon />
-                Login
-              </button>
-              <button 
-                onClick={() => navigate('/register')} 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '4px', 
-                  padding: '6px 12px', 
-                  background: '#10b981', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '6px', 
-                  fontSize: '14px' 
-                }}
-              >
-                <UserPlusIcon />
-                Register
-              </button>
+        <button 
+          className="back-button"
+          onClick={() => navigate(-1)}
+          title="Go Back"
+        >
+          <ArrowLeftIcon />
+        </button>
+        <div className="header-content">
+          <div className="logo-container">
+            <div className="logo-icon">
+              <img src={medichainLogo} alt="MediChain Logo" className="logo-image" />
             </div>
-          )}
+            <h1>AI Health Assistant</h1>
+          </div>
+          <div className="header-subtitle">Medical Analysis & Consultation</div>
         </div>
       </header>
 
@@ -641,42 +621,8 @@ const AIHealth = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="modern-form">
-              {/* Patient Information Row */}
-              <div className="form-row">
-                <div className="input-group">
-                  <label className="input-label">
-                    <UserIcon />
-                    Age Group
-                  </label>
-                  <select 
-                    className="modern-select" 
-                    value={patientAge} 
-                    onChange={(e) => setPatientAge(e.target.value)}
-                  >
-                    <option value="">Select age group</option>
-                    <option value="Child (2 - 17 years)">Child (2 - 17 years)</option>
-                    <option value="Adult (18 - 64 years)">Adult (18 - 64 years)</option>
-                    <option value="Senior (65+ years)">Senior (65+ years)</option>
-                  </select>
-                </div>
-                
-                <div className="input-group">
-                  <label className="input-label">
-                    <UserIcon />
-                    Gender
-                  </label>
-                  <select 
-                    className="modern-select" 
-                    value={patientGender} 
-                    onChange={(e) => setPatientGender(e.target.value)}
-                  >
-                    <option value="">Select gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
-                </div>
-              </div>
-
+              {/* Streamlined form - age/gender removed in v5.0 */}
+              
               {/* Symptoms Input */}
               <div className="input-group">
                 <label className="input-label">
@@ -695,7 +641,7 @@ const AIHealth = () => {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || !symptoms.trim() || !patientAge || !patientGender}
+                disabled={loading || !symptoms.trim()}
                 className="submit-button"
               >
                 {loading ? (
@@ -771,8 +717,6 @@ const AIHealth = () => {
                   formattedResponse={formattedResponse}
                   diagnosis={diagnosis}
                   symptoms={symptoms}
-                  patientAge={patientAge}
-                  patientGender={patientGender}
                   diagnosisResults={diagnosisResults}
                 />
                 <div className="results-footer">
@@ -802,7 +746,7 @@ const AIHealth = () => {
         <div className="system-info">
           <div className="system-info-item">
             <ActivityIcon />
-            AI Status: {aiStatus === 'connected' ? 'Online' : 'Checking...'}
+            AI Status: {aiStatus === 'connected' ? 'Online' : 'Offline'}
           </div>
           <div className="system-info-item">
             <SparklesIcon />
