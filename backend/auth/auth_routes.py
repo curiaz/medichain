@@ -74,7 +74,7 @@ def signup():
             return jsonify({"error": password_error}), 400
 
         # Check if user already exists
-        existing_user = supabase.client.table("users").select("*").eq("email", email).execute()
+        existing_user = supabase.client.table("user_profiles").select("*").eq("email", email).execute()
         if existing_user.data:
             return jsonify({"error": "Email already registered"}), 409
 
@@ -89,7 +89,7 @@ def signup():
             "role": role,
         }
 
-        response = supabase.client.table("users").insert(user_data).execute()
+        response = supabase.client.table("user_profiles").insert(user_data).execute()
 
         if response.data:
             user = response.data[0]
@@ -125,28 +125,39 @@ def login():
     """User login endpoint"""
     try:
         data = request.get_json()
+        print("[DEBUG] Login request data:", data)
 
         email = data.get("email", "").strip().lower()
         password = data.get("password", "")
+        print(f"[DEBUG] Email: {email}, Password: {'*' * len(password)}")
 
         if not email or not password:
+            print("[DEBUG] Missing email or password")
             return jsonify({"error": "Email and password are required"}), 400
 
         # Find user
-        response = supabase.client.table("users").select("*").eq("email", email).execute()
+        response = supabase.client.table("user_profiles").select("*").eq("email", email).execute()
+        print("[DEBUG] Supabase user query result:", response.data)
 
         if not response.data:
+            print("[DEBUG] No user found for email")
             return jsonify({"error": "Invalid email or password"}), 401
 
         user = response.data[0]
+        print(f"[DEBUG] User found: {user}")
+        print(f"[DEBUG] Password hash in DB: {user.get('password_hash')}")
 
         # Verify password
-        if not auth_utils.verify_password(password, user["password_hash"]):
+        password_check = auth_utils.verify_password(password, user["password_hash"])
+        print(f"[DEBUG] Password check result: {password_check}")
+        if not password_check:
+            print("[DEBUG] Password mismatch for user")
             return jsonify({"error": "Invalid email or password"}), 401
 
         # Generate token
         token = auth_utils.generate_token(user["id"], user["email"], user["role"])
 
+        print("[DEBUG] Login successful for user", user["email"])
         return (
             jsonify(
                 {
@@ -167,6 +178,7 @@ def login():
         )
 
     except Exception as e:
+        print(f"[DEBUG] Exception in login: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -178,7 +190,7 @@ def get_current_user():
         user_id = request.current_user["user_id"]
 
         response = (
-            supabase.client.table("users").select("id", "email", "full_name", "role", "created_at").eq("id", user_id).execute()
+            supabase.client.table("user_profiles").select("id", "email", "full_name", "role", "created_at").eq("id", user_id).execute()
         )
 
         if response.data:

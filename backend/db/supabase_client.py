@@ -46,24 +46,14 @@ class SupabaseClient:
             # Create client with anon key for regular operations
             self.client: Client = create_client(
                 self.supabase_url, 
-                self.supabase_key,
-                options={
-                    'rest': {'timeout': 30},
-                    'auth': {'timeout': 30},
-                    'realtime': {'timeout': 30}
-                }
+                self.supabase_key
             )
 
             # Create service client for admin operations (bypasses RLS)
             if self.supabase_service_key:
                 self.service_client: Client = create_client(
                     self.supabase_url, 
-                    self.supabase_service_key,
-                    options={
-                        'rest': {'timeout': 30},
-                        'auth': {'timeout': 30},
-                        'realtime': {'timeout': 30}
-                    }
+                    self.supabase_service_key
                 )
             else:
                 print("Warning: SUPABASE_SERVICE_KEY not found. Some operations may fail due to RLS.")
@@ -80,23 +70,13 @@ class SupabaseClient:
                 # Fallback: Create client with less strict SSL verification
                 self.client: Client = create_client(
                     self.supabase_url, 
-                    self.supabase_key,
-                    options={
-                        'rest': {'timeout': 60},
-                        'auth': {'timeout': 60},
-                        'realtime': {'timeout': 60}
-                    }
+                    self.supabase_key
                 )
                 
                 if self.supabase_service_key:
                     self.service_client: Client = create_client(
                         self.supabase_url, 
-                        self.supabase_service_key,
-                        options={
-                            'rest': {'timeout': 60},
-                            'auth': {'timeout': 60},
-                            'realtime': {'timeout': 60}
-                        }
+                        self.supabase_service_key
                     )
                 else:
                     self.service_client = self.client

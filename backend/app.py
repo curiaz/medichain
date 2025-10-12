@@ -216,6 +216,7 @@ class StreamlinedAIDiagnosis:
             'acid reflux': 'acid_reflux',
             'nasal congestion': 'nasal_congestion',
             'postnasal drip': 'postnasal_drip',
+            'post nasal drip': 'postnasal_drip',  # Added normalization for spaced version
             'labored breathing': 'labored_breathing',
             'loss of concentration': 'loss_of_concentration',
             'tight chest': 'tight_chest',
@@ -228,7 +229,9 @@ class StreamlinedAIDiagnosis:
             'ear discharge': 'ear_discharge',
             'skin peeling': 'skin_peeling',
             'scalp itchiness': 'scalp_itchiness',
-            'mood swings': 'mood_swings'
+            'mood swings': 'mood_swings',
+            'itchy scalp': 'scalp_itchiness',
+            'itching scalp': 'scalp_itchiness'
         }
         
         # Apply normalizations
@@ -532,10 +535,20 @@ class StreamlinedAIDiagnosis:
 # Initialize Flask app
 app = Flask(__name__)
 
-# Enable CORS for all routes
+# Register authentication blueprint
+from auth.auth_routes import auth_bp
+app.register_blueprint(auth_bp)
+
+# Enable CORS for all routes (allow all origins for development)
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],
+        "origins": [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+            "*"
+        ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"]
     }
