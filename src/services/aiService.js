@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// AI Diagnosis Service - connects to the integrated AI system in main backend
+// Streamlined AI Diagnosis Service - Version 5.0
 const AI_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const api = axios.create({
@@ -8,10 +8,9 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 60000, // 60 seconds timeout for AI processing
+  timeout: 60000,
 });
 
-// Add response interceptor for better error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -24,332 +23,186 @@ api.interceptors.response.use(
 );
 
 export const aiService = {
-  /**
-   * Get AI diagnosis based on symptoms
-   * @param {Object} diagnosisData - The diagnosis request data
-   * @returns {Promise<Object>} Diagnosis response
-   */
   getDiagnosis: async (diagnosisData) => {
     try {
-      const response = await api.post('/api/ai/diagnose', diagnosisData);
+      console.log('🩺 Sending diagnosis request:', diagnosisData);
       
-      // Transform the AI response to match frontend expectations
+      const requestData = {
+        symptoms: diagnosisData.symptoms
+      };
+      
+      const response = await api.post('/api/diagnose', requestData);
       const aiData = response.data;
       
-      // Check for error message in response
-      if (aiData.error) {
+      if (!aiData.success || aiData.error) {
         return {
           success: false,
-          error: aiData.error
+          error: aiData.error || 'AI diagnosis failed',
+          message: aiData.message || 'Unknown error occurred'
         };
       }
       
-      // Handle both normal diagnosis and unknown case responses
-      if (aiData.status === 'unknown_case') {
-        return {
-          success: true,
-          data: {
-            diagnosis: 'Professional Consultation Required',
-            confidence: 0,
-            severity: 'High',
-            urgency: 'immediate',
-            prescription: aiData.message,
-            recommendations: aiData.suggested_actions || [],
-            ai_model_version: 'MediChain-AI',
-            requires_consultation: true,
-            explanation: aiData.reasoning?.ai_limitation || 'This symptom combination requires professional medical evaluation.'
-          }
-        };
-      }
+      const diagnosis = aiData.data;
       
-      // Handle new formatted response (priority)
-      if (aiData.formatted_response) {
-        console.log("Handling new formatted response:", aiData);
-        
-        // Format diagnosis name (replace underscores with spaces and capitalize)
-        const rawDiagnosis = aiData.diagnosis || 'Medical Assessment';
-        const formattedDiagnosis = rawDiagnosis.replace(/_/g, ' ')
-          .split(' ')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-          .join(' ');
-        
-        return {
-          success: true,
-          data: {
-            diagnosis: formattedDiagnosis,
-            formatted_response: aiData.formatted_response, // Pass through the formatted response
-            alternative_diagnoses: aiData.alternative_diagnoses || [],
-            matched_symptoms: aiData.matched_symptoms || [],
-            method: aiData.method || 'Enhanced AI Analysis',
-            severity_level: aiData.severity_level || 'UNKNOWN',
-            processing_info: aiData.processing_info || {},
-            extracted_info: aiData.extracted_info || {},
-            ai_model_version: 'MediChain-AI',
-            timestamp: new Date().toISOString()
-          }
-        };
+      // Debug logging
+      console.log('🔍 AI Service Debug:', {
+        aiData: aiData,
+        diagnosis: diagnosis,
+        detected_symptoms: diagnosis.detected_symptoms,
+        detailed_results: diagnosis.detailed_results
+      });
+      
+      // SLIDE 1: Detected symptoms from user input
+      const symptomsText = diagnosis.detected_symptoms && diagnosis.detected_symptoms.length > 0 
+        ? diagnosis.detected_symptoms.join(', ')
+        : 'No specific symptoms detected';
+
+      // SLIDE 2: Top 3 conditions with reasons from condition_reason - Sheet1.csv
+      let conditionsText = '';
+      if (diagnosis.detailed_results && diagnosis.detailed_results.length > 0) {
+        conditionsText = diagnosis.detailed_results.map((result, index) => {
+          return `${index + 1}. ${result.condition} (${result.confidence})\n   Reason: ${result.reason}`;
+        }).join('\n\n');
+      } else {
+        conditionsText = `1. ${diagnosis.primary_condition} (${diagnosis.primary_confidence})\n   Reason: [No reason data available from CSV]`;
       }
 
-      // Handle direct diagnosis response from run_ai_server.py (fallback)
-      if (aiData.diagnosis || aiData.primary_diagnosis) {
-        console.log("Handling direct diagnosis format:", aiData);
-        
-        // Format diagnosis name (replace underscores with spaces and capitalize)
-        const rawDiagnosis = aiData.diagnosis || aiData.primary_diagnosis || 'Unknown';
-        const formattedDiagnosis = rawDiagnosis.replace(/_/g, ' ')
-          .split(' ')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-          .join(' ');
-        
-        // Extract confidence from either confidence field or confidence_percent
-        let confidence = 0;
-        if (aiData.confidence) {
-          confidence = Math.round(aiData.confidence * 100);
-        } else if (aiData.confidence_percent) {
-          confidence = parseFloat(aiData.confidence_percent.replace('%', ''));
-        }
-        
-        // Format medications from the API response
-        const medications = aiData.medications ? 
-          aiData.medications.map(med => `${med.name} - ${med.dosage} for ${med.duration} days`) :
-          ['Consult a doctor for proper medication'];
-        
-        // Create formatted response for display
-        const formattedResponse = {
-          primary_diagnosis: {
-            condition: formattedDiagnosis,
-            confidence: confidence,
-            severity: aiData.severity || 'Moderate'
-          },
-          top_diagnoses: aiData.top_3_predictions || [],
-          medications: medications,
-          description: aiData.diagnosis_description || `${formattedDiagnosis} - Consult healthcare provider for proper diagnosis and treatment.`,
-          recommendations: [aiData.recommended_action || 'Monitor symptoms and seek medical attention if condition worsens.'],
-          emergency_signs: aiData.emergency_signs || ['severe symptoms', 'worsening condition'],
-          follow_up_days: aiData.follow_up_days || 7,
-          active_symptoms: aiData.active_symptoms_count || 0,
-          detected_symptoms: aiData.detected_symptoms || {},
-          patient_info: aiData.patient_conditions || {},
-          model_version: aiData.model_version || 'MediChain-AI',
-          timestamp: aiData.timestamp || new Date().toISOString()
-        };
-
-        return {
-          success: true,
-          data: {
-            // Pass through original API fields for enhanced display
-            ...aiData,
-            
-            // Add formatted/legacy fields for backward compatibility
-            diagnosis: formattedDiagnosis,
-            formatted_response: formattedResponse,  // This is required for display
-            confidence: confidence,
-            top_predictions: aiData.top_predictions || [],
-            differential_diagnoses: aiData.top_3_predictions || aiData.top_predictions || [],
-            prescription: {
-              medications: medications,
-              treatments: [aiData.recommended_action || 'Rest and hydration'],
-              instructions: aiData.diagnosis_description || 'Follow up with healthcare provider for accurate treatment plan'
-            },
-            recommendations: aiData.emergency_signs || [
-              'Stay hydrated',
-              'Get adequate rest', 
-              'Monitor symptoms for changes',
-              'Contact a healthcare professional if symptoms worsen'
-            ],
-            ai_model_version: aiData.model_version || 'MediChain-AI',
-            urgency: 'normal'
-          }
-        };
+      // SLIDE 3: Recommended actions - condition name and action from action_medication CSV
+      let recommendedActionsText = '';
+      if (diagnosis.detailed_results && diagnosis.detailed_results.length > 0) {
+        recommendedActionsText = diagnosis.detailed_results.map((result, index) => {
+          return `${index + 1}. ${result.condition}:\n   ${result.recommended_action}`;
+        }).join('\n\n');
+      } else {
+        recommendedActionsText = `1. ${diagnosis.primary_condition}:\n   [No action data available from CSV]`;
       }
-      
-      // Handle structured response format
-      const analysis = aiData.analysis || {};
-      const primaryDiagnosis = analysis.primary_diagnosis || {};
-      const recommendations = aiData.recommendations || {};
-      
-      const transformedData = {
-        diagnosis: primaryDiagnosis.condition || aiData.diagnosis || 'Unknown',
-        confidence: Math.round((primaryDiagnosis.confidence || aiData.confidence || 0) * 100),
-        explanation: primaryDiagnosis.explanation || '',
-        prescription: {
-          medications: recommendations.medications || ['Based on your symptoms, consult a healthcare provider for appropriate medications'],
-          treatments: recommendations.treatments || ['Rest adequately', 'Stay hydrated'],
-          instructions: recommendations.lifestyle_advice?.join('; ') || 'Follow up with healthcare provider'
-        },
-        recommendations: recommendations.lifestyle_advice || [
-          'Monitor your symptoms',
-          'Contact a healthcare professional if symptoms worsen',
-          'Maintain good nutrition and hydration'
-        ],
-        warnings: recommendations.warnings || [],
-        differential_diagnoses: analysis.differential_diagnoses || aiData.top_3_predictions || [],
-        ai_model_version: 'MediChain-AI',
-        timestamp: aiData.timestamp || new Date().toISOString(),
-        medical_disclaimer: aiData.medical_disclaimer || 'This AI diagnosis is for informational purposes only and should not replace professional medical advice.',
-        severity: aiData.next_steps?.urgency_level || 'Moderate',
-        urgency: aiData.next_steps?.immediate_actions ? 'high' : 'normal'
-      };
-      
-      return {
-        success: true,
-        data: transformedData
-      };
-    } catch (error) {
-      console.error('AI Diagnosis Error:', error);
-      
-      if (error.isNetworkError) {
-        return {
-          success: false,
-          error: 'AI server is not available. Please ensure the AI diagnosis server is running on port 5000.',
-          isNetworkError: true
-        };
+
+      // SLIDE 4: Medications from action_medication CSV - Enhanced format for better UI
+      let medicationsData = [];
+      if (diagnosis.detailed_results && diagnosis.detailed_results.length > 0) {
+        medicationsData = diagnosis.detailed_results.map((result, index) => ({
+          id: index + 1,
+          condition: result.condition,
+          confidence: result.confidence,
+          medicine: result.medication_details?.medicine || result.medication || '[No medicine data in CSV]',
+          adult_dose: result.medication_details?.adult_dose || '[No adult dose data in CSV]',
+          child_dose: result.medication_details?.child_dose || '[No child dose data in CSV]',
+          max_daily_dose: result.medication_details?.max_daily_dose || '[No max dose data in CSV]',
+          description: result.medication_details?.description || '[No description data in CSV]',
+          notes: result.medication_details?.notes || result.notes || '[No notes data in CSV]'
+        }));
+      } else {
+        medicationsData = [{
+          id: 1,
+          condition: diagnosis.primary_condition,
+          confidence: diagnosis.primary_confidence,
+          medicine: '[No medicine data in CSV]',
+          adult_dose: '[No adult dose data in CSV]',
+          child_dose: '[No child dose data in CSV]',
+          max_daily_dose: '[No max dose data in CSV]',
+          description: '[No description data in CSV]',
+          notes: '[No notes data in CSV]'
+        }];
       }
-      
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Failed to get AI diagnosis',
-        details: error.response?.data
-      };
-    }
-  },
 
-  /**
-   * Provide feedback on a diagnosis
-   * @param {Object} feedbackData - The feedback data
-   * @returns {Promise<Object>} Feedback response
-   */
-  provideFeedback: async (feedbackData) => {
-    try {
-      const response = await api.post('/api/ai/submit-feedback', feedbackData);
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error) {
-      console.error('AI Feedback Error:', error);
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Failed to submit feedback'
-      };
-    }
-  },
+      // Convert medications to text format for legacy support
+      const medicationsText = medicationsData.map((med) => {
+        return `${med.id}. ${med.condition}:\n   Medicine: ${med.medicine}\n   Adult Dose: ${med.adult_dose}\n   Child Dose: ${med.child_dose}\n   Max Daily: ${med.max_daily_dose}\n   Notes: ${med.notes}`;
+      }).join('\n\n');
 
-  /**
-   * Get model information and statistics
-   * @returns {Promise<Object>} Model info response
-   */
-  getModelInfo: async () => {
-    try {
-      const response = await api.get('/api/ai/learning-stats');
-      const data = response.data;
-      
-      // Transform the response to match frontend expectations
-      const modelInfo = data.model_info || {};
-      
-      return {
+      // Create formatted response string with slide markers expected by slideshow
+      const formatted_response = `**SLIDE_1_SYMPTOMS**
+${symptomsText}
+
+**SLIDE_2_CONDITIONS**
+${conditionsText}
+
+**SLIDE_3_RECOMMENDED_ACTION**
+${recommendedActionsText}
+
+**SLIDE_4_MEDICATIONS**
+${medicationsText}`;
+
+      const transformedResponse = {
         success: true,
         data: {
-          version: modelInfo.name || 'MediChain-AI',
-          accuracy: modelInfo.accuracy || '87.5',
-          training_samples: modelInfo.total_features || 'N/A',
-          last_updated: modelInfo.last_trained || 'Unknown',
-          supported_conditions: modelInfo.supported_conditions || 'N/A'
+          diagnosis: diagnosis.primary_condition,
+          confidence: parseFloat(diagnosis.primary_confidence.replace('%', '')),
+          formatted_response: formatted_response,
+          medications_data: medicationsData, // Enhanced data for slide 4 UI
+          detected_symptoms: diagnosis.detected_symptoms,
+          detailed_results: diagnosis.detailed_results, // ✅ CRITICAL: Include detailed_results for slide 2
+          prescription: {
+            medications: diagnosis.detailed_results[0]?.medicine ? [diagnosis.detailed_results[0].medicine] : ['[No medicine data in CSV]'],
+            treatments: diagnosis.detailed_results[0]?.recommended_action ? [diagnosis.detailed_results[0].recommended_action] : ['[No treatment data in CSV]'],
+            instructions: diagnosis.detailed_results[0]?.notes || '[No instructions data in CSV]'
+          },
+          recommendations: [
+            diagnosis.detailed_results[0]?.recommended_action || '[No recommendations data in CSV]',
+            '[All data should come from CSV files only]',
+            '[Follow CSV recommendations only]'
+          ],
+          ai_model_version: diagnosis.model_version,
+          timestamp: diagnosis.timestamp,
+          medical_disclaimer: diagnosis.disclaimer
         }
       };
+      
+      return transformedResponse;
+      
     } catch (error) {
-      console.error('AI Model Info Error:', error);
+      console.error('❌ AI diagnosis error:', error);
+      
+      if (error.isNetworkError) {
+        return {
+          success: false,
+          error: 'Network Error',
+          message: 'AI server is not running. Please ensure the backend is started.'
+        };
+      }
+      
+      if (error.response) {
+        const errorData = error.response.data;
+        return {
+          success: false,
+          error: errorData.error || 'API Error',
+          message: errorData.message || 'Request failed'
+        };
+      }
+      
       return {
         success: false,
-        error: error.response?.data?.error || 'Failed to get model information'
+        error: 'Unexpected Error',
+        message: error.message || 'An unexpected error occurred'
       };
     }
   },
 
-  /**
-   * Health check for the AI service
-   * @returns {Promise<Object>} Health status
-   */
-  healthCheck: async () => {
+  checkHealth: async () => {
     try {
-      const response = await api.get('/api/ai/health');
-      // Backend returns status: 'healthy' when AI system is ready
-      const isHealthy = response.data.status === 'healthy' && response.data.dataset_loaded;
-      return {
-        success: true,
-        data: response.data,
-        status: isHealthy ? 'ready' : 'error'
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: 'AI service unavailable',
-        status: 'error'
-      };
-    }
-  },
-
-  /**
-   * Start a conversational AI diagnosis session
-   * @param {Object} data - Initial symptoms data
-   * @returns {Promise<Object>} Conversation response
-   */
-  startConversation: async (data) => {
-    try {
-      const response = await axios.post('http://localhost:5000/api/ai/start-conversation', data);
+      const response = await api.get('/health');
       return response.data;
     } catch (error) {
-      console.error('Error starting conversation:', error);
-      if (error.isNetworkError) {
-        throw new Error('AI server is not running. Please start the AI service.');
-      }
-      throw new Error(error.response?.data?.error || 'Failed to start conversation');
+      console.error('❌ Health check error:', error);
+      return {
+        status: 'unhealthy',
+        ai_ready: false,
+        error: error.message
+      };
     }
   },
 
-  /**
-   * Continue the conversational AI diagnosis
-   * @param {Object} data - User response data
-   * @returns {Promise<Object>} Conversation response
-   */
-  continueConversation: async (data) => {
-    try {
-      const response = await axios.post('http://localhost:5000/api/ai/continue-conversation', data);
-      return response.data;
-    } catch (error) {
-      console.error('Error continuing conversation:', error);
-      if (error.isNetworkError) {
-        throw new Error('AI server is not running. Please start the AI service.');
-      }
-      throw new Error(error.response?.data?.error || 'Failed to continue conversation');
-    }
-  },
-
-  // Wrapper methods to match AIAssistant.jsx expectations
-  /**
-   * Wrapper for getDiagnosis - matches AIAssistant.jsx call
-   * @param {Object} diagnosisData - The diagnosis request data
-   * @returns {Promise<Object>} Diagnosis response
-   */
+  // Legacy method names for backward compatibility
   diagnose: async (diagnosisData) => {
     return await aiService.getDiagnosis(diagnosisData);
   },
 
-  /**
-   * Wrapper for healthCheck - matches AIAssistant.jsx call
-   * @returns {Promise<Object>} Health status
-   */
   checkStatus: async () => {
-    return await aiService.healthCheck();
+    return await aiService.checkHealth();
   },
 
-  /**
-   * Wrapper for provideFeedback - matches AIAssistant.jsx call
-   * @param {Object} feedbackData - The feedback data
-   * @returns {Promise<Object>} Feedback response
-   */
-  submitFeedback: async (feedbackData) => {
-    return await aiService.provideFeedback(feedbackData);
+  healthCheck: async () => {
+    return await aiService.checkHealth();
   }
 };
 

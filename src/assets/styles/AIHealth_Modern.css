@@ -104,10 +104,55 @@
 .ai-health-page .header {
   background: white !important;
   padding: 20px 0;
-  text-align: center;
   border-bottom: 1px solid #e0e0e0;
   z-index: 10;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-health-page .header-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.ai-health-page .header-subtitle {
+  color: #718096;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.ai-health-page .back-button {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 10px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0288d1;
+  transition: all 0.3s ease;
+  z-index: 20;
+}
+
+.ai-health-page .back-button:hover {
+  background: rgba(2, 136, 209, 0.1);
+  color: #0277bd;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.ai-health-page .back-button svg {
+  width: 20px;
+  height: 20px;
 }
 
 .ai-health-page .logo-container {
@@ -121,7 +166,7 @@
   width: 40px;
   height: 40px;
   background: linear-gradient(135deg, #0288d1, #0277bd);
-  border-radius: 50%;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -134,7 +179,7 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 50%;
+  border-radius: 12px;
 }
 
 .ai-health-page .logo-container h1 {
