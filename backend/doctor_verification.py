@@ -763,3 +763,144 @@ def decline_doctor():
     except Exception as e:
         print(f"Decline doctor error: {str(e)}")
         return "Error processing decline", 500
+
+
+@doctor_verification_bp.route("/doctor-verification-submit", methods=["POST", "OPTIONS"])
+def submit_doctor_verification():
+    """Submit doctor verification for an existing user (after email verification)"""
+    
+    # Handle OPTIONS request for CORS
+    if request.method == "OPTIONS":
+        return jsonify({"status": "OK"}), 200
+    
+    try:
+        print(f"Doctor verification submit - Method: {request.method}")
+        print(f"Form data keys: {list(request.form.keys())}")
+        print(f"Files: {list(request.files.keys())}")
+        
+        # Get form data
+        email = request.form.get("email")
+        firebase_uid = request.form.get("firebase_uid")
+        specialization = request.form.get("specialization")
+
+        print(f"Doctor verification data: {email}, firebase_uid={firebase_uid}, specialization={specialization}")
+
+        # Validate required fields
+        if not all([email, firebase_uid, specialization]):
+            missing_fields = []
+            if not email: missing_fields.append('email')
+            if not firebase_uid: missing_fields.append('firebase_uid')
+            if not specialization: missing_fields.append('specialization')
+            return jsonify({"success": False, "error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
+
+        # Check for verification file
+        if "verificationFile" not in request.files:
+            return (
+                jsonify({"success": False, "error": "Verification document is required"}),
+                400,
+            )
+
+        file = request.files["verificationFile"]
+        if file.filename == "":
+            return (
+                jsonify({"success": False, "error": "No verification document selected"}),
+                400,
+            )
+
+        if not allowed_file(file.filename):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Invalid file type. Please upload PDF, JPG, or PNG",
+                    }
+                ),
+                400,
+            )
+
+        # Check if user exists
+        user_check = supabase.service_client.table("user_profiles").select("*").eq("firebase_uid", firebase_uid).execute()
+        if not user_check.data:
+            return jsonify({"success": False, "error": "User not found"}), 404
+        
+        user = user_check.data[0]
+        first_name = user.get("first_name", "")
+        last_name = user.get("last_name", "")
+
+        # Generate unique identifiers
+        doctor_id = str(uuid.uuid4())
+        verification_token = generate_verification_token()
+
+        # Save verification file
+        filename = secure_filename(file.filename)
+        file_extension = filename.rsplit(".", 1)[1].lower()
+        unique_filename = f"{doctor_id}_verification.{file_extension}"
+        file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+        file.save(file_path)
+
+        # Update user_profile to set verification_status to pending
+        supabase.service_client.table("user_profiles").update({
+            "verification_status": "pending"
+        }).eq("firebase_uid", firebase_uid).execute()
+
+        # Create doctor_profile entry
+        doctor_profile_data = {
+            "firebase_uid": firebase_uid,
+            "doctor_id": doctor_id,
+            "specialization": specialization,
+            "verification_token": verification_token,
+            "verification_file_path": file_path,
+            "verification_status": "pending",
+            "token_expires_at": (datetime.utcnow() + timedelta(hours=24)).isoformat(),
+            "created_at": datetime.utcnow().isoformat(),
+        }
+
+        doctor_response = supabase.service_client.table("doctor_profiles").insert(doctor_profile_data).execute()
+
+        if not doctor_response.data:
+            # Clean up file
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            return (
+                jsonify({"success": False, "error": "Failed to save doctor profile"}),
+                500,
+            )
+
+        # Send notification email to admin
+        doctor_data = {
+            "firstName": first_name,
+            "lastName": last_name,
+            "email": email,
+            "specialization": specialization,
+        }
+
+        email_sent = send_admin_notification_email(doctor_data, file_path, doctor_id, verification_token)
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "message": (
+                        "Doctor verification request submitted successfully! You will receive an "
+                        "email notification once your account is reviewed."
+                    ),
+                    "doctor_id": doctor_id,
+                    "email_sent": email_sent,
+                }
+            ),
+            201,
+        )
+
+    except Exception as e:
+        print(f"Doctor verification submit error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": f"Failed to submit verification: {str(e)}",
+                }
+            ),
+            500,
+        )
