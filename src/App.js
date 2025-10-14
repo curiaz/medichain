@@ -16,7 +16,8 @@ import Notifications from './pages/Notifications'; // Notifications page
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
-// Placeholder components for development
+// Import Settings Page
+import SettingsPage from './pages/SettingsPage';
 
 function App() {
   return (
@@ -95,11 +96,7 @@ function App() {
             
             <Route 
               path="/settings" 
-              element={
-                <ProtectedRoute>
-                  <SettingsPage />
-                </ProtectedRoute>
-              } 
+              element={<SettingsPage />} 
             />
             
             {/* Redirect any unknown routes to landing page */}

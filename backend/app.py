@@ -541,6 +541,22 @@ CORS(app, resources={
     }
 })
 
+# Register authentication blueprint
+try:
+    from auth.firebase_auth_routes import auth_firebase_bp
+    app.register_blueprint(auth_firebase_bp, url_prefix='/api/auth')
+    print("✅ Authentication routes registered")
+except Exception as e:
+    print(f"⚠️  Warning: Could not register auth routes: {e}")
+
+# Register settings blueprint
+try:
+    from settings_routes import settings_bp
+    app.register_blueprint(settings_bp)
+    print("✅ Settings routes registered")
+except Exception as e:
+    print(f"⚠️  Warning: Could not register settings routes: {e}")
+
 # Initialize AI system
 print("🚀 Starting Streamlined MediChain API v5.0...")
 print("=" * 60)

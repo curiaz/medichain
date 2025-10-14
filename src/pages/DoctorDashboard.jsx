@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 import Header from "./Header"
-import { Users, Activity, AlertCircle, Brain, Stethoscope, RefreshCw, FileText, Calendar } from "lucide-react"
+import { Users, Activity, AlertCircle, Brain, Stethoscope, RefreshCw, FileText, Calendar, Settings } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"
@@ -57,6 +57,10 @@ const DoctorDashboard = () => {
 
   const handlePatientList = () => {
     navigate('/patients')
+  }
+
+  const handleSettings = () => {
+    navigate('/settings')
   }
   
   return (
@@ -328,6 +332,10 @@ const DoctorDashboard = () => {
                     <div className="user-detail">Loading doctor information...</div>
                   </div>
                 )}
+                <button className="settings-btn" onClick={handleSettings} style={{ marginTop: '1rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: '#fff', border: 'none', borderRadius: '0.75rem', cursor: 'pointer', fontWeight: '600', transition: 'all 0.3s ease' }}>
+                  <Settings size={16} />
+                  Account Settings
+                </button>
               </div>
             </div>
           </div>

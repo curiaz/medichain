@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -7,19 +7,18 @@ import {
   Calendar, Activity, Save, ArrowLeft, Power
 } from 'lucide-react';
 import Header from './Header';
+import settingsService from '../services/settingsService';
 import './SettingsPage.css';
 
 export const SettingsPage = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   
-  // State management
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
-  // Notification Preferences State
   const [notifications, setNotifications] = useState({
     email_notifications: true,
     sms_notifications: false,
@@ -27,7 +26,6 @@ export const SettingsPage = () => {
     diagnosis_alerts: true
   });
   
-  // Password Change State
   const [passwordData, setPasswordData] = useState({
     current_password: '',
     new_password: '',
@@ -40,27 +38,27 @@ export const SettingsPage = () => {
     confirm: false
   });
   
-  // Danger Zone State
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
-    // Load saved preferences from localStorage
-    const savedPreferences = localStorage.getItem('notification_preferences');
-    if (savedPreferences) {
+    const loadPreferences = async () => {
       try {
-        setNotifications(JSON.parse(savedPreferences));
+        const result = await settingsService.getNotificationPreferences();
+        if (result.success && result.data.preferences) {
+          setNotifications(result.data.preferences);
+        }
       } catch (err) {
-        console.error('Error loading saved preferences:', err);
+        console.error('Error loading notification preferences:', err);
+        setError('Failed to load notification preferences');
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+    
+    loadPreferences();
   }, []);
-
-  // =============================================================================
-  // NOTIFICATION PREFERENCES
-  // =============================================================================
 
   const handleNotificationToggle = (field) => {
     setNotifications(prev => ({
@@ -69,17 +67,20 @@ export const SettingsPage = () => {
     }));
   };
 
-  const handleSaveNotifications = () => {
+  const handleSaveNotifications = async () => {
     try {
       setSaving(true);
       setError('');
       setSuccess('');
       
-      // Save to localStorage
-      localStorage.setItem('notification_preferences', JSON.stringify(notifications));
+      const result = await settingsService.updateNotificationPreferences(notifications);
       
-      setSuccess('Notification preferences saved successfully!');
-      setTimeout(() => setSuccess(''), 3000);
+      if (result.success) {
+        setSuccess('Notification preferences saved successfully!');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(result.error || 'Failed to save notification preferences');
+      }
     } catch (err) {
       console.error('Error saving notification preferences:', err);
       setError('Failed to save notification preferences');
@@ -87,10 +88,6 @@ export const SettingsPage = () => {
       setSaving(false);
     }
   };
-
-  // =============================================================================
-  // PASSWORD MANAGEMENT
-  // =============================================================================
 
   const handlePasswordChange = (field, value) => {
     setPasswordData(prev => ({
@@ -114,7 +111,7 @@ export const SettingsPage = () => {
     return true;
   };
 
-  const handleChangePassword = (e) => {
+  const handleChangePassword = async (e) => {
     e.preventDefault();
     
     if (!validatePasswordMatch()) {
@@ -126,21 +123,19 @@ export const SettingsPage = () => {
       setError('');
       setSuccess('');
       
-      // Validate password strength
-      if (passwordData.new_password.length < 8) {
-        setError('Password must be at least 8 characters long');
-        setSaving(false);
-        return;
-      }
+      const result = await settingsService.changePassword(passwordData);
       
-      // Simulate password change success
-      setSuccess('Password changed successfully!');
-      setPasswordData({
-        current_password: '',
-        new_password: '',
-        confirm_password: ''
-      });
-      setTimeout(() => setSuccess(''), 3000);
+      if (result.success) {
+        setSuccess('Password changed successfully!');
+        setPasswordData({
+          current_password: '',
+          new_password: '',
+          confirm_password: ''
+        });
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(result.error || 'Failed to change password');
+      }
     } catch (err) {
       console.error('Error changing password:', err);
       setError('Failed to change password');
@@ -149,11 +144,7 @@ export const SettingsPage = () => {
     }
   };
 
-  // =============================================================================
-  // ACCOUNT MANAGEMENT
-  // =============================================================================
-
-  const handleDeactivateAccount = () => {
+  const handleDeactivateAccount = async () => {
     if (!confirmPassword) {
       setError('Please enter your password to confirm');
       return;
@@ -163,22 +154,29 @@ export const SettingsPage = () => {
       setSaving(true);
       setError('');
       
-      setSuccess('Account deactivated successfully. Logging out...');
-      setTimeout(() => {
-        logout();
-        navigate('/login');
-      }, 2000);
+      const result = await settingsService.deactivateAccount(confirmPassword);
+      
+      if (result.success) {
+        setSuccess('Account deactivated successfully. Logging out...');
+        setTimeout(() => {
+          logout();
+          navigate('/login');
+        }, 2000);
+      } else {
+        setError(result.error || 'Failed to deactivate account');
+        setSaving(false);
+      }
     } catch (err) {
       console.error('Error deactivating account:', err);
       setError('Failed to deactivate account');
-    } finally {
       setSaving(false);
+    } finally {
       setShowDeactivateModal(false);
       setConfirmPassword('');
     }
   };
 
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     if (!confirmPassword) {
       setError('Please enter your password to confirm');
       return;
@@ -188,24 +186,28 @@ export const SettingsPage = () => {
       setSaving(true);
       setError('');
       
-      setSuccess('Account deletion initiated. Logging out...');
-      setTimeout(() => {
-        logout();
-        navigate('/login');
-      }, 2000);
+      const result = await settingsService.deleteAccount(confirmPassword);
+      
+      if (result.success) {
+        const message = result.data.message || 'Account deletion scheduled. You will receive a confirmation email.';
+        setSuccess(message);
+        setTimeout(() => {
+          logout();
+          navigate('/login');
+        }, 3000);
+      } else {
+        setError(result.error || 'Failed to delete account');
+        setSaving(false);
+      }
     } catch (err) {
       console.error('Error deleting account:', err);
       setError('Failed to delete account');
-    } finally {
       setSaving(false);
+    } finally {
       setShowDeleteModal(false);
       setConfirmPassword('');
     }
   };
-
-  // =============================================================================
-  // RENDER
-  // =============================================================================
 
   if (loading) {
     return (
@@ -234,7 +236,6 @@ export const SettingsPage = () => {
           <p className="settings-subtitle">Manage your account preferences and security</p>
         </div>
 
-        {/* Error/Success Messages */}
         {error && (
           <div className="alert alert-error">
             <AlertCircle size={20} />
@@ -249,7 +250,6 @@ export const SettingsPage = () => {
           </div>
         )}
 
-        {/* Notification Preferences Section */}
         <div className="settings-card">
           <div className="settings-card-header">
             <Bell size={24} />
@@ -339,7 +339,6 @@ export const SettingsPage = () => {
           </div>
         </div>
 
-        {/* Security & Password Section */}
         <div className="settings-card">
           <div className="settings-card-header">
             <Lock size={24} />
@@ -419,7 +418,6 @@ export const SettingsPage = () => {
           </div>
         </div>
 
-        {/* Danger Zone Section */}
         <div className="settings-card danger-zone">
           <div className="settings-card-header">
             <Shield size={24} />
@@ -451,7 +449,6 @@ export const SettingsPage = () => {
           </div>
         </div>
 
-        {/* Deactivate Account Modal */}
         {showDeactivateModal && (
           <div className="modal-overlay">
             <div className="modal">
@@ -485,7 +482,6 @@ export const SettingsPage = () => {
           </div>
         )}
 
-        {/* Delete Account Modal */}
         {showDeleteModal && (
           <div className="modal-overlay">
             <div className="modal">

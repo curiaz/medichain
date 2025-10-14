@@ -17,7 +17,11 @@ auth_firebase_bp = Blueprint("auth_firebase", __name__, url_prefix="/api/auth")
 # Initialize Supabase client with error handling
 try:
     supabase = SupabaseClient()
-    print("✅ Supabase client initialized for Firebase auth routes")
+    if supabase and hasattr(supabase, 'service_client') and supabase.service_client:
+        print("✅ Supabase client initialized for Firebase auth routes")
+    else:
+        print("⚠️  Warning: Supabase client created but service_client not available")
+        supabase = None
 except Exception as e:
     print(f"⚠️  Warning: Supabase client initialization failed in Firebase auth routes: {e}")
     supabase = None
@@ -328,6 +332,12 @@ def delete_user(user_id):
 def login():
     """Login with Firebase ID token"""
     print("🔍 LOGIN ENDPOINT CALLED")
+    
+    # Check if Supabase client is available
+    if not supabase or not hasattr(supabase, 'service_client'):
+        print("❌ Login: Supabase client not available")
+        return jsonify({"success": False, "error": "Database connection not available"}), 503
+    
     try:
         data = request.get_json()
         print(f"📥 Login received data keys: {list(data.keys()) if data else 'None'}")

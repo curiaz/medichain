@@ -57,7 +57,7 @@ const Header = () => {
 
         {/* Right: Action Buttons */}
         <div className="header-right">
-          <button className="icon-button" title="Settings">
+          <button className="icon-button" title="Settings" onClick={handleSettingsClick}>
             <Settings size={20} />
           </button>
           <button className="icon-button" title="Profile" onClick={handleProfileClick}>

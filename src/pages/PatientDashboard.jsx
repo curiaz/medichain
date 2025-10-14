@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 import Header from "./Header"
-import { Plus, Activity, Brain, FileText, Calendar, User, RefreshCw } from "lucide-react"
+import { Plus, Activity, Brain, FileText, Calendar, User, RefreshCw, Settings } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"
@@ -65,6 +65,16 @@ const PatientDashboard = () => {
 
   const handleNewAppointment = () => {
     toast.info("Appointment booking feature coming soon!")
+  }
+
+  const handleSettings = () => {
+    console.log('Settings button clicked - navigating to /settings');
+    try {
+      navigate('/settings');
+      console.log('Navigation to /settings initiated');
+    } catch (error) {
+      console.error('Navigation error:', error);
+    }
   }
   
   return (
@@ -202,6 +212,10 @@ const PatientDashboard = () => {
                   <button className="quick-action-btn" onClick={handleNewAppointment}>
                     <Calendar size={16} />
                     Book Appointment
+                  </button>
+                  <button className="quick-action-btn" onClick={handleSettings}>
+                    <Settings size={16} />
+                    Account Settings
                   </button>
                 </div>
               </div>
