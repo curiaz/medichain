@@ -8,8 +8,6 @@ import VerificationStatus from "../components/VerificationStatus"
 import "../assets/styles/ModernDashboard.css"
 import "../assets/styles/DoctorDashboard.css"
 
-
-
 const DoctorDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -21,6 +19,7 @@ const DoctorDashboard = () => {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const verificationStatus = user?.doctor_profile?.verification_status || user?.profile?.verification_status
 
   useEffect(() => {
     // Load doctor dashboard stats when component mounts or user changes
@@ -33,32 +32,37 @@ const DoctorDashboard = () => {
     try {
       setLoading(true)
       setError(null)
-      
       const result = await DatabaseService.getDoctorStats(user.uid)
-      
       if (result.success) {
         setStats(result.data)
       } else {
-        console.warn('Failed to load doctor stats:', result.error)
         setError('Failed to load dashboard statistics')
-        // Keep existing stats as fallback
       }
     } catch (err) {
-      console.error('Error loading doctor stats:', err)
       setError('Error connecting to database')
     } finally {
       setLoading(false)
     }
   }
 
+  const blockIfUnverified = (actionName) => {
+    if (verificationStatus !== 'approved') {
+      alert(`Access restricted: Your account is ${verificationStatus || 'pending'}.\n\nPlease wait for verification or check your email for updates.\n\nTrying: ${actionName}`)
+      return true
+    }
+    return false
+  }
+
   const handlePatientAIHistory = () => {
+    if (blockIfUnverified('AI Diagnosis Review')) return
     navigate('/patient-ai-history')
   }
 
   const handlePatientList = () => {
+    if (blockIfUnverified('Patient Records')) return
     navigate('/patients')
   }
-  
+
   return (
     <div className="dashboard-container fade-in">
       {/* Background crosses */}
@@ -82,16 +86,16 @@ const DoctorDashboard = () => {
                 <span className="user-role">MEDICAL PROFESSIONAL</span>
               </div>
             )}
-            
+
             {/* Doctor Verification Status */}
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
               <VerificationStatus 
-                status={user?.profile?.verification_status || user?.doctor_profile?.verification_status}
-                userType={user?.profile?.role}
+                status={verificationStatus}
+                userType={user?.role}
                 doctorProfile={user?.doctor_profile}
               />
             </div>
-            
+
             {error && (
               <div className="error-message" style={{ color: '#e74c3c', fontSize: '0.9rem', marginTop: '8px', textAlign: 'center' }}>
                 {error} - Using offline data
@@ -166,7 +170,7 @@ const DoctorDashboard = () => {
                     <p>Access comprehensive patient histories, medical records, and treatment plans</p>
                     <span className="action-status available">
                       <span className="status-dot"></span>
-                      Ready to Access
+                      {verificationStatus === 'approved' ? 'Ready to Access' : 'Restricted until Approval'}
                     </span>
                   </div>
                 </div>
@@ -185,7 +189,7 @@ const DoctorDashboard = () => {
                   </div>
                 </div>
 
-                <div className="action-card secondary-action">
+                <div className="action-card secondary-action" onClick={() => blockIfUnverified('Medical Reports') || null}>
                   <div className="action-icon">
                     <FileText size={48} />
                   </div>
@@ -194,12 +198,12 @@ const DoctorDashboard = () => {
                     <p>Generate detailed reports, prescriptions, and treatment summaries</p>
                     <span className="action-status available">
                       <span className="status-dot"></span>
-                      Generate Reports
+                      {verificationStatus === 'approved' ? 'Generate Reports' : 'Restricted until Approval'}
                     </span>
                   </div>
                 </div>
 
-                <div className="action-card secondary-action">
+                <div className="action-card secondary-action" onClick={() => blockIfUnverified('Schedule Management') || null}>
                   <div className="action-icon">
                     <Calendar size={48} />
                   </div>
@@ -208,7 +212,7 @@ const DoctorDashboard = () => {
                     <p>Manage appointments, consultations, and follow-up sessions</p>
                     <span className="action-status info">
                       <span className="status-dot info"></span>
-                      View Schedule
+                      {verificationStatus === 'approved' ? 'View Schedule' : 'Restricted until Approval'}
                     </span>
                   </div>
                 </div>
@@ -337,4 +341,4 @@ const DoctorDashboard = () => {
   )
 }
 
-export default DoctorDashboard;
+export default DoctorDashboard

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import "./MedichainLogin.css" // Reuse existing styles
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight, Upload, FileText } from "lucide-react"
+import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight, Upload } from "lucide-react"
 import LoadingSpinner from "../components/LoadingSpinner"
 import { showToast } from "../components/CustomToast"
 import medichainLogo from "../assets/medichain_logo.png"
@@ -139,19 +139,8 @@ const MedichainSignup = () => {
     setIsSubmitting(true)
     
     try {
-      console.log('DEBUG: About to call signup with:', {
-        email: formData.email.trim(),
-        password: formData.password,
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        userType: formData.userType,
-        specialization: formData.specialization?.trim(),
-        hasVerificationFile: !!formData.verificationFile
-      });
-      
-      // Handle doctor signup with verification
+      // Doctor signup uses multipart/form-data to include verification file
       if (formData.userType === 'doctor') {
-        // Create FormData for file upload
         const signupData = new FormData();
         signupData.append('email', formData.email.trim());
         signupData.append('password', formData.password);
@@ -160,26 +149,23 @@ const MedichainSignup = () => {
         signupData.append('userType', formData.userType);
         signupData.append('specialization', formData.specialization.trim());
         signupData.append('verificationFile', formData.verificationFile);
-        
-        // Call doctor signup API endpoint
+
         const response = await fetch('http://localhost:5000/api/auth/doctor-signup', {
           method: 'POST',
           body: signupData
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
-          showToast.success(
-            result.message || 
-            "Doctor account submitted for verification! You'll receive an email once your account is reviewed."
-          );
-          navigate("/login");
+          showToast.success(result.message || "Doctor account created successfully! Your documents are under review.");
+          localStorage.setItem('medichain_token', result.data.token);
+          localStorage.setItem('medichain_user', JSON.stringify(result.data.user));
+          navigate("/dashboard");
         } else {
           showToast.error(result.error || "Doctor signup failed");
         }
       } else {
-        // Regular patient signup
         const result = await signup(
           formData.email.trim(),
           formData.password,
@@ -187,9 +173,9 @@ const MedichainSignup = () => {
           formData.lastName.trim(),
           formData.userType
         );
-        
+
         if (result.success) {
-          showToast.success(result.message || "Account created successfully! Welcome to Medichain.");
+          showToast.success(result.message || "Account created successfully! Welcome to MediChain.");
           navigate("/dashboard");
         } else {
           showToast.error(result.error || "Signup failed");
@@ -328,7 +314,6 @@ const MedichainSignup = () => {
                     <div className="input-group">
                       <label htmlFor="verificationFile">Verification Document</label>
                       <div className="input-wrapper file-upload-wrapper">
-                        <FileText className="input-icon" size={20} />
                         <input
                           id="verificationFile"
                           name="verificationFile"

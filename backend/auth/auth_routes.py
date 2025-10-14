@@ -10,6 +10,7 @@ import random
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from werkzeug.utils import secure_filename
 
 from email_validator import EmailNotValidError, validate_email
 from flask import Blueprint, jsonify, request
@@ -51,7 +52,7 @@ def signup():
         required_fields = ["email", "password", "name", "role"]
         for field in required_fields:
             if not data.get(field):
-                return jsonify({"error": f"{field} is required"}), 400
+                return jsonify({"success": False, "error": f"{field} is required"}), 400
 
         email = data["email"].strip().lower()
         password = data["password"]
@@ -62,21 +63,21 @@ def signup():
         try:
             validate_email(email)
         except EmailNotValidError as e:
-            return jsonify({"error": str(e)}), 400
+            return jsonify({"success": False, "error": str(e)}), 400
 
         # Validate role
         if role not in ["doctor", "patient", "admin"]:
-            return jsonify({"error": "Role must be doctor, patient, or admin"}), 400
+            return jsonify({"success": False, "error": "Role must be doctor, patient, or admin"}), 400
 
         # Validate password
         password_error = validate_password(password)
         if password_error:
-            return jsonify({"error": password_error}), 400
+            return jsonify({"success": False, "error": password_error}), 400
 
         # Check if user already exists
         existing_user = supabase.client.table("user_profiles").select("*").eq("email", email).execute()
         if existing_user.data:
-            return jsonify({"error": "Email already registered"}), 409
+            return jsonify({"success": False, "error": "Email already registered"}), 409
 
         # Hash password
         password_hash = auth_utils.hash_password(password)
@@ -106,9 +107,7 @@ def signup():
             user = response.data[0]
             token = auth_utils.generate_token(user["id"], user["email"], user["role"])
 
-            return (
-                jsonify(
-                    {
+            return jsonify({
                         "success": True,
                         "message": "User registered successfully",
                         "data": {
@@ -121,50 +120,631 @@ def signup():
                             },
                             "token": token,
                         },
-                    }
-                ),
-                201,
-            )
+            }), 201
         else:
-            return jsonify({"error": "Registration failed"}), 500
+            return jsonify({"success": False, "error": "Registration failed"}), 500
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@auth_bp.route("/register", methods=["POST"])
+def register():
+    """User registration endpoint - handles both Firebase tokens and direct registration"""
+    try:
+        data = request.get_json(silent=True)
+        
+        if not isinstance(data, dict):
+            print("[DEBUG] ❌ Invalid JSON body received")
+            return jsonify({
+                "success": False, 
+                "error": "Invalid request format. Please provide valid JSON data."
+            }), 400
+        
+        # 🆕 CHECK: Is this a Firebase token registration?
+        if 'id_token' in data:
+            # ========== FIREBASE TOKEN REGISTRATION ==========
+            print("[DEBUG] 🔥 Firebase token registration detected")
+            id_token = data.get('id_token')
+            name = data.get('name', '')
+            role = data.get('role', 'patient').lower()
+            
+            # Validate required fields
+            if not id_token:
+                print("[DEBUG] ❌ Missing Firebase ID token")
+                return jsonify({
+                    "success": False,
+                    "error": "Firebase token is required for registration."
+                }), 400
+            
+            if not name or not name.strip():
+                print("[DEBUG] ❌ Missing name")
+                return jsonify({
+                    "success": False,
+                    "error": "Name is required for registration."
+                }), 400
+            
+            if role not in ['patient', 'doctor']:
+                print(f"[DEBUG] ❌ Invalid role: {role}")
+                return jsonify({
+                    "success": False,
+                    "error": "Invalid account type. Must be 'patient' or 'doctor'."
+                }), 400
+            
+            try:
+                from auth.firebase_auth import firebase_auth_service
+                
+                # Verify Firebase token
+                print("[DEBUG] Verifying Firebase token...")
+                result = firebase_auth_service.verify_token(id_token)
+                
+                if result.get("success"):
+                    uid = result.get("uid")
+                    email = result.get("email")
+                    print(f"[DEBUG] ✅ Firebase user verified: {email} (UID: {uid})")
+                    
+                    # Check if user already exists
+                    existing = supabase.client.table("user_profiles").select("*").eq("firebase_uid", uid).execute()
+                    
+                    if existing.data:
+                        print("[DEBUG] User already exists, returning existing profile")
+                        user = existing.data[0]
+                        full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
+                        
+                        return jsonify({
+                            "success": True,
+                            "message": "User already registered",
+                            "data": {
+                                "user": {
+                                    "id": user["id"],
+                                    "uid": uid,
+                                    "email": user["email"],
+                                    "first_name": user.get("first_name", ""),
+                                    "last_name": user.get("last_name", ""),
+                                    "full_name": full_name,
+                                    "role": user["role"]
+                                },
+                                "token": id_token
+                            }
+                        }), 200
+                    
+                    # Create new user profile
+                    name_parts = name.strip().split(maxsplit=1)
+                    first_name = name_parts[0] if name_parts else name
+                    last_name = name_parts[1] if len(name_parts) > 1 else ""
+                    
+                    user_data = {
+                        "firebase_uid": uid,
+                        "email": email,
+                        "first_name": first_name,
+                        "last_name": last_name,
+                        "role": role
+                    }
+                    
+                    # 🆕 FIXED: Hash and store password if provided
+                    password = data.get('password')
+                    if password:
+                        password_hash = auth_utils.hash_password(password)
+                        user_data["password_hash"] = password_hash
+                        print(f"[DEBUG] ✅ Password hash generated and will be stored")
+                    
+                    try:
+                        response = supabase.client.table("user_profiles").insert(user_data).execute()
+                    except Exception as db_error:
+                        print(f"[DEBUG] ❌ Database error: {db_error}")
+                        return jsonify({
+                            "success": False,
+                            "error": "Failed to create user profile in database. Please try again."
+                        }), 500
+                    
+                    if response.data:
+                        user = response.data[0]
+                        print(f"[DEBUG] ✅ New user profile created for {email}")
+                        
+                        return jsonify({
+                            "success": True,
+                            "message": "Account created successfully! Welcome to MediChain.",
+                            "data": {
+                                "user": {
+                                    "id": user["id"],
+                                    "uid": uid,
+                                    "email": user["email"],
+                                    "first_name": user.get("first_name", ""),
+                                    "last_name": user.get("last_name", ""),
+                                    "role": user["role"]
+                                },
+                                "token": id_token
+                            }
+                        }), 201
+                    else:
+                        print("[DEBUG] ❌ No data returned from database insert")
+                        return jsonify({
+                            "success": False,
+                            "error": "Failed to create user profile. Please try again."
+                        }), 500
+                else:
+                    error_msg = result.get("error", "Invalid Firebase token")
+                    print(f"[DEBUG] ❌ Firebase token verification failed: {error_msg}")
+                    return jsonify({
+                        "success": False,
+                        "error": f"Authentication failed: {error_msg}"
+                    }), 401
+                    
+            except Exception as firebase_error:
+                print(f"[DEBUG] ❌ Firebase registration error: {firebase_error}")
+                import traceback
+                traceback.print_exc()
+                return jsonify({"success": False, "error": "Firebase registration failed"}), 500
+        else:
+            # Redirect to signup for non-Firebase registration
+            return signup()
+
+    except Exception as e:
+        print(f"[DEBUG] ❌ Exception in register: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@auth_bp.route("/doctor-signup", methods=["POST"])
+def doctor_signup():
+    """
+    Doctor registration endpoint with document verification
+    Handles multipart/form-data for file uploads
+    """
+    try:
+        print("[DEBUG] 🏥 Doctor signup request received")
+        
+        # Get form data (multipart/form-data, not JSON)
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        first_name = request.form.get('firstName', '').strip()
+        last_name = request.form.get('lastName', '').strip()
+        specialization = request.form.get('specialization', '').strip()
+        
+        # Get uploaded file
+        verification_file = request.files.get('verificationFile')
+        
+        print(f"[DEBUG] Doctor signup data: {email}, {first_name} {last_name}, {specialization}")
+        print(f"[DEBUG] Verification file: {verification_file.filename if verification_file else 'None'}")
+        
+        # Validate required fields
+        if not email:
+            print("[DEBUG] ❌ Missing email")
+            return jsonify({
+                "success": False,
+                "error": "Please enter your email address."
+            }), 400
+        
+        if not password or len(password) < 6:
+            print("[DEBUG] ❌ Invalid password")
+            return jsonify({
+                "success": False,
+                "error": "Password must be at least 6 characters long."
+            }), 400
+        
+        if not first_name or not last_name:
+            print("[DEBUG] ❌ Missing name")
+            return jsonify({
+                "success": False,
+                "error": "Please enter your first and last name."
+            }), 400
+        
+        if not specialization:
+            print("[DEBUG] ❌ Missing specialization")
+            return jsonify({
+                "success": False,
+                "error": "Please enter your medical specialization."
+            }), 400
+        
+        if not verification_file:
+            print("[DEBUG] ❌ Missing verification file")
+            return jsonify({
+                "success": False,
+                "error": "Please upload your verification document (medical license, ID, or certificate)."
+            }), 400
+        
+        # Validate file type
+        allowed_extensions = {'pdf', 'jpg', 'jpeg', 'png'}
+        filename = secure_filename(verification_file.filename)
+        file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+        
+        if file_ext not in allowed_extensions:
+            print(f"[DEBUG] ❌ Invalid file type: {file_ext}")
+            return jsonify({
+                "success": False,
+                "error": "Please upload a valid file (PDF, JPG, or PNG)."
+            }), 400
+        
+        # Validate file size (max 5MB)
+        verification_file.seek(0, os.SEEK_END)
+        file_size = verification_file.tell()
+        verification_file.seek(0)  # Reset file pointer
+        
+        if file_size > 5 * 1024 * 1024:  # 5MB
+            print(f"[DEBUG] ❌ File too large: {file_size} bytes")
+            return jsonify({
+                "success": False,
+                "error": "File size must be less than 5MB."
+            }), 400
+        
+        print("[DEBUG] ✅ Validation passed, creating Firebase account...")
+        
+        # Create Firebase account
+        try:
+            from auth.firebase_auth import firebase_auth_service
+            
+            # Create user in Firebase
+            user_record = auth.create_user(
+                email=email,
+                password=password,
+                display_name=f"{first_name} {last_name}"
+            )
+            
+            uid = user_record.uid
+            print(f"[DEBUG] ✅ Firebase user created: {email} (UID: {uid})")
+            firebase_error_msg = None
+        except Exception as firebase_error:
+            firebase_error_msg = str(firebase_error)
+            print(f"[DEBUG] ❌ Firebase error: {firebase_error_msg}")
+            
+            # Handle specific Firebase errors
+            if 'EMAIL_EXISTS' in firebase_error_msg or 'email-already-exists' in firebase_error_msg:
+                return jsonify({
+                    "success": False,
+                    "error": "An account with this email already exists."
+                }), 400
+            if 'WEAK_PASSWORD' in firebase_error_msg:
+                return jsonify({
+                    "success": False,
+                    "error": "Password should be at least 6 characters long."
+                }), 400
+            
+            # Generic failure
+            return jsonify({
+                "success": False,
+                "error": f"Failed to create account: {firebase_error_msg}"
+            }), 500
+
+        # Save verification file
+        try:
+            # Create uploads directory if it doesn't exist
+            upload_dir = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'doctor_verification')
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            # Generate unique filename
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            unique_filename = f"{uid}_{timestamp}_{filename}"
+            file_path = os.path.join(upload_dir, unique_filename)
+            
+            # Save file
+            verification_file.save(file_path)
+            print(f"[DEBUG] ✅ Verification file saved: {unique_filename}")
+            
+        except Exception as file_error:
+            print(f"[DEBUG] ❌ File save error: {file_error}")
+            # Clean up Firebase user
+            try:
+                auth.delete_user(uid)
+                print(f"[DEBUG] Cleaned up Firebase user after file save failure")
+            except:
+                pass
+            
+            return jsonify({
+                "success": False,
+                "error": "Failed to save verification document. Please try again."
+            }), 500
+        
+        # Create user profile in database
+        try:
+            # Hash password for database storage
+            password_hash = auth_utils.hash_password(password)
+            
+            # 1. Create basic user profile
+            user_data = {
+                "firebase_uid": uid,
+                "email": email,
+                "first_name": first_name,
+                "last_name": last_name,
+                "role": "doctor",
+                "password_hash": password_hash
+            }
+            
+            user_response = supabase.client.table("user_profiles").insert(user_data).execute()
+            
+            if not user_response.data:
+                raise Exception("Failed to create user profile in database")
+            
+            user = user_response.data[0]
+            user_id = user["id"]
+            print(f"[DEBUG] ✅ User profile created: {email}")
+            
+            # 2. Create doctor profile with verification details
+            doctor_data = {
+                "user_id": user_id,
+                "firebase_uid": uid,
+                "specialization": specialization,
+                "verification_file_path": unique_filename,  # Using correct column name
+                "verification_status": "pending"  # Requires admin approval
+            }
+            
+            # Use service_client to bypass RLS for doctor profile creation
+            doctor_response = supabase.service_client.table("doctor_profiles").insert(doctor_data).execute()
+            
+            if doctor_response.data:
+                doctor = doctor_response.data[0]
+                print(f"[DEBUG] ✅ Doctor profile created: {email}")
+                
+                # 🔔 Send admin notification email for verification
+                try:
+                    from doctor_verification import send_admin_notification_email, generate_verification_token
+                    
+                    verification_token = generate_verification_token()
+                    
+                    # Store verification token in doctor_profiles
+                    supabase.service_client.table("doctor_profiles").update({
+                        "verification_token": verification_token,
+                        "token_expires_at": (datetime.now() + timedelta(hours=24)).isoformat()
+                    }).eq("id", doctor["id"]).execute()
+                    
+                    doctor_signup_data = {
+                        "firstName": first_name,
+                        "lastName": last_name,
+                        "email": email,
+                        "specialization": specialization
+                    }
+                    
+                    email_sent = send_admin_notification_email(
+                        doctor_signup_data,
+                        file_path,
+                        doctor["id"],
+                        verification_token
+                    )
+                    
+                    if email_sent:
+                        print(f"[DEBUG] ✅ Admin notification email sent for doctor verification")
+        else:
+                        print(f"[DEBUG] ⚠️  Failed to send admin notification email")
+                        
+                except Exception as email_error:
+                    print(f"[DEBUG] ⚠️  Email notification error: {email_error}")
+                    # Don't fail the signup if email fails
+                
+                # Generate token
+                token = auth_utils.generate_token(user["id"], user["email"], user["role"])
+                
+                return jsonify({
+                    "success": True,
+                    "message": "Doctor account created successfully! Your verification documents are under review.",
+                    "data": {
+                        "user": {
+                            "id": user["id"],
+                            "uid": uid,
+                            "email": user["email"],
+                            "first_name": user["first_name"],
+                            "last_name": user["last_name"],
+                            "role": user["role"],
+                            # Flattened convenience fields
+                            "specialization": doctor.get("specialization", ""),
+                            "verification_status": doctor.get("verification_status", "pending"),
+                            # Nested doctor profile for UI components that expect it
+                            "doctor_profile": {
+                                "id": doctor.get("id"),
+                                "verification_status": doctor.get("verification_status", "pending"),
+                                "specialization": doctor.get("specialization", ""),
+                                "verification_file_path": doctor.get("verification_file_path")
+                            }
+                        },
+                        "token": token
+                    }
+                }), 201
+            else:
+                # Clean up user profile if doctor profile creation fails
+                supabase.service_client.table("user_profiles").delete().eq("id", user_id).execute()
+                raise Exception("Failed to create doctor profile in database")
+                
+        except Exception as db_error:
+            print(f"[DEBUG] ❌ Database error: {db_error}")
+            
+            # Clean up Firebase user, file, and any created database records
+            try:
+                auth.delete_user(uid)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                # Try to clean up user_profiles if it was created (use service_client to bypass RLS)
+                if 'user_id' in locals():
+                    supabase.service_client.table("user_profiles").delete().eq("id", user_id).execute()
+                print(f"[DEBUG] Cleaned up Firebase user, file, and database records after failure")
+            except Exception as cleanup_error:
+                print(f"[DEBUG] Cleanup error: {cleanup_error}")
+            
+            return jsonify({
+                "success": False,
+                "error": "Failed to create doctor profile. Please try again."
+            }), 500
+
+    except Exception as e:
+        print(f"[DEBUG] ❌ Exception in doctor signup: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": "An error occurred during signup. Please try again."
+        }), 500
 
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    """User login endpoint"""
+    """User login endpoint - handles both Firebase tokens and email/password"""
     try:
-        data = request.get_json()
-        print("[DEBUG] Login request data:", data)
+        data = request.get_json(silent=True)
+        
+        # 🔧 FIXED: Validate JSON body first
+        if not isinstance(data, dict):
+            print("[DEBUG] Invalid JSON body")
+            return jsonify({"success": False, "error": "Invalid JSON body"}), 400
+        
+        print("[DEBUG] Login request data keys:", list(data.keys()) if data else None)
 
+        # 🆕 CHECK: Is this a Firebase token login or email/password login?
+        if 'id_token' in data:
+            # ========== FIREBASE TOKEN LOGIN ==========
+            print("[DEBUG] 🔥 Firebase token login detected")
+            id_token = data['id_token']
+            
+            try:
+                from auth.firebase_auth import firebase_auth_service
+                
+                # Verify Firebase token
+                print("[DEBUG] Verifying Firebase token...")
+                result = firebase_auth_service.verify_token(id_token)
+                
+                if result.get("success"):
+                    uid = result.get("uid")
+                    email = result.get("email")
+                    print(f"[DEBUG] ✅ Firebase auth successful: {email} (UID: {uid})")
+                    
+                    # Get user profile from Supabase
+                    response = supabase.client.table("user_profiles").select("*").eq("firebase_uid", uid).execute()
+                    
+                    if response.data:
+                        user = response.data[0]
+                        
+                        # Construct full name
+                        full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
+                        if not full_name:
+                            full_name = user.get("email", "").split("@")[0]
+                        
+                        # Optionally include doctor profile
+                        doctor_profile = None
+                        try:
+                            if user.get("role") == "doctor":
+                                dp_resp = supabase.service_client.table("doctor_profiles").select(
+                                    "id, verification_status, specialization, verification_file_path"
+                                ).eq("user_id", user["id"]).execute()
+                                if dp_resp.data:
+                                    doctor_profile = dp_resp.data[0]
+                        except Exception as _:
+                            doctor_profile = None
+                        
+                        print(f"[DEBUG] ✅ User profile found for Firebase UID: {uid}")
+                        
+                        # Return Firebase-compatible response
+                        return jsonify({
+                            "success": True,
+                            "message": "Login successful",
+                            "data": {
+                                "user": {
+                                    "id": user["id"],
+                                    "uid": uid,
+                                    "email": user["email"],
+                                    "first_name": user.get("first_name", ""),
+                                    "last_name": user.get("last_name", ""),
+                                    "full_name": full_name,
+                                    "role": user["role"],
+                                    "firebase_uid": uid,
+                                    "doctor_profile": doctor_profile,
+                                },
+                                "token": id_token
+                            }
+                        }), 200
+                    else:
+                        print(f"[DEBUG] ❌ No user profile found for Firebase UID: {uid}")
+                        return jsonify({
+                            "success": False,
+                            "error": "User profile not found. Please complete registration."
+                        }), 404
+                else:
+                    print(f"[DEBUG] ❌ Firebase token verification failed: {result.get('error')}")
+                    return jsonify({
+                        "success": False,
+                        "error": "Invalid Firebase token"
+                    }), 401
+                    
+            except Exception as firebase_error:
+                print(f"[DEBUG] ❌ Firebase auth error: {firebase_error}")
+                import traceback
+                traceback.print_exc()
+                return jsonify({
+                    "success": False,
+                    "error": "Firebase authentication failed"
+                }), 500
+        
+        else:
+            # ========== EMAIL/PASSWORD LOGIN ==========
+            print("[DEBUG] 📧 Email/password login detected")
         email = data.get("email", "").strip().lower()
         password = data.get("password", "")
-        print(f"[DEBUG] Email: {email}, Password: {'*' * len(password)}")
+            print(f"[DEBUG] Email: {email}, Password: {'*' * len(password) if password else 'missing'}")
 
-        if not email or not password:
-            print("[DEBUG] Missing email or password")
-            return jsonify({"error": "Email and password are required"}), 400
+            # Validate inputs
+            if not email or not email.strip():
+                print("[DEBUG] ❌ Missing email")
+                return jsonify({
+                    "success": False,
+                    "error": "Please enter your email address."
+                }), 400
+            
+            if not password or not password.strip():
+                print("[DEBUG] ❌ Missing password")
+                return jsonify({
+                    "success": False,
+                    "error": "Please enter your password."
+                }), 400
 
-        # Find user
+            # Find user in database
+            try:
         response = supabase.client.table("user_profiles").select("*").eq("email", email).execute()
-        print("[DEBUG] Supabase user query result:", response.data)
+                print(f"[DEBUG] Supabase user query: {len(response.data) if response.data else 0} results")
+            except Exception as db_error:
+                print(f"[DEBUG] ❌ Database error during user lookup: {db_error}")
+                return jsonify({
+                    "success": False,
+                    "error": "Database error occurred. Please try again."
+                }), 500
 
         if not response.data:
-            print("[DEBUG] No user found for email")
-            return jsonify({"error": "Invalid email or password"}), 401
+                print("[DEBUG] ❌ No user found for email")
+                return jsonify({
+                    "success": False,
+                    "error": "Invalid email or password."
+                }), 401
 
         user = response.data[0]
-        print(f"[DEBUG] User found: {user}")
-        print(f"[DEBUG] Password hash in DB: {user.get('password_hash')}")
+            print(f"[DEBUG] User found: {user.get('email')}")
 
-        # Verify password
-        password_check = auth_utils.verify_password(password, user["password_hash"])
+            # 🔧 FIXED: Check if user has password_hash
+            has_password_hash = user.get("password_hash") and user.get("password_hash") is not None
+            
+            if has_password_hash:
+                # ✅ User has password_hash - verify directly
+                print("[DEBUG] ✅ User has password_hash, verifying with Supabase")
+                try:
+                    password_check = auth_utils.verify_password(password, user.get("password_hash"))
         print(f"[DEBUG] Password check result: {password_check}")
+                except Exception as verify_error:
+                    print(f"[DEBUG] ❌ Password verification error: {verify_error}")
+                    return jsonify({
+                        "success": False,
+                        "error": "Authentication error occurred. Please try again."
+                    }), 500
+                
         if not password_check:
-            print("[DEBUG] Password mismatch for user")
-            return jsonify({"error": "Invalid email or password"}), 401
+                    print("[DEBUG] ❌ Password mismatch for user")
+                    return jsonify({
+                        "success": False,
+                        "error": "Invalid email or password. Please check your credentials and try again."
+                    }), 401
+                print("[DEBUG] ✅ Password verified successfully!")
+            else:
+                # ⚠️ User created before password_hash integration
+                print("[DEBUG] ⚠️  No password_hash found - legacy Firebase-only user")
+                print("[DEBUG] These users should login via Firebase (frontend will handle it)")
+                return jsonify({
+                    "success": False,
+                    "error": "Invalid email or password.",
+                    "hint": "This account uses Firebase authentication. The app will retry automatically."
+                }), 401
 
         # Generate token
         token = auth_utils.generate_token(user["id"], user["email"], user["role"])
@@ -174,12 +754,22 @@ def login():
         if not full_name:
             full_name = user.get("email", "").split("@")[0]
 
-        print("[DEBUG] Login successful for user", user["email"])
-        return (
-            jsonify(
-                {
+            # Optionally include doctor profile
+            doctor_profile = None
+            try:
+                if user.get("role") == "doctor":
+                    dp_resp = supabase.service_client.table("doctor_profiles").select(
+                        "id, verification_status, specialization, verification_file_path"
+                    ).eq("user_id", user["id"]).execute()
+                    if dp_resp.data:
+                        doctor_profile = dp_resp.data[0]
+            except Exception as _:
+                doctor_profile = None
+
+            print(f"[DEBUG] ✅ Login successful for user {user['email']}")
+            return jsonify({
                     "success": True,
-                    "message": "Login successful",
+                "message": "Login successful! Welcome back.",
                     "data": {
                         "user": {
                             "id": user["id"],
@@ -189,17 +779,17 @@ def login():
                             "full_name": full_name,
                             "role": user["role"],
                             "firebase_uid": user.get("firebase_uid"),
+                            "doctor_profile": doctor_profile,
                         },
                         "token": token,
                     },
-                }
-            ),
-            200,
-        )
+            }), 200
 
     except Exception as e:
-        print(f"[DEBUG] Exception in login: {e}")
-        return jsonify({"error": str(e)}), 500
+        print(f"[DEBUG] ❌ Exception in login: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @auth_bp.route("/me", methods=["GET"])

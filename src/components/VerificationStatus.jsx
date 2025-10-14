@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Mail, FileText, AlertCircle } from 'lucide-react';
+import { Clock, Mail, FileText, AlertCircle, ShieldCheck } from 'lucide-react';
 import './VerificationStatus.css';
 
 const VerificationStatus = ({ status, userType, doctorProfile }) => {
@@ -11,33 +11,30 @@ const VerificationStatus = ({ status, userType, doctorProfile }) => {
     switch (verificationStatus) {
       case 'pending':
         return {
-          icon: <Clock size={24} />,
+          icon: <Clock size={20} />,
           title: 'Verification Pending',
-          message: 'Your doctor account is under review. You\'ll receive an email once verification is complete.',
+          message: "Your credentials are under review. You'll receive an email once verification is complete.",
           className: 'verification-pending',
-          bgColor: '#fff3cd',
-          borderColor: '#ffc107',
-          textColor: '#856404'
+          badgeClass: 'status-badge pending',
+          badgeText: 'Pending'
         };
       case 'approved':
         return {
-          icon: <FileText size={24} />,
+          icon: <ShieldCheck size={20} />,
           title: 'Verified Doctor',
-          message: 'Your medical credentials have been verified. You have full access to all doctor features.',
+          message: 'Your medical credentials have been verified. You now have full access to all doctor features.',
           className: 'verification-approved',
-          bgColor: '#d4edda',
-          borderColor: '#28a745',
-          textColor: '#155724'
+          badgeClass: 'status-badge approved',
+          badgeText: 'Verified'
         };
       case 'declined':
         return {
-          icon: <AlertCircle size={24} />,
+          icon: <AlertCircle size={20} />,
           title: 'Verification Declined',
-          message: 'Your verification was not approved. Please contact support for more information.',
+          message: 'Your verification was not approved. Please contact support for next steps.',
           className: 'verification-declined',
-          bgColor: '#f8d7da',
-          borderColor: '#dc3545',
-          textColor: '#721c24'
+          badgeClass: 'status-badge declined',
+          badgeText: 'Declined'
         };
       default:
         return null;
@@ -45,44 +42,46 @@ const VerificationStatus = ({ status, userType, doctorProfile }) => {
   };
 
   const config = getStatusConfig(status);
-  
   if (!config) return null;
 
   return (
-    <div 
-      className={`verification-status ${config.className}`}
-      style={{
-        backgroundColor: config.bgColor,
-        borderColor: config.borderColor,
-        color: config.textColor
-      }}
-    >
+    <div className={`verification-status ${config.className}`}>
       <div className="verification-status-header">
-        <div className="verification-icon" style={{ color: config.textColor }}>
+        <div className="verification-icon" aria-hidden>
           {config.icon}
         </div>
         <div className="verification-content">
+          <div className={config.badgeClass} style={{ marginBottom: 6 }}>
+            {config.icon}
+            <span>{config.badgeText}</span>
+          </div>
           <h3 className="verification-title">{config.title}</h3>
           <p className="verification-message">{config.message}</p>
+          {doctorProfile?.specialization && (
+            <div className="verification-meta">
+              <FileText size={14} />
+              <span>Specialization: {doctorProfile.specialization}</span>
+            </div>
+          )}
         </div>
       </div>
-      
+
       {status === 'pending' && (
         <div className="verification-details">
           <div className="verification-detail-item">
             <Mail size={16} />
-            <span>Check your email for updates</span>
+            <span>We will notify you by email when the review is complete</span>
           </div>
           <div className="verification-detail-item">
-            <FileText size={16} />
-            <span>Specialization: {doctorProfile.specialization}</span>
+            <Clock size={16} />
+            <span>Typical review time: within 24 hours</span>
           </div>
         </div>
       )}
-      
+
       {status === 'declined' && (
         <div className="verification-actions">
-          <button className="reapply-btn">
+          <button className="reapply-btn" onClick={() => window.open('mailto:medichain173@gmail.com?subject=Doctor Verification Support') }>
             Contact Support
           </button>
         </div>

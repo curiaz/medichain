@@ -1,0 +1,45 @@
+{
+  "info": {
+    "name": "Medichain Auth",
+    "_postman_id": "b3b2f6f2-0000-4000-8000-000000000000",
+    "description": "Collection for Medichain authentication endpoints (password reset request)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Password Reset Request",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"user@example.com\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/auth/password-reset-request",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "auth",
+            "password-reset-request"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

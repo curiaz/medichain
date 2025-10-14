@@ -34,7 +34,13 @@ class AuthUtils:
 
     def verify_password(self, password: str, hashed: str) -> bool:
         """Verify password against hash"""
-        return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
+        # 🔧 FIXED: Handle None or empty hash (Firebase users don't have password_hash)
+        if not hashed or hashed is None:
+            return False
+        try:
+            return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
+        except (AttributeError, ValueError):
+            return False
 
     def generate_token(self, user_id: str, email: str, role: str) -> str:
         """Generate JWT token"""
