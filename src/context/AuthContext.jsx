@@ -79,37 +79,58 @@ export const AuthProvider = ({ children }) => {
     setError(null);
 
     try {
-      // Sign in with Firebase
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
-      // Get ID token
-      const idToken = await userCredential.user.getIdToken();
-      
-      // Verify with backend
+      // Attempt backend login first (Supabase-based authentication)
       const response = await axios.post(`${API_URL}/auth/login`, {
-        id_token: idToken
+        email: email,
+        password: password
       });
 
       if (response.data.success) {
-        localStorage.setItem('medichain_token', idToken);
-        localStorage.setItem('medichain_user', JSON.stringify(response.data.user));
+        const token = response.data.data.token;
+        const userData = response.data.data.user;
+        
+        localStorage.setItem('medichain_token', token);
+        localStorage.setItem('medichain_user', JSON.stringify(userData));
 
-        setUser(response.data.user);
+        setUser(userData);
         setIsAuthenticated(true);
 
         return {
           success: true,
           message: 'Login successful',
-          user: response.data.user
+          user: userData
         };
       } else {
         throw new Error(response.data.error || 'Login failed');
       }
     } catch (error) {
-      setError(error.message || 'Login failed');
+      console.error('Login error:', error);
+      
+      // Check if it's a network error
+      if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
+        setError('Unable to connect to server. Please check if the backend is running.');
+        return {
+          success: false,
+          message: 'Unable to connect to server. Please check if the backend is running.',
+          requiresVerification: false
+        };
+      }
+      
+      // Check for email verification requirement
+      if (error.response?.data?.error?.includes('verify') || error.response?.data?.error?.includes('verification')) {
+        setError('Please verify your email before logging in.');
+        return {
+          success: false,
+          message: error.response.data.error || 'Please verify your email before logging in.',
+          requiresVerification: true
+        };
+      }
+      
+      setError(error.response?.data?.error || error.message || 'Login failed');
       return {
         success: false,
-        message: error.message || 'Login failed'
+        message: error.response?.data?.error || error.message || 'Login failed',
+        requiresVerification: false
       };
     } finally {
       setLoading(false);
@@ -208,6 +229,33 @@ export const AuthProvider = ({ children }) => {
     setError(null);
   };
 
+  // Resend verification email
+  const resendVerification = async (email) => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/resend-verification`, {
+        email: email
+      });
+
+      if (response.data.success) {
+        return {
+          success: true,
+          message: 'Verification email sent successfully'
+        };
+      } else {
+        return {
+          success: false,
+          error: response.data.error || 'Failed to send verification email'
+        };
+      }
+    } catch (error) {
+      console.error('Resend verification error:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message || 'Failed to send verification email'
+      };
+    }
+  };
+
   const value = {
     isAuthenticated,
     user,
@@ -218,7 +266,8 @@ export const AuthProvider = ({ children }) => {
     signup,
     updateUser,
     checkVerificationStatus,
-    clearError
+    clearError,
+    resendVerification
   };
 
   return (

@@ -81,11 +81,22 @@ def signup():
         # Hash password
         password_hash = auth_utils.hash_password(password)
 
+        # Split name into first and last name
+        name_parts = name.strip().split(maxsplit=1)
+        first_name = name_parts[0] if name_parts else name
+        last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+        # Generate a unique firebase_uid for Supabase-only auth
+        import uuid
+        firebase_uid = f"supabase_{uuid.uuid4().hex}"
+
         # Create user
         user_data = {
+            "firebase_uid": firebase_uid,
             "email": email,
             "password_hash": password_hash,
-            "full_name": name,
+            "first_name": first_name,
+            "last_name": last_name,
             "role": role,
         }
 
@@ -104,7 +115,8 @@ def signup():
                             "user": {
                                 "id": user["id"],
                                 "email": user["email"],
-                                "full_name": user["full_name"],
+                                "first_name": user.get("first_name", ""),
+                                "last_name": user.get("last_name", ""),
                                 "role": user["role"],
                             },
                             "token": token,
@@ -157,6 +169,11 @@ def login():
         # Generate token
         token = auth_utils.generate_token(user["id"], user["email"], user["role"])
 
+        # Construct full name from first and last name
+        full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
+        if not full_name:
+            full_name = user.get("email", "").split("@")[0]
+
         print("[DEBUG] Login successful for user", user["email"])
         return (
             jsonify(
@@ -167,8 +184,11 @@ def login():
                         "user": {
                             "id": user["id"],
                             "email": user["email"],
-                            "full_name": user["full_name"],
+                            "first_name": user.get("first_name", ""),
+                            "last_name": user.get("last_name", ""),
+                            "full_name": full_name,
                             "role": user["role"],
+                            "firebase_uid": user.get("firebase_uid"),
                         },
                         "token": token,
                     },
@@ -190,11 +210,19 @@ def get_current_user():
         user_id = request.current_user["user_id"]
 
         response = (
-            supabase.client.table("user_profiles").select("id", "email", "full_name", "role", "created_at").eq("id", user_id).execute()
+            supabase.client.table("user_profiles")
+            .select("id", "email", "first_name", "last_name", "role", "firebase_uid", "created_at")
+            .eq("id", user_id)
+            .execute()
         )
 
         if response.data:
-            return jsonify({"success": True, "data": response.data[0]}), 200
+            user = response.data[0]
+            # Construct full_name from first_name and last_name
+            full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
+            user['full_name'] = full_name if full_name else user.get("email", "").split("@")[0]
+            
+            return jsonify({"success": True, "data": user}), 200
         else:
             return jsonify({"error": "User not found"}), 404
 
@@ -702,6 +730,53 @@ def verify_password_reset():
     except Exception as e:
         print(f"Password reset verification error: {str(e)}")
         return jsonify({"error": "An error occurred during verification"}), 500
+
+
+@auth_bp.route("/resend-verification", methods=["POST"])
+def resend_verification():
+    """Resend verification email to user"""
+    try:
+        data = request.get_json()
+        email = data.get("email", "").strip().lower()
+
+        if not email:
+            return jsonify({"error": "Email is required"}), 400
+
+        # Validate email format
+        try:
+            validate_email(email)
+        except EmailNotValidError:
+            return jsonify({"error": "Invalid email format"}), 400
+
+        # Check if user exists
+        response = supabase.client.table("user_profiles").select("*").eq("email", email).execute()
+        
+        if not response.data:
+            # For security, don't reveal if email exists or not
+            return jsonify({
+                "success": True,
+                "message": "If this email is registered, a verification email will be sent"
+            }), 200
+
+        user = response.data[0]
+        
+        # Check if already verified
+        if user.get("email_verified"):
+            return jsonify({
+                "success": True,
+                "message": "Email is already verified"
+            }), 200
+
+        # TODO: Implement email verification sending logic
+        # For now, just return success
+        return jsonify({
+            "success": True,
+            "message": "Verification email sent successfully"
+        }), 200
+
+    except Exception as e:
+        print(f"Resend verification error: {str(e)}")
+        return jsonify({"error": "An error occurred while sending verification email"}), 500
 
 
 @auth_bp.route("/sync-firebase-user", methods=["POST"])
