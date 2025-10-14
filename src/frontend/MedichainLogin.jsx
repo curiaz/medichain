@@ -22,6 +22,7 @@ const MedichainLogin = () => {
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false)
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false)
   const [isResendingVerification, setIsResendingVerification] = useState(false)
+  const [inlineError, setInlineError] = useState("")
 
   const handleSignUpClick = () => {
     setIsRoleModalOpen(true)
@@ -79,12 +80,14 @@ const MedichainLogin = () => {
     // Basic validation
     if (!email.trim() || !password.trim()) {
       showToast.error("Please fill in all fields")
+      setInlineError("Please enter both your email and password.")
       return
     }
 
     setIsSubmitting(true)
     
     try {
+      setInlineError("")
       const result = await login(email.trim(), password)
       
       if (result.success) {
@@ -109,13 +112,16 @@ const MedichainLogin = () => {
         // Check if it's a verification error
         if (result.requiresVerification) {
           setShowVerificationPrompt(true)
+          setInlineError("Your email is not verified yet. Please check your inbox for the verification link.")
           showToast.error("Please verify your email before logging in. Check your inbox for the verification link.")
         } else {
+          setInlineError(result.message || "Login failed. Please check your credentials and try again.")
           showToast.error(result.message || "Login failed")
         }
       }
     } catch (error) {
       console.error("Login error:", error)
+      setInlineError("An unexpected error occurred. Please try again.")
       showToast.error("An unexpected error occurred. Please try again.")
     } finally {
       setIsSubmitting(false)
@@ -160,7 +166,7 @@ const MedichainLogin = () => {
   }
 
   return (
-    <div className="medichain-container">
+    <div className={`medichain-container ${(((searchParams.get('theme') || '').toLowerCase()) === 'modern') ? 'theme-modern' : 'theme-classic'}`}>
       {/* Background crosses */}
       <div className="background-crosses">
         {[...Array(24)].map((_, i) => (
@@ -192,9 +198,9 @@ const MedichainLogin = () => {
               </div>
 
               {showVerificationPrompt && (
-                <div className="verification-prompt">
-                  <div className="verification-icon">
-                    <AlertCircle size={20} color="#ff9800" />
+                <div className="verification-prompt" role="alert" aria-live="polite">
+                  <div className="verification-icon" aria-hidden="true">
+                    <AlertCircle size={20} color="#f59e0b" />
                   </div>
                   <div className="verification-content">
                     <p>Email verification required</p>
@@ -217,6 +223,12 @@ const MedichainLogin = () => {
                 </div>
               )}
 
+              {inlineError && (
+                <div className="form-alert error" role="alert" aria-live="assertive">
+                  <p>{inlineError}</p>
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="login-form-wrapper">
                 <div className="input-group">
                   <label htmlFor="email">Email or Username</label>
@@ -224,7 +236,11 @@ const MedichainLogin = () => {
                     <Mail className="input-icon" size={20} />
                     <input
                       id="email"
+                      name="email"
                       type="text"
+                      autoComplete="username"
+                      aria-required="true"
+                      aria-invalid={inlineError ? true : false}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Enter your email or username"
@@ -239,7 +255,11 @@ const MedichainLogin = () => {
                     <Lock className="input-icon" size={20} />
                     <input
                       id="password"
+                      name="password"
                       type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      aria-required="true"
+                      aria-invalid={inlineError ? true : false}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
@@ -249,6 +269,7 @@ const MedichainLogin = () => {
                       type="button"
                       className="password-toggle"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                       tabIndex={-1}
                     >
                       {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -267,15 +288,14 @@ const MedichainLogin = () => {
                     />
                     <label htmlFor="remember">Remember me</label>
                   </div>
-                  <span
+                  <button
+                    type="button"
                     className="forgot-password"
-                    onClick={() => {
-                      navigate("/reset-password")
-                    }}
-                    style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={() => navigate("/reset-password")}
+                    aria-label="Forgot Password"
                   >
                     Forgot Password?
-                  </span>
+                  </button>
                 </div>
 
                 <button 

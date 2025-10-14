@@ -29,6 +29,18 @@ except Exception as e:
     supabase = None
 
 
+def require_auth(f):
+    """Decorator to require authentication"""
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith('Bearer '):
+            return jsonify({"success": False, "error": "Missing or invalid authorization token"}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 def validate_password(password):
     """Validate password strength"""
     if len(password) < 6:
@@ -503,7 +515,7 @@ def doctor_signup():
                     
                     if email_sent:
                         print(f"[DEBUG] ✅ Admin notification email sent for doctor verification")
-        else:
+                    else:
                         print(f"[DEBUG] ⚠️  Failed to send admin notification email")
                         
                 except Exception as email_error:
@@ -673,8 +685,8 @@ def login():
         else:
             # ========== EMAIL/PASSWORD LOGIN ==========
             print("[DEBUG] 📧 Email/password login detected")
-        email = data.get("email", "").strip().lower()
-        password = data.get("password", "")
+            email = data.get("email", "").strip().lower()
+            password = data.get("password", "")
             print(f"[DEBUG] Email: {email}, Password: {'*' * len(password) if password else 'missing'}")
 
             # Validate inputs
@@ -694,7 +706,7 @@ def login():
 
             # Find user in database
             try:
-        response = supabase.client.table("user_profiles").select("*").eq("email", email).execute()
+                response = supabase.client.table("user_profiles").select("*").eq("email", email).execute()
                 print(f"[DEBUG] Supabase user query: {len(response.data) if response.data else 0} results")
             except Exception as db_error:
                 print(f"[DEBUG] ❌ Database error during user lookup: {db_error}")
@@ -703,14 +715,14 @@ def login():
                     "error": "Database error occurred. Please try again."
                 }), 500
 
-        if not response.data:
+            if not response.data:
                 print("[DEBUG] ❌ No user found for email")
                 return jsonify({
                     "success": False,
                     "error": "Invalid email or password."
                 }), 401
 
-        user = response.data[0]
+            user = response.data[0]
             print(f"[DEBUG] User found: {user.get('email')}")
 
             # 🔧 FIXED: Check if user has password_hash
@@ -721,7 +733,7 @@ def login():
                 print("[DEBUG] ✅ User has password_hash, verifying with Supabase")
                 try:
                     password_check = auth_utils.verify_password(password, user.get("password_hash"))
-        print(f"[DEBUG] Password check result: {password_check}")
+                    print(f"[DEBUG] Password check result: {password_check}")
                 except Exception as verify_error:
                     print(f"[DEBUG] ❌ Password verification error: {verify_error}")
                     return jsonify({
@@ -729,7 +741,7 @@ def login():
                         "error": "Authentication error occurred. Please try again."
                     }), 500
                 
-        if not password_check:
+                if not password_check:
                     print("[DEBUG] ❌ Password mismatch for user")
                     return jsonify({
                         "success": False,
@@ -746,8 +758,8 @@ def login():
                     "hint": "This account uses Firebase authentication. The app will retry automatically."
                 }), 401
 
-        # Generate token
-        token = auth_utils.generate_token(user["id"], user["email"], user["role"])
+            # Generate token
+            token = auth_utils.generate_token(user["id"], user["email"], user["role"])
 
         # Construct full name from first and last name
         full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
@@ -1367,6 +1379,83 @@ def resend_verification():
     except Exception as e:
         print(f"Resend verification error: {str(e)}")
         return jsonify({"error": "An error occurred while sending verification email"}), 500
+
+
+@auth_bp.route("/profile", methods=["PUT"])
+@require_auth
+def update_profile():
+    """Update user profile information"""
+    print("=" * 80)
+    print("📝 PROFILE UPDATE ENDPOINT CALLED")
+    print("=" * 80)
+    try:
+        if not supabase:
+            print("❌ Supabase not available")
+            return jsonify({"success": False, "error": "Database not available"}), 500
+            
+        data = request.get_json()
+        print(f"📦 Raw request data: {data}")
+        print(f"📦 Data type: {type(data)}")
+        
+        token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        
+        if not token:
+            print("❌ No token provided")
+            return jsonify({"success": False, "error": "Authentication required"}), 401
+        
+        # Get user ID from request data
+        firebase_uid = data.get('firebase_uid') if data else None
+        print(f"🔑 Firebase UID: {firebase_uid}")
+        
+        if not firebase_uid:
+            print("❌ No firebase_uid in request")
+            return jsonify({"success": False, "error": "User ID required"}), 400
+        
+        print(f"🔄 Updating profile for user {firebase_uid}")
+        print(f"📥 Request data keys: {list(data.keys()) if data else 'None'}")
+        print(f"📥 Full request data: {data}")
+        
+        # Extract update fields
+        update_data = {}
+        allowed_fields = ['first_name', 'last_name', 'phone', 'avatar_url']
+        
+        for field in allowed_fields:
+            if field in data and data[field] is not None and data[field] != '':
+                update_data[field] = data[field]
+                print(f"  ✓ Adding field '{field}': {data[field][:50] if isinstance(data[field], str) else data[field]}...")
+        
+        print(f"📦 Update data fields: {list(update_data.keys())}")
+        
+        if not update_data:
+            print(f"❌ No valid fields to update. Received data: {data}")
+            return jsonify({"success": False, "error": "No fields to update"}), 400
+        
+        # Add updated timestamp
+        update_data['updated_at'] = datetime.utcnow().isoformat()
+        
+        print(f"📤 Sending to Supabase: {update_data}")
+        
+        # Update profile in Supabase
+        response = supabase.client.table("user_profiles").update(update_data).eq("firebase_uid", firebase_uid).execute()
+        
+        print(f"📊 Supabase response: {response}")
+        
+        if response.data:
+            print(f"✅ Profile updated successfully")
+            return jsonify({
+                "success": True,
+                "message": "Profile updated successfully",
+                "data": response.data[0]
+            }), 200
+        else:
+            print(f"❌ No profile found for user {firebase_uid}")
+            return jsonify({"success": False, "error": "User profile not found"}), 404
+            
+    except Exception as e:
+        import traceback
+        print(f"❌ Update profile error: {str(e)}")
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @auth_bp.route("/sync-firebase-user", methods=["POST"])

@@ -80,10 +80,20 @@ const DoctorDashboard = () => {
         <div className="dashboard-header-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
           <div className="dashboard-title-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <h1 className="dashboard-title" style={{ marginBottom: '16px' }}>DOCTOR DASHBOARD</h1>
-            {user && user.profile && (
+            {user && (
               <div className="user-welcome" style={{ textAlign: 'center' }}>
-                <span>Welcome back, <strong>Dr. {user.profile.first_name || user.profile.name}</strong></span>
-                <span className="user-role">MEDICAL PROFESSIONAL</span>
+                {(() => {
+                  const p = user.profile || user;
+                  const first = p.first_name || p.firstName || '';
+                  const last = p.last_name || p.lastName || '';
+                  const name = (first || last) ? `${first} ${last}`.trim() : (p.name || user.displayName || 'Doctor');
+                  return (
+                    <>
+                      <span>Welcome back, <strong>Dr. {name}</strong></span>
+                      <span className="user-role">MEDICAL PROFESSIONAL</span>
+                    </>
+                  );
+                })()}
               </div>
             )}
 
@@ -312,20 +322,34 @@ const DoctorDashboard = () => {
                   <Stethoscope size={20} />
                   Doctor Information
                 </h3>
-                {user && user.profile ? (
+                {user ? (
                   <div className="user-details">
-                    <div className="user-detail">
-                      <strong>Name:</strong> Dr. {user.profile.first_name ? `${user.profile.first_name} ${user.profile.last_name}` : (user.profile.name || 'N/A')}
-                    </div>
-                    <div className="user-detail">
-                      <strong>Email:</strong> {user.profile.email || user.email || 'N/A'}
-                    </div>
-                    <div className="user-detail">
-                      <strong>Role:</strong> {user.profile.role ? user.profile.role.charAt(0).toUpperCase() + user.profile.role.slice(1) : 'N/A'}
-                    </div>
-                    <div className="user-detail">
-                      <strong>License:</strong> {user.doctor_profile?.license_number || `MD-${user.uid ? String(user.uid).slice(-6).toUpperCase() : 'XXXXXX'}`}
-                    </div>
+                    {(() => {
+                      const p = user.profile || user;
+                      const name = p.first_name || p.firstName
+                        ? `${p.first_name || p.firstName} ${p.last_name || p.lastName || ''}`.trim()
+                        : (p.name || user.displayName || 'N/A');
+                      const email = p.email || user.email || 'N/A';
+                      const role = (p.role || user.role || 'N/A');
+                      const roleCap = typeof role === 'string' ? role.charAt(0).toUpperCase() + role.slice(1) : 'N/A';
+                      const license = user.doctor_profile?.license_number || `MD-${user.uid ? String(user.uid).slice(-6).toUpperCase() : 'XXXXXX'}`;
+                      return (
+                        <>
+                          <div className="user-detail">
+                            <strong>Name:</strong> Dr. {name}
+                          </div>
+                          <div className="user-detail">
+                            <strong>Email:</strong> {email}
+                          </div>
+                          <div className="user-detail">
+                            <strong>Role:</strong> {roleCap}
+                          </div>
+                          <div className="user-detail">
+                            <strong>License:</strong> {license}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div className="user-details">

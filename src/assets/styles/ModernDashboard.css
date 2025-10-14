@@ -746,27 +746,25 @@
     display: none;
   }
   
-  .dashboard-main-content {
-    padding: 20px 15px;
-  }
+  .dashboard-main-content { padding: 16px 12px; }
+  .main-and-sidebar-grid { grid-template-columns: 1fr; gap: 20px; }
   
-  .dashboard-title {
-    font-size: 2rem;
-  }
+  .dashboard-title { font-size: 2rem; }
   
   .patient-actions-grid,
   .doctor-actions-grid {
     grid-template-columns: 1fr;
   }
   
-  .stats-cards-row {
-    grid-template-columns: 1fr;
-  }
+  .stats-cards-row { grid-template-columns: 1fr; }
+  .stat-card { padding: 20px; }
+  .stat-icon { width: 48px; height: 48px; }
+  .stat-value { font-size: 1.6rem; }
   
-  .action-card {
-    min-height: 200px;
-    padding: 30px;
-  }
+  .action-card { min-height: 200px; padding: 24px; }
+  .action-content h3 { font-size: 1.2rem; }
+  .action-content p { font-size: 0.95rem; }
+  .content-card { padding: 20px; }
   
   .user-welcome {
     text-align: center;
@@ -779,17 +777,17 @@
 }
 
 @media (max-width: 480px) {
-  .header-container {
-    padding: 0 15px;
-  }
+  .header-container { padding: 0 12px; }
   
-  .logo-container > div {
-    font-size: 20px;
-  }
+  .logo-container > div { font-size: 20px; }
   
-  .dashboard-title {
-    font-size: 1.8rem;
-  }
+  .dashboard-title { font-size: 1.6rem; }
+  .dashboard-main-content { padding: 12px; }
+  .stat-card { padding: 16px; }
+  .stat-icon { width: 40px; height: 40px; }
+  .stat-value { font-size: 1.4rem; }
+  .action-card { padding: 16px; min-height: 160px; }
+  .content-card { padding: 16px; }
   
   .hero-buttons {
     flex-direction: column;

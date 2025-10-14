@@ -683,8 +683,11 @@
   padding: 0;
   list-style: none;
   overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
 .profile-tab-nav-list::-webkit-scrollbar {
@@ -1458,13 +1461,30 @@
   .profile-tab-nav-list {
     gap: 1rem;
     padding-bottom: 0.5rem;
+    padding-right: 2rem;
     overflow-x: auto;
+    overflow-y: hidden;
     scrollbar-width: none;
     -ms-overflow-style: none;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
   }
   
   .profile-tab-nav-list::-webkit-scrollbar {
     display: none;
+  }
+  
+  /* Scroll indicator for tablet */
+  .profile-tab-navigation::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 2rem;
+    background: linear-gradient(to left, rgba(248, 250, 252, 0.9), transparent);
+    pointer-events: none;
+    z-index: 1;
   }
   
   .profile-tab-content {
@@ -1517,15 +1537,34 @@
   
   .profile-tab-navigation {
     padding: 0 var(--space-4);
+    position: relative;
+  }
+  
+  /* Add scroll gradient indicators on mobile */
+  .profile-tab-navigation::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 3rem;
+    background: linear-gradient(to left, rgba(248, 250, 252, 0.95), transparent);
+    pointer-events: none;
+    z-index: 1;
   }
   
   .profile-tab-nav-list {
     gap: var(--space-4);
+    padding-right: 3rem; /* Space for gradient indicator */
   }
   
   .profile-tab-nav-button {
     font-size: 0.8rem;
-    padding: var(--space-3) 0;
+    padding: var(--space-3) var(--space-2);
+  }
+  
+  .profile-tab-nav-button span {
+    font-size: 0.75rem;
   }
   
   .profile-tab-content {
