@@ -17,12 +17,13 @@ from sklearn.metrics import accuracy_score, classification_report
 import joblib
 from typing import Dict, List, Tuple, Optional
 import re
+from db.supabase_client import SupabaseClient
 
 # Load environment variables
 load_dotenv()
 
 class StreamlinedAIDiagnosis:
-    """Streamlined AI Diagnosis System using new CSV structure"""
+    """Streamlined AI Diagnosis System using Supabase tables"""
     
     def __init__(self):
         """Initialize the streamlined diagnosis system"""
@@ -32,7 +33,8 @@ class StreamlinedAIDiagnosis:
         self.conditions_df = None
         self.reasons_df = None
         self.actions_df = None
-        self.model_version = "MediChain-Streamlined-v5.0"
+        self.model_version = "MediChain-Streamlined-v6.0-Supabase"
+        self.supabase = SupabaseClient()
         
         print(f"🚀 Initializing {self.model_version}")
         self.load_data()
@@ -40,21 +42,30 @@ class StreamlinedAIDiagnosis:
         print("✅ AI system ready!")
     
     def load_data(self):
-        """Load all CSV datasets with improved linking"""
+        """Load all datasets from Supabase"""
         try:
-            # Load main conditions dataset
-            conditions_path = os.path.join(os.path.dirname(__file__), 'condition - Sheet1.csv')
-            self.conditions_df = pd.read_csv(conditions_path)
+            # Load main conditions dataset from Supabase
+            print("📥 Fetching conditions from Supabase...")
+            conditions_data = self.supabase.get_conditions()
+            if not conditions_data:
+                raise Exception("❌ No conditions data found in Supabase. Please ensure data is migrated to 'conditions' table.")
+            self.conditions_df = pd.DataFrame(conditions_data)
             print(f"✅ Loaded conditions dataset: {len(self.conditions_df)} records")
             
-            # Load reasons dataset
-            reasons_path = os.path.join(os.path.dirname(__file__), 'condition_reason - Sheet1.csv')
-            self.reasons_df = pd.read_csv(reasons_path)
+            # Load reasons dataset from Supabase
+            print("📥 Fetching condition reasons from Supabase...")
+            reasons_data = self.supabase.get_condition_reasons()
+            if not reasons_data:
+                raise Exception("❌ No condition reasons found in Supabase. Please ensure data is migrated to 'condition_reasons' table.")
+            self.reasons_df = pd.DataFrame(reasons_data)
             print(f"✅ Loaded reasons dataset: {len(self.reasons_df)} reasons")
             
-            # Load actions/medications dataset
-            actions_path = os.path.join(os.path.dirname(__file__), 'action_medication - Sheet1.csv')
-            self.actions_df = pd.read_csv(actions_path)
+            # Load actions/medications dataset from Supabase
+            print("📥 Fetching action conditions from Supabase...")
+            actions_data = self.supabase.get_action_conditions()
+            if not actions_data:
+                raise Exception("❌ No action conditions found in Supabase. Please ensure data is migrated to 'action_conditions' table.")
+            self.actions_df = pd.DataFrame(actions_data)
             print(f"✅ Loaded actions/medications dataset: {len(self.actions_df)} entries")
             
             # Identify the key column and symptom columns
@@ -155,14 +166,16 @@ class StreamlinedAIDiagnosis:
             print(f"📊 Accuracy: {accuracy:.3f}")
             print(f"🎯 Classes: {len(self.label_encoder.classes_)}")
             
-            # Save model
-            model_path = os.path.join(os.path.dirname(__file__), 'streamlined_model_v5.pkl')
+            # Save model with new version name
+            model_path = os.path.join(os.path.dirname(__file__), 'supabase_model_v6.pkl')
             joblib.dump({
                 'model': self.model,
                 'label_encoder': self.label_encoder,
-                'symptom_columns': self.symptom_columns
+                'symptom_columns': self.symptom_columns,
+                'version': self.model_version,
+                'data_source': 'supabase'
             }, model_path)
-            print("✅ Model saved successfully!")
+            print(f"✅ Model saved: {os.path.basename(model_path)}")
             
         except Exception as e:
             print(f"❌ Error training model: {e}")
@@ -174,7 +187,7 @@ class StreamlinedAIDiagnosis:
         
         # Common normalizations
         normalizations = {
-            'runny nose': 'runny_nose',
+            'runny nose' : 'runny_nose',
             'sore throat': 'sore_throat',
             'back pain': 'back_pain',
             'neck pain': 'neck_pain',

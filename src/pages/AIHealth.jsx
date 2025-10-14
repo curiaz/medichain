@@ -205,6 +205,7 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, diag
             <div className="slide-header">
               <div className="slide-icon">📋</div>
               <h2 className="slide-title">Symptoms Reported</h2>
+              <p className="slide-subtitle">Based on your reported symptoms</p>
             </div>
             <div className="symptoms-summary">
               {typeof slide.content === 'string' 
@@ -231,6 +232,7 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, diag
             <div className="slide-header">
               <div className="slide-icon">🔍</div>
               <h2 className="slide-title">Possible Conditions</h2>
+              <p className="slide-subtitle">Based on your reported symptoms</p>
             </div>
             
             {/* FORCE DISPLAY ALL 3 CONDITIONS FROM CSV */}
@@ -292,8 +294,9 @@ const MedicalAnalysisSlideshow = ({ formattedResponse, diagnosis, symptoms, diag
         return (
           <div className="slide-content recommendations-slide">
             <div className="slide-header">
-              <div className="slide-icon">�</div>
-              <h2 className="slide-title">Recommended Action</h2>
+              <div className="slide-icon">💡</div>
+              <h2 className="slide-title">Recommended Actions</h2>
+              <p className="slide-subtitle">Based on your possible conditions</p>
             </div>
             <div className="recommendations-list">
               {/* Show combined recommended actions from all possible conditions */}

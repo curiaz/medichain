@@ -377,3 +377,37 @@ class SupabaseClient:
         except Exception as e:
             print(f"Error updating patient privacy settings: {e}")
             return None
+
+    # AI Diagnosis Data Methods
+    def get_conditions(self):
+        """Fetch all conditions from Supabase"""
+        if not self._ensure_client_available("get_conditions"):
+            return []
+        try:
+            response = self.client.table("conditions").select("*").execute()
+            return response.data if response.data else []
+        except Exception as e:
+            print(f"Error fetching conditions: {e}")
+            return []
+
+    def get_condition_reasons(self):
+        """Fetch all condition reasons from Supabase"""
+        if not self._ensure_client_available("get_condition_reasons"):
+            return []
+        try:
+            response = self.client.table("condition_reasons").select("*").execute()
+            return response.data if response.data else []
+        except Exception as e:
+            print(f"Error fetching condition reasons: {e}")
+            return []
+
+    def get_action_conditions(self):
+        """Fetch all action conditions (medications) from Supabase"""
+        if not self._ensure_client_available("get_action_conditions"):
+            return []
+        try:
+            response = self.client.table("action_conditions").select("*").execute()
+            return response.data if response.data else []
+        except Exception as e:
+            print(f"Error fetching action conditions: {e}")
+            return []
