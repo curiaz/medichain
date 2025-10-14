@@ -1,24 +1,37 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-MediChain Backend Application
-Integrates Firebase Authentication and Supabase Storage
+MediChain Backend - Integrated with Streamlined AI v5.0
 """
-from flask import Flask
+
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
+import sys
+
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+import pandas as pd
+import numpy as np
+# Temporarily disable sklearn imports for Python 3.13 compatibility
+# from sklearn.ensemble import RandomForestClassifier
+# from sklearn.preprocessing import LabelEncoder
+# from sklearn.model_selection import train_test_split
+# from sklearn.metrics import accuracy_score, classification_report
+import joblib
+from typing import Dict, List, Tuple, Optional
+import re
+from db.supabase_client import SupabaseClient
 
 # Load environment variables
 load_dotenv()
 
-<<<<<<< HEAD
-# Import our services
-from auth.firebase_auth_routes import auth_firebase_bp
-from medical_routes import medical_bp
-from appointment_routes import appointments_bp
-from db.supabase_client import SupabaseClient
-=======
 class StreamlinedAIDiagnosis:
-    """Streamlined AI Diagnosis System using new CSV structure"""
+    """Streamlined AI Diagnosis System using Supabase tables"""
     
     def __init__(self):
         """Initialize the streamlined diagnosis system"""
@@ -28,7 +41,8 @@ class StreamlinedAIDiagnosis:
         self.conditions_df = None
         self.reasons_df = None
         self.actions_df = None
-        self.model_version = "MediChain-Streamlined-v5.0"
+        self.model_version = "MediChain-Streamlined-v6.0-Supabase"
+        self.supabase = SupabaseClient()
         
         print(f"🚀 Initializing {self.model_version}")
         self.load_data()
@@ -36,21 +50,30 @@ class StreamlinedAIDiagnosis:
         print("✅ AI system ready!")
     
     def load_data(self):
-        """Load all CSV datasets with improved linking"""
+        """Load all datasets from Supabase"""
         try:
-            # Load main conditions dataset
-            conditions_path = os.path.join(os.path.dirname(__file__), 'condition - Sheet1.csv')
-            self.conditions_df = pd.read_csv(conditions_path)
+            # Load main conditions dataset from Supabase
+            print("📥 Fetching conditions from Supabase...")
+            conditions_data = self.supabase.get_conditions()
+            if not conditions_data:
+                raise Exception("❌ No conditions data found in Supabase. Please ensure data is migrated to 'conditions' table.")
+            self.conditions_df = pd.DataFrame(conditions_data)
             print(f"✅ Loaded conditions dataset: {len(self.conditions_df)} records")
             
-            # Load reasons dataset
-            reasons_path = os.path.join(os.path.dirname(__file__), 'condition_reason - Sheet1.csv')
-            self.reasons_df = pd.read_csv(reasons_path)
+            # Load reasons dataset from Supabase
+            print("📥 Fetching condition reasons from Supabase...")
+            reasons_data = self.supabase.get_condition_reasons()
+            if not reasons_data:
+                raise Exception("❌ No condition reasons found in Supabase. Please ensure data is migrated to 'condition_reasons' table.")
+            self.reasons_df = pd.DataFrame(reasons_data)
             print(f"✅ Loaded reasons dataset: {len(self.reasons_df)} reasons")
             
-            # Load actions/medications dataset
-            actions_path = os.path.join(os.path.dirname(__file__), 'action_medication - Sheet1.csv')
-            self.actions_df = pd.read_csv(actions_path)
+            # Load actions/medications dataset from Supabase
+            print("📥 Fetching action conditions from Supabase...")
+            actions_data = self.supabase.get_action_conditions()
+            if not actions_data:
+                raise Exception("❌ No action conditions found in Supabase. Please ensure data is migrated to 'action_conditions' table.")
+            self.actions_df = pd.DataFrame(actions_data)
             print(f"✅ Loaded actions/medications dataset: {len(self.actions_df)} entries")
             
             # Identify the key column and symptom columns
@@ -151,14 +174,16 @@ class StreamlinedAIDiagnosis:
             print(f"📊 Accuracy: {accuracy:.3f}")
             print(f"🎯 Classes: {len(self.label_encoder.classes_)}")
             
-            # Save model
-            model_path = os.path.join(os.path.dirname(__file__), 'streamlined_model_v5.pkl')
+            # Save model with new version name
+            model_path = os.path.join(os.path.dirname(__file__), 'supabase_model_v6.pkl')
             joblib.dump({
                 'model': self.model,
                 'label_encoder': self.label_encoder,
-                'symptom_columns': self.symptom_columns
+                'symptom_columns': self.symptom_columns,
+                'version': self.model_version,
+                'data_source': 'supabase'
             }, model_path)
-            print("✅ Model saved successfully!")
+            print(f"✅ Model saved: {os.path.basename(model_path)}")
             
         except Exception as e:
             print(f"❌ Error training model: {e}")
@@ -170,7 +195,7 @@ class StreamlinedAIDiagnosis:
         
         # Common normalizations
         normalizations = {
-            'runny nose': 'runny_nose',
+            'runny nose' : 'runny_nose',
             'sore throat': 'sore_throat',
             'back pain': 'back_pain',
             'neck pain': 'neck_pain',
@@ -527,18 +552,17 @@ class StreamlinedAIDiagnosis:
                 'message': f'Diagnosis error: {str(e)}',
                 'data': None
             }
->>>>>>> a67a3da (Fix authentication: use user_profiles table, improve login debug, add symptom normalization, and Supabase client fixes)
 
 # Initialize Flask app
 app = Flask(__name__)
 
-<<<<<<< HEAD
-# Enable CORS for all routes
-CORS(app)
-=======
 # Register authentication blueprint
 from auth.auth_routes import auth_bp
 app.register_blueprint(auth_bp)
+
+# Register doctor verification blueprint
+from doctor_verification import doctor_verification_bp
+app.register_blueprint(doctor_verification_bp)
 
 # Enable CORS for all routes (allow all origins for development)
 CORS(app, resources={
@@ -554,59 +578,148 @@ CORS(app, resources={
         "allow_headers": ["Content-Type", "Authorization"]
     }
 })
->>>>>>> a67a3da (Fix authentication: use user_profiles table, improve login debug, add symptom normalization, and Supabase client fixes)
 
-# Configure Flask
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
-app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
+# Initialize AI system
+print("🚀 Starting MediChain API v5.0 (AI Disabled for Testing)...")
+print("=" * 60)
+ai_engine = None
 
-# Register blueprints
-app.register_blueprint(auth_firebase_bp)
-app.register_blueprint(medical_bp)
-app.register_blueprint(appointments_bp)
+# Temporarily disable AI engine for Python 3.13 compatibility testing
+# try:
+#     ai_engine = StreamlinedAIDiagnosis()
+#     print("✅ AI system initialized successfully!")
+# except Exception as e:
+#     print(f"❌ Failed to initialize AI system: {e}")
+#     sys.exit(1)
 
-# Initialize Supabase client
-supabase = SupabaseClient()
+print("⚠️  AI system disabled - Authentication only mode")
 
+# Routes
 @app.route('/')
-def index():
-    """Health check endpoint"""
-    return {
-        'status': 'MediChain Backend is running!',
-        'version': '1.0.0',
-        'services': {
-            'firebase_auth': 'configured',
-            'supabase_storage': 'configured',
-            'medical_records': 'available',
-            'appointments': 'available'
-        },
+def home():
+    """Home route"""
+    return jsonify({
+        'message': 'MediChain API v5.0 - Streamlined',
+        'status': 'active',
+        'ai_system': ai_engine.model_version if ai_engine else 'unavailable',
         'endpoints': {
-            'auth': '/api/auth/*',
-            'medical': '/api/medical/*',
-            'appointments': '/api/appointments/*'
+            'health': '/health',
+            'ai_health': '/api/ai/health', 
+            'diagnose': '/api/diagnose',
+            'symptom_explanations': '/api/symptom-explanations'
         }
-    }
+    })
 
-@app.route('/api/health')
+@app.route('/health')
 def health_check():
-    """Detailed health check"""
-    try:
-        # Test Supabase connection
-        supabase_status = 'connected' if supabase.client else 'disconnected'
+    """Health check endpoint"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': pd.Timestamp.now().isoformat(),
+        'ai_system': ai_engine.model_version if ai_engine else 'unavailable'
+    })
 
-        return {
-            'status': 'healthy',
-            'services': {
-                'supabase': supabase_status,
-                'firebase': 'configured'  # Firebase is initialized in the auth service
-            }
-        }
+@app.route('/api/ai/health', methods=['GET'])
+def ai_health():
+    """AI system health check"""
+    if not ai_engine:
+        return jsonify({
+            'status': 'error',
+            'message': 'AI system not initialized'
+        }), 503
+    
+    return jsonify({
+        'status': 'healthy',
+        'ai_system': ai_engine.model_version,
+        'conditions_loaded': len(ai_engine.conditions_df),
+        'symptoms_tracked': len(ai_engine.symptom_columns)
+    })
+
+@app.route('/api/diagnose', methods=['POST'])
+def diagnose():
+    """Main diagnosis endpoint"""
+    try:
+        if not ai_engine:
+            return jsonify({
+                'success': False,
+                'message': 'AI system not available'
+            }), 503
+        
+        data = request.get_json()
+        if not data or 'symptoms' not in data:
+            return jsonify({
+                'success': False,
+                'message': 'Missing symptoms in request'
+            }), 400
+        
+        symptoms = data['symptoms']
+        if not symptoms or not symptoms.strip():
+            return jsonify({
+                'success': False,
+                'message': 'Empty symptoms provided'
+            }), 400
+        
+        # Run diagnosis
+        result = ai_engine.diagnose(symptoms.strip())
+        
+        return jsonify(result)
+        
     except Exception as e:
-        return {
-            'status': 'unhealthy',
-            'error': str(e)
-        }, 500
+        print(f"❌ Error in /api/diagnose: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Server error: {str(e)}'
+        }), 500
+
+@app.route('/api/symptom-explanations', methods=['POST'])
+def symptom_explanations():
+    """Get explanations for detected symptoms"""
+    try:
+        if not ai_engine:
+            return jsonify({
+                'success': False,
+                'message': 'AI system not available'
+            }), 503
+        
+        data = request.get_json()
+        if not data or 'symptoms' not in data:
+            return jsonify({
+                'success': False,
+                'message': 'Missing symptoms in request'
+            }), 400
+        
+        symptoms_text = data['symptoms']
+        
+        # Parse symptoms
+        parsed_symptoms = ai_engine.parse_symptoms(symptoms_text)
+        detected_symptoms = [sym for sym, val in parsed_symptoms.items() if val == 1]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'detected_symptoms': detected_symptoms,
+                'total_detected': len(detected_symptoms),
+                'symptom_details': {sym: 'Detected symptom' for sym in detected_symptoms}
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in /api/symptom-explanations: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Server error: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
-    port = int(os.getenv('FLASK_PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=app.config['DEBUG'])
+    print("🌐 Starting Flask server...")
+    print(f"📡 API available at: http://localhost:5000")
+    print(f"🩺 Diagnosis endpoint: POST /api/diagnose")
+    print(f"📋 Explanations endpoint: POST /api/symptom-explanations")
+    print(f"❤️  Health check: GET /health")
+    print("=" * 60)
+    
+    app.run(
+        debug=False,
+        host='0.0.0.0',
+        port=5000
+    )

@@ -2,14 +2,14 @@ import { useState, useEffect } from "react"
 import "./MedichainLogin.css" // Reuse existing styles
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight } from "lucide-react"
-import MedichainLogo from "../components/MedichainLogo"
+import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight, Upload, FileText } from "lucide-react"
 import LoadingSpinner from "../components/LoadingSpinner"
 import { showToast } from "../components/CustomToast"
+import medichainLogo from "../assets/medichain_logo.png"
 
 const MedichainSignup = () => {
   const navigate = useNavigate()
-  const { signup } = useAuth() // Fix: Use signup instead of register
+  const { signup, verifyEmail, resendVerification, refreshUser } = useAuth()
   const [searchParams] = useSearchParams()
   
   const [formData, setFormData] = useState({
@@ -18,12 +18,20 @@ const MedichainSignup = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    userType: "patient" // default
+    userType: "patient", // default
+    specialization: "", // for doctors
+    verificationFile: null // for doctor verification
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isRolePreSelected, setIsRolePreSelected] = useState(false)
+  
+  // OTP Verification State
+  const [showOTPVerification, setShowOTPVerification] = useState(false)
+  const [sessionToken, setSessionToken] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [registeredEmail, setRegisteredEmail] = useState('')
 
   // Set the userType based on URL parameter
   useEffect(() => {
@@ -38,22 +46,32 @@ const MedichainSignup = () => {
   }, [searchParams])
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    const { name, value, files } = e.target
+    if (name === 'verificationFile') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: files[0] || null
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }))
+    }
   }
 
   const validateForm = () => {
-    const { firstName, lastName, email, password, confirmPassword } = formData
+    const { firstName, lastName, email, password, confirmPassword, userType, specialization, verificationFile } = formData
     
-    // Debug: Log form data to see what's actually there
-    console.log('Form data:', formData)
-    console.log('firstName:', firstName, 'lastName:', lastName, 'email:', email, 'password:', password, 'confirmPassword:', confirmPassword)
+    if (!firstName?.trim()) {
+      showToast.error("Please enter your first name")
+      return false
+    }
     
-    // COMPLETELY BYPASS VALIDATION FOR TESTING
-    return true;
+    if (!lastName?.trim()) {
+      showToast.error("Please enter your last name")
+      return false
+    }
     
     if (!password?.trim()) {
       showToast.error("Please enter a password")
@@ -84,6 +102,32 @@ const MedichainSignup = () => {
       return false
     }
     
+    // Doctor-specific validation
+    if (userType === 'doctor') {
+      if (!specialization?.trim()) {
+        showToast.error("Please enter your medical specialization")
+        return false
+      }
+      
+      if (!verificationFile) {
+        showToast.error("Please upload your verification document (ID/Certificate)")
+        return false
+      }
+      
+      // Validate file type
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
+      if (!allowedTypes.includes(verificationFile.type)) {
+        showToast.error("Please upload a valid file (PDF, JPG, or PNG)")
+        return false
+      }
+      
+      // Validate file size (max 5MB)
+      if (verificationFile.size > 5 * 1024 * 1024) {
+        showToast.error("File size must be less than 5MB")
+        return false
+      }
+    }
+    
     return true
   }
 
@@ -106,30 +150,156 @@ const MedichainSignup = () => {
         password: formData.password,
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
-        userType: formData.userType
+        userType: formData.userType,
+        specialization: formData.specialization?.trim(),
+        hasVerificationFile: !!formData.verificationFile
       });
       
-      // Call signup with separate name fields
+      // Both patient and doctor use the same signup flow with OTP verification
       const result = await signup(
         formData.email.trim(),
         formData.password,
         formData.firstName.trim(),
         formData.lastName.trim(),
         formData.userType
-      )
+      );
       
       if (result.success) {
-        showToast.success(result.message || "Account created successfully! Welcome to Medichain.")
-        // Navigate to dashboard since user is automatically logged in
-        navigate("/dashboard")
+        // Check if email verification is required
+        if (result.requiresVerification) {
+          setShowOTPVerification(true);
+          setSessionToken(result.sessionToken);
+          setRegisteredEmail(formData.email.trim());
+          
+          // Log OTP code if in dev mode
+          if (result.otpCode) {
+            console.log('🔐 DEV MODE - OTP Code:', result.otpCode);
+            showToast.success(`Check console for OTP code (Dev Mode)`);
+          } else {
+            showToast.success(result.message || "Verification code sent to your email!");
+          }
+        } else {
+          // Old flow (no verification required)
+          showToast.success(result.message || "Account created successfully! Welcome to Medichain.");
+          navigate("/dashboard");
+        }
       } else {
-        showToast.error(result.error || "Signup failed")
+        showToast.error(result.error || "Signup failed");
       }
     } catch (error) {
-      console.error("Signup error:", error)
-      showToast.error("An unexpected error occurred. Please try again.")
+      console.error("Signup error:", error);
+      showToast.error("An unexpected error occurred. Please try again.");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
+    }
+  }
+  
+  // Handle OTP verification
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault();
+    
+    if (!otpCode || otpCode.length !== 6) {
+      showToast.error("Please enter a valid 6-digit code");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      const result = await verifyEmail(sessionToken, otpCode);
+      
+      if (result.success) {
+        // If user is a doctor, submit doctor verification request
+        if (formData.userType === 'doctor' && formData.verificationFile) {
+          showToast.success("Email verified! Submitting doctor verification...");
+          
+          try {
+            // Get firebase_uid from the result
+            const firebaseUid = result.user?.uid || result.user?.firebase_uid;
+            
+            if (!firebaseUid) {
+              console.error("No Firebase UID found in result:", result);
+              showToast.warning("Account created but verification request may fail. Firebase UID missing.");
+            }
+            
+            // Create FormData for doctor verification
+            const doctorFormData = new FormData();
+            doctorFormData.append('email', formData.email.trim());
+            doctorFormData.append('firebase_uid', firebaseUid);
+            doctorFormData.append('specialization', formData.specialization.trim());
+            doctorFormData.append('verificationFile', formData.verificationFile);
+            
+            console.log('Submitting doctor verification with:', {
+              email: formData.email.trim(),
+              firebase_uid: firebaseUid,
+              specialization: formData.specialization.trim(),
+              hasFile: !!formData.verificationFile
+            });
+            
+            const response = await fetch('http://localhost:5000/api/auth/doctor-verification-submit', {
+              method: 'POST',
+              body: doctorFormData,
+            });
+            
+            const doctorResult = await response.json();
+            
+            if (doctorResult.success) {
+              showToast.success("Doctor verification request submitted! You'll receive an email once approved.");
+              
+              // Refresh user data from backend to get updated doctor_profile
+              await refreshUser();
+              
+              setTimeout(() => navigate("/dashboard"), 1500);
+            } else {
+              console.error("Doctor verification failed:", doctorResult);
+              showToast.error(doctorResult.error || "Failed to submit verification request");
+              setTimeout(() => navigate("/dashboard"), 1500);
+            }
+          } catch (doctorError) {
+            console.error("Doctor verification error:", doctorError);
+            showToast.warning("Account created but verification request failed. Please contact support.");
+            setTimeout(() => navigate("/dashboard"), 1500);
+          }
+        } else {
+          // Regular patient signup
+          showToast.success("Email verified successfully! Welcome to MediChain.");
+          setTimeout(() => navigate("/dashboard"), 1000);
+        }
+      } else {
+        showToast.error(result.error || "Invalid verification code");
+      }
+    } catch (error) {
+      console.error("Verification error:", error);
+      showToast.error("Verification failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+  
+  // Handle resend OTP
+  const handleResendOTP = async () => {
+    setIsSubmitting(true);
+    
+    try {
+      const result = await resendVerification(registeredEmail);
+      
+      if (result.success) {
+        setSessionToken(result.sessionToken);
+        
+        if (result.otpCode) {
+          console.log('🔐 DEV MODE - New OTP Code:', result.otpCode);
+          showToast.success("New code sent! Check console (Dev Mode)");
+        } else {
+          showToast.success("New verification code sent to your email!");
+        }
+      } else {
+        showToast.error(result.error || "Failed to resend code");
+      }
+    } catch (error) {
+      console.error("Resend error:", error);
+      showToast.error("Failed to resend code. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -148,7 +318,7 @@ const MedichainSignup = () => {
       <div className="header">
         <div className="logo-container" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
           <div className="logo-icon">
-            <MedichainLogo size={40} />
+            <img src={medichainLogo} alt="MediChain Logo" width={40} height={40} />
           </div>
           <h1>MEDICHAIN</h1>
         </div>
@@ -235,6 +405,52 @@ const MedichainSignup = () => {
                   </div>
                 </div>
 
+                {/* Doctor-specific fields */}
+                {formData.userType === 'doctor' && (
+                  <>
+                    <div className="input-group">
+                      <label htmlFor="specialization">Medical Specialization</label>
+                      <div className="input-wrapper">
+                        <User className="input-icon" size={20} />
+                        <input
+                          id="specialization"
+                          name="specialization"
+                          type="text"
+                          value={formData.specialization}
+                          onChange={handleInputChange}
+                          placeholder="e.g., Cardiology, Pediatrics, Internal Medicine"
+                          disabled={isSubmitting}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="input-group">
+                      <label htmlFor="verificationFile">Verification Document</label>
+                      <div className="input-wrapper file-upload-wrapper">
+                        <FileText className="input-icon" size={20} />
+                        <input
+                          id="verificationFile"
+                          name="verificationFile"
+                          type="file"
+                          onChange={handleInputChange}
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          disabled={isSubmitting}
+                          required
+                          style={{ display: 'none' }}
+                        />
+                        <label htmlFor="verificationFile" className="file-upload-label">
+                          <Upload size={16} />
+                          {formData.verificationFile ? formData.verificationFile.name : 'Upload ID/Certificate (PDF, JPG, PNG)'}
+                        </label>
+                      </div>
+                      <small className="file-help-text">
+                        Upload your medical license, ID, or certification document (Max 5MB)
+                      </small>
+                    </div>
+                  </>
+                )}
+
                 <div className="input-group">
                   <label htmlFor="password">Password</label>
                   <div className="input-wrapper">
@@ -320,7 +536,6 @@ const MedichainSignup = () => {
             </div>
           </div>
 
-          {/* Doctor Image Section */}
           <div className="doctor-image">
             <div className="doctor-placeholder">
               <div className="doctor-icon">
@@ -330,16 +545,16 @@ const MedichainSignup = () => {
               <p>
                 Create your account to access secure healthcare records and AI-powered medical services.
               </p>
-              <div className="feature-list">
-                <div className="feature-item">
+              <div className="login-feature-list">
+                <div className="login-feature-item">
                   <Plus size={16} />
                   <span>Secure Account Creation</span>
                 </div>
-                <div className="feature-item">
+                <div className="login-feature-item">
                   <Plus size={16} />
                   <span>HIPAA Compliant</span>
                 </div>
-                <div className="feature-item">
+                <div className="login-feature-item">
                   <Plus size={16} />
                   <span>Encrypted Data Storage</span>
                 </div>
@@ -349,7 +564,78 @@ const MedichainSignup = () => {
         </div>
       </div>
 
-      {/* Footer */}
+      {/* OTP Verification Modal */}
+      {showOTPVerification && (
+        <div className="otp-overlay">
+          <div className="otp-modal">
+            <div className="otp-header">
+              <h2>✉️ Verify Your Email</h2>
+              <p>We sent a 6-digit code to:</p>
+              <p className="otp-email"><strong>{registeredEmail}</strong></p>
+            </div>
+            
+            <form onSubmit={handleVerifyOTP} className="otp-form">
+              <div className="otp-input-group">
+                <label htmlFor="otpCode">Enter Verification Code</label>
+                <input
+                  id="otpCode"
+                  type="text"
+                  maxLength="6"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  className="otp-input"
+                  disabled={isSubmitting}
+                  autoFocus
+                  required
+                />
+                <small className="otp-help-text">
+                  Check your email for the 6-digit code. The code expires in 10 minutes.
+                </small>
+              </div>
+              
+              <div className="otp-buttons">
+                <button 
+                  type="submit" 
+                  className={`otp-verify-btn ${isSubmitting ? 'loading' : ''}`}
+                  disabled={isSubmitting || otpCode.length !== 6}
+                >
+                  {isSubmitting ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <LoadingSpinner size="small" text="" color="#ffffff" />
+                      <span>Verifying...</span>
+                    </div>
+                  ) : (
+                    'Verify Email'
+                  )}
+                </button>
+                
+                <button 
+                  type="button" 
+                  className="otp-resend-btn"
+                  onClick={handleResendOTP}
+                  disabled={isSubmitting}
+                >
+                  Resend Code
+                </button>
+              </div>
+              
+              <p className="otp-back-link">
+                <span 
+                  onClick={() => {
+                    setShowOTPVerification(false);
+                    setOtpCode('');
+                  }}
+                  style={{ cursor: 'pointer', color: '#667eea' }}
+                >
+                  ← Back to Sign Up
+                </span>
+              </p>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="footer">
         <div className="footer-content">
           <div className="footer-main">
@@ -364,7 +650,7 @@ const MedichainSignup = () => {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default MedichainSignup
+export default MedichainSignup;

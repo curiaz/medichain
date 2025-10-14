@@ -22,13 +22,6 @@ class SupabaseClient:
         
         try:            
             # Create client with anon key for regular operations
-<<<<<<< HEAD
-            self.client: Client = create_client(self.supabase_url, self.supabase_key)
-            
-            # Create service client for admin operations (bypasses RLS)
-            if self.supabase_service_key:
-                self.service_client: Client = create_client(self.supabase_url, self.supabase_service_key)
-=======
             self.client: Client = create_client(
                 self.supabase_url, 
                 self.supabase_key
@@ -40,18 +33,12 @@ class SupabaseClient:
                     self.supabase_url, 
                     self.supabase_service_key
                 )
->>>>>>> a67a3da (Fix authentication: use user_profiles table, improve login debug, add symptom normalization, and Supabase client fixes)
             else:
                 print("Warning: SUPABASE_SERVICE_KEY not found. Some operations may fail due to RLS.")
                 self.service_client = self.client
                 
-<<<<<<< HEAD
-        except Exception as ssl_error:
-            print(f"Error creating Supabase client: {ssl_error}")
-=======
-            # Close the custom HTTP client as Supabase creates its own
-            http_client.close()
-
+            print("Supabase client initialized successfully")
+                
         except ssl.SSLError as ssl_error:
             print(f"SSL Error creating Supabase client: {ssl_error}")
             print("Attempting fallback SSL configuration...")
@@ -71,7 +58,7 @@ class SupabaseClient:
                 else:
                     self.service_client = self.client
                     
-                print("✅ Supabase client created with fallback SSL configuration")
+                print("Supabase client created with fallback SSL configuration")
                 
             except Exception as fallback_error:
                 print(f"Fallback SSL configuration also failed: {fallback_error}")
@@ -79,7 +66,6 @@ class SupabaseClient:
                 
         except Exception as general_error:
             print(f"Error creating Supabase client: {general_error}")
->>>>>>> a67a3da (Fix authentication: use user_profiles table, improve login debug, add symptom normalization, and Supabase client fixes)
             raise
     
     def create_health_record(self, record_data):
