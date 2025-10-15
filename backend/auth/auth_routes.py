@@ -503,7 +503,7 @@ def doctor_signup():
                     
                     if email_sent:
                         print(f"[DEBUG] ✅ Admin notification email sent for doctor verification")
-        else:
+                    else:
                         print(f"[DEBUG] ⚠️  Failed to send admin notification email")
                         
                 except Exception as email_error:
@@ -673,8 +673,8 @@ def login():
         else:
             # ========== EMAIL/PASSWORD LOGIN ==========
             print("[DEBUG] 📧 Email/password login detected")
-        email = data.get("email", "").strip().lower()
-        password = data.get("password", "")
+            email = data.get("email", "").strip().lower()
+            password = data.get("password", "")
             print(f"[DEBUG] Email: {email}, Password: {'*' * len(password) if password else 'missing'}")
 
             # Validate inputs
@@ -694,7 +694,7 @@ def login():
 
             # Find user in database
             try:
-        response = supabase.client.table("user_profiles").select("*").eq("email", email).execute()
+                response = supabase.client.table("user_profiles").select("*").eq("email", email).execute()
                 print(f"[DEBUG] Supabase user query: {len(response.data) if response.data else 0} results")
             except Exception as db_error:
                 print(f"[DEBUG] ❌ Database error during user lookup: {db_error}")
@@ -703,14 +703,14 @@ def login():
                     "error": "Database error occurred. Please try again."
                 }), 500
 
-        if not response.data:
+            if not response.data:
                 print("[DEBUG] ❌ No user found for email")
                 return jsonify({
                     "success": False,
                     "error": "Invalid email or password."
                 }), 401
 
-        user = response.data[0]
+            user = response.data[0]
             print(f"[DEBUG] User found: {user.get('email')}")
 
             # 🔧 FIXED: Check if user has password_hash
@@ -721,7 +721,7 @@ def login():
                 print("[DEBUG] ✅ User has password_hash, verifying with Supabase")
                 try:
                     password_check = auth_utils.verify_password(password, user.get("password_hash"))
-        print(f"[DEBUG] Password check result: {password_check}")
+                    print(f"[DEBUG] Password check result: {password_check}")
                 except Exception as verify_error:
                     print(f"[DEBUG] ❌ Password verification error: {verify_error}")
                     return jsonify({
@@ -729,7 +729,7 @@ def login():
                         "error": "Authentication error occurred. Please try again."
                     }), 500
                 
-        if not password_check:
+                if not password_check:
                     print("[DEBUG] ❌ Password mismatch for user")
                     return jsonify({
                         "success": False,
@@ -746,13 +746,13 @@ def login():
                     "hint": "This account uses Firebase authentication. The app will retry automatically."
                 }), 401
 
-        # Generate token
-        token = auth_utils.generate_token(user["id"], user["email"], user["role"])
+            # Generate token
+            token = auth_utils.generate_token(user["id"], user["email"], user["role"])
 
-        # Construct full name from first and last name
-        full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
-        if not full_name:
-            full_name = user.get("email", "").split("@")[0]
+            # Construct full name from first and last name
+            full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
+            if not full_name:
+                full_name = user.get("email", "").split("@")[0]
 
             # Optionally include doctor profile
             doctor_profile = None
@@ -768,9 +768,9 @@ def login():
 
             print(f"[DEBUG] ✅ Login successful for user {user['email']}")
             return jsonify({
-                    "success": True,
+                "success": True,
                 "message": "Login successful! Welcome back.",
-                    "data": {
+                "data": {
                         "user": {
                             "id": user["id"],
                             "email": user["email"],
