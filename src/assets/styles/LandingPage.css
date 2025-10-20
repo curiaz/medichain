@@ -322,6 +322,40 @@ body {
   flex: 1;
 }
 
+/* Mobile menu button (hidden on desktop) */
+.mobile-menu-button {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.mobile-menu-button span {
+  width: 24px;
+  height: 2px;
+  background: #1f2937;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.mobile-menu-button.open span:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+.mobile-menu-button.open span:nth-child(2) {
+  opacity: 0;
+}
+.mobile-menu-button.open span:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+/* Mobile nav panel (rendered only on mobile) */
+.mobile-nav {
+  display: none;
+}
+
 .nav-link {
   text-decoration: none;
   color: #555;
@@ -701,6 +735,17 @@ body {
   max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* Reveal on scroll */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .landing_features .feature-item {
@@ -1174,6 +1219,33 @@ body {
   .nav-links {
     display: none;
   }
+  .cta-buttons {
+    display: none;
+  }
+  .mobile-menu-button {
+    display: flex;
+  }
+  .mobile-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 16px 20px 16px;
+    background: rgba(255, 255, 255, 0.98);
+    border-top: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  }
+  .mobile-nav .nav-link {
+    width: 100%;
+    text-align: left;
+    padding: 12px 8px;
+    border-radius: 10px;
+    background: transparent;
+  }
+  .mobile-cta {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+  }
   
   .logo-container {
     flex-shrink: 0;
@@ -1238,19 +1310,9 @@ body {
     margin-bottom: 30px;
   }
   
-  .features-grid {
-    grid-template-columns: 1fr;
-    gap: 25px;
-    padding: 0 15px;
-  }
+  .features-grid { grid-template-columns: 1fr; gap: 16px; padding: 0 16px; }
   
-  .feature-item {
-    padding: 30px 25px;
-    min-width: auto;
-    width: 100%;
-    min-height: 320px;
-    height: auto;
-  }
+  .feature-item { padding: 24px 20px; min-width: auto; width: 100%; min-height: 280px; height: auto; }
   
   .medical-dashboard {
     max-width: 100%;
@@ -1264,8 +1326,14 @@ body {
   
   .about-container {
     flex-direction: column;
-    gap: 40px;
+    gap: 24px;
+    padding: 24px 16px;
   }
+  .about { padding: 90px 16px; }
+  .about-description-section, .about-built-on-section { margin: 0 !important; max-width: none; }
+  .about-title { font-size: 2rem; margin-bottom: 16px; }
+  .about-description { font-size: 1rem; line-height: 1.6; margin-bottom: 16px; }
+  .tech-logos { gap: 16px; flex-wrap: wrap; }
   
   .contact-container {
     padding: 40px 20px;
@@ -1306,10 +1374,11 @@ body {
     padding: 0 5px;
   }
   
-  .section-title {
-    font-size: 1.8rem;
-    line-height: 1.2;
-  }
+  .section-title { font-size: 1.8rem; line-height: 1.2; }
+  .about-title { font-size: 1.6rem; }
+  .about-description { font-size: 0.95rem; }
+  .landing_features .section-title { font-size: 1.6rem; }
+  .landing_features .section-subtitle { font-size: 0.95rem; }
   
   .btn-large {
     padding: 12px 24px;
@@ -1334,13 +1403,7 @@ body {
     padding: 0 10px;
   }
   
-  .feature-item {
-    padding: 25px 20px;
-    min-width: auto;
-    width: 100%;
-    min-height: 300px;
-    height: auto;
-  }
+  .feature-item { padding: 20px 16px; min-width: auto; width: 100%; min-height: 250px; height: auto; }
   
   .container {
     padding: 0 10px;

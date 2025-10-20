@@ -3,11 +3,12 @@
 MediChain Backend - Integrated with Streamlined AI v5.0
 """
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, make_response
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
 import sys
+import traceback
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
@@ -550,22 +551,61 @@ app = Flask(__name__)
 
 # Register authentication blueprint
 from auth.auth_routes import auth_bp
-app.register_blueprint(auth_bp)
+from doctor_verification import doctor_verification_bp
+from notifications.notification_routes import notifications_bp
 
-# Enable CORS for all routes (allow all origins for development)
+app.register_blueprint(auth_bp)
+app.register_blueprint(doctor_verification_bp)
+app.register_blueprint(notifications_bp)
+
+# 🔧 FIXED: CORS configuration with credentials support (removed "*" to fix CORS issues)
 CORS(app, resources={
     r"/api/*": {
         "origins": [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
             "http://localhost:3001",
-            "http://127.0.0.1:3001",
-            "*"
+            "http://127.0.0.1:3001"
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True,
+        "expose_headers": ["Content-Type", "Authorization"]
     }
 })
+
+# 🆕 Handle preflight OPTIONS requests
+@app.before_request
+def handle_preflight():
+    """Handle CORS preflight requests"""
+    if request.method == "OPTIONS":
+        response = make_response()
+        origin = request.headers.get("Origin", "http://localhost:3000")
+        # Only allow whitelisted origins
+        allowed_origins = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001"
+        ]
+        if origin in allowed_origins:
+            response.headers.add("Access-Control-Allow-Origin", origin)
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+        return response
+
+# 🆕 Global error handler to prevent crashes without response
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Handle all unhandled exceptions gracefully"""
+    print(f"❌ Unhandled exception: {e}")
+    traceback.print_exc()
+    return jsonify({
+        "success": False,
+        "error": "Internal server error",
+        "message": str(e)
+    }), 500
 
 # Initialize AI system
 print("🚀 Starting Streamlined MediChain API v5.0...")
@@ -576,8 +616,9 @@ try:
     ai_engine = StreamlinedAIDiagnosis()
     print("✅ AI system initialized successfully!")
 except Exception as e:
-    print(f"❌ Failed to initialize AI system: {e}")
-    sys.exit(1)
+    print(f"⚠️  AI system initialization failed: {e}")
+    print("⚠️  Server will continue but AI endpoints will return 503")
+    # 🔧 FIXED: Don't exit - let server run so health endpoints can respond
 
 # Routes
 @app.route('/')

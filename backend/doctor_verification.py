@@ -566,8 +566,8 @@ def approve_doctor():
         if not doctor_id or not token:
             return "Invalid verification link", 400
 
-        # Get doctor profile
-        response = supabase.service_client.table("doctor_profiles").select("*").eq("doctor_id", doctor_id).execute()
+        # Get doctor profile by primary key
+        response = supabase.service_client.table("doctor_profiles").select("*").eq("id", doctor_id).execute()
 
         if not response.data:
             return "Doctor not found", 404
@@ -581,7 +581,7 @@ def approve_doctor():
         if doctor_profile["verification_status"] != "pending":
             return "This verification link has already been used", 400
 
-        token_expires = datetime.fromisoformat(doctor_profile["token_expires_at"].replace("Z", "+00:00"))
+        token_expires = datetime.fromisoformat(str(doctor_profile["token_expires_at"]))
         if datetime.utcnow().replace(tzinfo=token_expires.tzinfo) > token_expires:
             return "Verification link has expired", 400
 
@@ -592,7 +592,7 @@ def approve_doctor():
                 "verified_at": datetime.utcnow().isoformat(),
                 "verification_token": None,  # Invalidate token
             }
-        ).eq("doctor_id", doctor_id).execute()
+        ).eq("id", doctor_id).execute()
 
         # Update user profile
         supabase.service_client.table("user_profiles").update({"verification_status": "approved"}).eq(
@@ -665,100 +665,27 @@ def decline_doctor():
         if not doctor_id or not token:
             return "Invalid verification link", 400
 
-        # Get doctor profile
-        response = supabase.service_client.table("doctor_profiles").select("*").eq("doctor_id", doctor_id).execute()
-
+        response = supabase.service_client.table("doctor_profiles").select("*").eq("id", doctor_id).execute()
         if not response.data:
             return "Doctor not found", 404
 
         doctor_profile = response.data[0]
 
-        # Validate token and expiration
         if doctor_profile["verification_token"] != token:
             return "Invalid verification token", 403
 
         if doctor_profile["verification_status"] != "pending":
             return "This verification link has already been used", 400
 
-        token_expires = datetime.fromisoformat(doctor_profile["token_expires_at"].replace("Z", "+00:00"))
-        if datetime.utcnow().replace(tzinfo=token_expires.tzinfo) > token_expires:
-            return "Verification link has expired", 400
+        supabase.service_client.table("doctor_profiles").update(
+            {
+                "verification_status": "declined",
+                "declined_at": datetime.utcnow().isoformat(),
+                "verification_token": None,
+            }
+        ).eq("id", doctor_id).execute()
 
-        # Get user data before deletion
-        user_response = (
-            supabase.service_client.table("user_profiles")
-            .select("email, first_name, last_name")
-            .eq("firebase_uid", doctor_profile["firebase_uid"])
-            .execute()
-        )
-
-        if user_response.data:
-            user_data = user_response.data[0]
-            doctor_name = f"{user_data['first_name']} {user_data['last_name']}"
-
-            # Send decline email to doctor
-            send_doctor_notification_email(
-                user_data["email"],
-                doctor_name,
-                "declined",
-                "Unable to verify medical credentials. Please contact support for more information.",
-            )
-
-        # Update status to declined (don't delete, for audit trail)
-        update_doctor = (
-            supabase.service_client.table("doctor_profiles")
-            .update(
-                {
-                    "verification_status": "declined",
-                    "declined_at": datetime.utcnow().isoformat(),
-                    "verification_token": None,  # Invalidate token
-                }
-            )
-            .eq("doctor_id", doctor_id)
-            .execute()
-        )
-
-        update_user = (
-            supabase.service_client.table("user_profiles")
-            .update({"verification_status": "declined"})
-            .eq("firebase_uid", doctor_profile["firebase_uid"])
-            .execute()
-        )
-
-        # Clean up verification file
-        if doctor_profile["verification_file_path"] and os.path.exists(doctor_profile["verification_file_path"]):
-            os.remove(doctor_profile["verification_file_path"])
-
-        return (
-            """
-        <html>
-        <head>
-            <title>Doctor Declined - MediChain</title>
-            <style>
-                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f0f8ff; }
-                .container {
-                    background: white;
-                    padding: 40px;
-                    border-radius: 10px;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-                    max-width: 500px;
-                    margin: 0 auto;
-                }
-                .decline { color: #f44336; font-size: 24px; margin-bottom: 20px; }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="decline">❌ Doctor Application Declined</div>
-                <h2>Dr. """
-            + (doctor_name if "doctor_name" in locals() else "Unknown")
-            + """ application has been declined</h2>
-                <p>The doctor will receive an email notification with information about the decision.</p>
-            </div>
-        </body>
-        </html>
-        """
-        )
+        return "Doctor declined successfully", 200
 
     except Exception as e:
         print(f"Decline doctor error: {str(e)}")

@@ -84,10 +84,20 @@ const PatientDashboard = () => {
         <div className="dashboard-header-section">
           <div className="dashboard-title-section">
             <h1 className="dashboard-title">PATIENT DASHBOARD</h1>
-            {user && user.profile && (
+            {user && (
               <div className="user-welcome">
-                <span>Welcome back, <strong>{user.profile.first_name || user.profile.name}</strong></span>
-                <span className="user-role">Patient</span>
+                {(() => {
+                  const p = user.profile || user;
+                  const first = p.first_name || p.firstName || '';
+                  const last = p.last_name || p.lastName || '';
+                  const name = (first || last) ? `${first} ${last}`.trim() : (p.name || user.displayName || 'User');
+                  return (
+                    <>
+                      <span>Welcome back, <strong>{name}</strong></span>
+                      <span className="user-role">Patient</span>
+                    </>
+                  );
+                })()}
               </div>
             )}
             {error && (
@@ -163,20 +173,35 @@ const PatientDashboard = () => {
                   <User size={20} />
                   My Information
                 </h3>
-                {user && user.profile ? (
+                {user ? (
                   <div className="user-details">
-                    <div className="user-detail">
-                      <strong>Name:</strong> {user.profile.first_name ? `${user.profile.first_name} ${user.profile.last_name}` : (user.profile.name || 'N/A')}
-                    </div>
-                    <div className="user-detail">
-                      <strong>Email:</strong> {user.profile.email || user.email || 'N/A'}
-                    </div>
-                    <div className="user-detail">
-                      <strong>Role:</strong> {user.profile.role ? user.profile.role.charAt(0).toUpperCase() + user.profile.role.slice(1) : 'N/A'}
-                    </div>
-                    <div className="user-detail">
-                      <strong>Member since:</strong> {user.profile.created_at ? new Date(user.profile.created_at).toLocaleDateString() : 'Today'}
-                    </div>
+                    {(() => {
+                      const p = user.profile || user;
+                      const name = p.first_name || p.firstName
+                        ? `${p.first_name || p.firstName} ${p.last_name || p.lastName || ''}`.trim()
+                        : (p.name || user.displayName || 'N/A');
+                      const email = p.email || user.email || 'N/A';
+                      const role = (p.role || user.role || 'N/A');
+                      const roleCap = typeof role === 'string' ? role.charAt(0).toUpperCase() + role.slice(1) : 'N/A';
+                      const createdAt = p.created_at || p.createdAt;
+                      const memberSince = createdAt ? new Date(createdAt).toLocaleDateString() : 'Today';
+                      return (
+                        <>
+                          <div className="user-detail">
+                            <strong>Name:</strong> {name}
+                          </div>
+                          <div className="user-detail">
+                            <strong>Email:</strong> {email}
+                          </div>
+                          <div className="user-detail">
+                            <strong>Role:</strong> {roleCap}
+                          </div>
+                          <div className="user-detail">
+                            <strong>Member since:</strong> {memberSince}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div className="user-details">

@@ -13,6 +13,7 @@ const LandingPage = () => {
   const navigate = useNavigate();
   const [headerStyle, setHeaderStyle] = useState({});
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [contactForm, setContactForm] = useState({
     name: '',
     email: '',
@@ -136,6 +137,24 @@ const LandingPage = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Reveal on scroll animations
+  useEffect(() => {
+    const elements = document.querySelectorAll('.reveal');
+    if (!elements.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('reveal-visible');
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
   const handleSmoothScroll = (e, targetId) => {
     e.preventDefault();
     const target = document.querySelector(targetId);
@@ -145,6 +164,7 @@ const LandingPage = () => {
         block: 'start',
       });
     }
+    setIsMobileNavOpen(false);
   };
 
   return (
@@ -206,14 +226,36 @@ const LandingPage = () => {
               Sign Up
             </button>
           </div>
+          <button
+            className={`mobile-menu-button ${isMobileNavOpen ? 'open' : ''}`}
+            aria-label="Toggle navigation menu"
+            aria-expanded={isMobileNavOpen}
+            onClick={() => setIsMobileNavOpen((v) => !v)}
+            type="button"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
         </div>
+        {isMobileNavOpen && (
+          <div className="mobile-nav">
+            <button className="nav-link" onClick={(e) => handleSmoothScroll(e, '#about')} type="button">About</button>
+            <button className="nav-link" onClick={(e) => handleSmoothScroll(e, '#features')} type="button">Features</button>
+            <button className="nav-link" onClick={(e) => handleSmoothScroll(e, '#contact')} type="button">Contact Us</button>
+            <div className="mobile-cta">
+              <button className="btn btn-secondary" onClick={() => { setIsMobileNavOpen(false); navigate('/login'); }}>Log In</button>
+              <button className="btn btn-primary" onClick={() => { setIsMobileNavOpen(false); handleGetStarted(); }}>Sign Up</button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Hero Section */}
       <section className="hero">
         {/* Hero Content */}
         <div className="hero-content">
-          <div className="hero-text">
+          <div className="hero-text reveal">
             <div className="hero-badge">🚀 Next-Gen Healthcare Platform</div>
             <h1 className="hero-title">
               The Future of <span className="highlight">Healthcare</span> is Here
@@ -241,7 +283,7 @@ const LandingPage = () => {
       <section className="about" id="about">
         <div className="container about-container">
           {/* Description Section */}
-          <div className="about-description-section">
+          <div className="about-description-section reveal">
             <h2 className="about-title">About MediChain</h2>
             <p className="about-description">
               MediChain is a groundbreaking healthcare platform that combines the power of artificial intelligence and blockchain technology. Our mission is to revolutionize the healthcare industry by providing secure, efficient, and intelligent solutions for managing patient health records and delivering accurate diagnoses.
@@ -252,7 +294,7 @@ const LandingPage = () => {
           </div>
 
           {/* Built On Section */}
-          <div className="about-built-on-section">
+          <div className="about-built-on-section reveal">
             <h2 className="about-title">What MediChain is Built On</h2>
             <p className="about-description">
               MediChain is powered by cutting-edge technologies, including artificial intelligence for accurate diagnostics, blockchain for secure and immutable health records, and advanced encryption protocols to ensure data privacy and security.
@@ -287,42 +329,42 @@ const LandingPage = () => {
             </p>
           </div>
           <div className="features-grid">
-            <div className="feature-item">
+            <div className="feature-item reveal">
               <div className="feature-item-icon">🤖</div>
               <h3>AI-Driven Diagnosis</h3>
               <p>
                 Receive fast and reliable diagnostic results with our AI technology, which analyzes symptoms and medical data to support healthcare decisions.
               </p>
             </div>
-            <div className="feature-item">
+            <div className="feature-item reveal">
               <div className="feature-item-icon">⛓️</div>
               <h3>Blockchain Records</h3>
               <p>
                 Patient health records are securely stored on blockchain, making them tamper-proof and always accessible for trusted medical use.
               </p>
             </div>
-            <div className="feature-item">
+            <div className="feature-item reveal">
               <div className="feature-item-icon">🔐</div>
               <h3>Advanced Encryption</h3>
               <p>
                 All sensitive medical information is protected by strong encryption, keeping patient data private and secure at every step.
               </p>
             </div>
-            <div className="feature-item">
+            <div className="feature-item reveal">
               <div className="feature-item-icon">⚡</div>
               <h3>Real-time Analytics</h3>
               <p>
                 Instantly view health trends and analytics to help improve care and make informed decisions for better patient outcomes.
               </p>
             </div>
-            <div className="feature-item">
+            <div className="feature-item reveal">
               <div className="feature-item-icon">🌐</div>
               <h3>Interoperability</h3>
               <p>
                 Effortlessly share and integrate patient data across healthcare systems, ensuring smooth collaboration between providers.
               </p>
             </div>
-            <div className="feature-item">
+            <div className="feature-item reveal">
               <div className="feature-item-icon">📱</div>
               <h3>Mobile-First Design</h3>
               <p>
@@ -335,7 +377,7 @@ const LandingPage = () => {
 
       {/* Contact Us Section */}
       <section className="contact" id="contact">
-        <div className="container contact-container">
+        <div className="container contact-container reveal">
           <h2 className="contact-title">Contact Us</h2>
           <div className="contact-info">
             <p><strong>Email:</strong> <a href="mailto:medichain173@gmail.com" className="email-link">medichain173@gmail.com</a></p>

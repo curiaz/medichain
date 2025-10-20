@@ -8,8 +8,6 @@ import VerificationStatus from "../components/VerificationStatus"
 import "../assets/styles/ModernDashboard.css"
 import "../assets/styles/DoctorDashboard.css"
 
-
-
 const DoctorDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -21,6 +19,7 @@ const DoctorDashboard = () => {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const verificationStatus = user?.doctor_profile?.verification_status || user?.profile?.verification_status
 
   useEffect(() => {
     // Load doctor dashboard stats when component mounts or user changes
@@ -33,32 +32,37 @@ const DoctorDashboard = () => {
     try {
       setLoading(true)
       setError(null)
-      
       const result = await DatabaseService.getDoctorStats(user.uid)
-      
       if (result.success) {
         setStats(result.data)
       } else {
-        console.warn('Failed to load doctor stats:', result.error)
         setError('Failed to load dashboard statistics')
-        // Keep existing stats as fallback
       }
     } catch (err) {
-      console.error('Error loading doctor stats:', err)
       setError('Error connecting to database')
     } finally {
       setLoading(false)
     }
   }
 
+  const blockIfUnverified = (actionName) => {
+    if (verificationStatus !== 'approved') {
+      alert(`Access restricted: Your account is ${verificationStatus || 'pending'}.\n\nPlease wait for verification or check your email for updates.\n\nTrying: ${actionName}`)
+      return true
+    }
+    return false
+  }
+
   const handlePatientAIHistory = () => {
+    if (blockIfUnverified('AI Diagnosis Review')) return
     navigate('/patient-ai-history')
   }
 
   const handlePatientList = () => {
+    if (blockIfUnverified('Patient Records')) return
     navigate('/patients')
   }
-  
+
   return (
     <div className="dashboard-container fade-in">
       {/* Background crosses */}
@@ -76,22 +80,32 @@ const DoctorDashboard = () => {
         <div className="dashboard-header-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
           <div className="dashboard-title-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <h1 className="dashboard-title" style={{ marginBottom: '16px' }}>DOCTOR DASHBOARD</h1>
-            {user && user.profile && (
+            {user && (
               <div className="user-welcome" style={{ textAlign: 'center' }}>
-                <span>Welcome back, <strong>Dr. {user.profile.first_name || user.profile.name}</strong></span>
-                <span className="user-role">MEDICAL PROFESSIONAL</span>
+                {(() => {
+                  const p = user.profile || user;
+                  const first = p.first_name || p.firstName || '';
+                  const last = p.last_name || p.lastName || '';
+                  const name = (first || last) ? `${first} ${last}`.trim() : (p.name || user.displayName || 'Doctor');
+                  return (
+                    <>
+                      <span>Welcome back, <strong>Dr. {name}</strong></span>
+                      <span className="user-role">MEDICAL PROFESSIONAL</span>
+                    </>
+                  );
+                })()}
               </div>
             )}
-            
+
             {/* Doctor Verification Status */}
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
               <VerificationStatus 
-                status={user?.profile?.verification_status || user?.doctor_profile?.verification_status}
-                userType={user?.profile?.role}
+                status={verificationStatus}
+                userType={user?.role}
                 doctorProfile={user?.doctor_profile}
               />
             </div>
-            
+
             {error && (
               <div className="error-message" style={{ color: '#e74c3c', fontSize: '0.9rem', marginTop: '8px', textAlign: 'center' }}>
                 {error} - Using offline data
@@ -166,7 +180,7 @@ const DoctorDashboard = () => {
                     <p>Access comprehensive patient histories, medical records, and treatment plans</p>
                     <span className="action-status available">
                       <span className="status-dot"></span>
-                      Ready to Access
+                      {verificationStatus === 'approved' ? 'Ready to Access' : 'Restricted until Approval'}
                     </span>
                   </div>
                 </div>
@@ -185,7 +199,7 @@ const DoctorDashboard = () => {
                   </div>
                 </div>
 
-                <div className="action-card secondary-action">
+                <div className="action-card secondary-action" onClick={() => blockIfUnverified('Medical Reports') || null}>
                   <div className="action-icon">
                     <FileText size={48} />
                   </div>
@@ -194,12 +208,12 @@ const DoctorDashboard = () => {
                     <p>Generate detailed reports, prescriptions, and treatment summaries</p>
                     <span className="action-status available">
                       <span className="status-dot"></span>
-                      Generate Reports
+                      {verificationStatus === 'approved' ? 'Generate Reports' : 'Restricted until Approval'}
                     </span>
                   </div>
                 </div>
 
-                <div className="action-card secondary-action">
+                <div className="action-card secondary-action" onClick={() => blockIfUnverified('Schedule Management') || null}>
                   <div className="action-icon">
                     <Calendar size={48} />
                   </div>
@@ -208,7 +222,7 @@ const DoctorDashboard = () => {
                     <p>Manage appointments, consultations, and follow-up sessions</p>
                     <span className="action-status info">
                       <span className="status-dot info"></span>
-                      View Schedule
+                      {verificationStatus === 'approved' ? 'View Schedule' : 'Restricted until Approval'}
                     </span>
                   </div>
                 </div>
@@ -308,20 +322,34 @@ const DoctorDashboard = () => {
                   <Stethoscope size={20} />
                   Doctor Information
                 </h3>
-                {user && user.profile ? (
+                {user ? (
                   <div className="user-details">
-                    <div className="user-detail">
-                      <strong>Name:</strong> Dr. {user.profile.first_name ? `${user.profile.first_name} ${user.profile.last_name}` : (user.profile.name || 'N/A')}
-                    </div>
-                    <div className="user-detail">
-                      <strong>Email:</strong> {user.profile.email || user.email || 'N/A'}
-                    </div>
-                    <div className="user-detail">
-                      <strong>Role:</strong> {user.profile.role ? user.profile.role.charAt(0).toUpperCase() + user.profile.role.slice(1) : 'N/A'}
-                    </div>
-                    <div className="user-detail">
-                      <strong>License:</strong> {user.doctor_profile?.license_number || `MD-${user.uid ? String(user.uid).slice(-6).toUpperCase() : 'XXXXXX'}`}
-                    </div>
+                    {(() => {
+                      const p = user.profile || user;
+                      const name = p.first_name || p.firstName
+                        ? `${p.first_name || p.firstName} ${p.last_name || p.lastName || ''}`.trim()
+                        : (p.name || user.displayName || 'N/A');
+                      const email = p.email || user.email || 'N/A';
+                      const role = (p.role || user.role || 'N/A');
+                      const roleCap = typeof role === 'string' ? role.charAt(0).toUpperCase() + role.slice(1) : 'N/A';
+                      const license = user.doctor_profile?.license_number || `MD-${user.uid ? String(user.uid).slice(-6).toUpperCase() : 'XXXXXX'}`;
+                      return (
+                        <>
+                          <div className="user-detail">
+                            <strong>Name:</strong> Dr. {name}
+                          </div>
+                          <div className="user-detail">
+                            <strong>Email:</strong> {email}
+                          </div>
+                          <div className="user-detail">
+                            <strong>Role:</strong> {roleCap}
+                          </div>
+                          <div className="user-detail">
+                            <strong>License:</strong> {license}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div className="user-details">
@@ -337,4 +365,4 @@ const DoctorDashboard = () => {
   )
 }
 
-export default DoctorDashboard;
+export default DoctorDashboard

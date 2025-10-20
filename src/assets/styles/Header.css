@@ -128,17 +128,49 @@
   .dashboard-header {
     padding: 0 1rem;
   }
+  .dashboard-header-container {
+    grid-template-columns: 1fr auto;
+    padding: 0 16px;
+  }
   
   .header-left {
     gap: 1rem;
   }
   
-  .nav-links {
-    display: none; /* Hide navigation on mobile */
-  }
+  .nav-links { display: none; }
+  .header-center { display: none; min-width: 0; padding: 0; }
   
   .logo-container div {
     font-size: 20px;
+  }
+}
+
+/* Mobile dropdown for dashboard header */
+.mobile-dashboard-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-dashboard-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 16px 16px 16px;
+    background: rgba(255, 255, 255, 0.98);
+    border-top: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    position: fixed;
+    top: 70px; /* below header */
+    left: 0;
+    right: 0;
+    z-index: 90;
+  }
+  .mobile-dashboard-nav .nav-link {
+    width: 100%;
+    text-align: left;
+    padding: 10px 8px;
+    border-radius: 10px;
+    background: transparent;
   }
 }
 

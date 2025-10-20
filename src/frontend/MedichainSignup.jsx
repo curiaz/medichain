@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import "./MedichainLogin.css" // Reuse existing styles
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight, Upload, FileText } from "lucide-react"
+import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight, Upload } from "lucide-react"
 import LoadingSpinner from "../components/LoadingSpinner"
 import { showToast } from "../components/CustomToast"
 import medichainLogo from "../assets/medichain_logo.png"
@@ -26,6 +26,8 @@ const MedichainSignup = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isRolePreSelected, setIsRolePreSelected] = useState(false)
+  const [inlineError, setInlineError] = useState("")
+  const [inlineSuccess, setInlineSuccess] = useState("")
 
   // Set the userType based on URL parameter
   useEffect(() => {
@@ -133,25 +135,17 @@ const MedichainSignup = () => {
     }
     
     if (!validateForm()) {
+      setInlineError("Please review the highlighted fields and try again.")
       return
     }
     
     setIsSubmitting(true)
     
     try {
-      console.log('DEBUG: About to call signup with:', {
-        email: formData.email.trim(),
-        password: formData.password,
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        userType: formData.userType,
-        specialization: formData.specialization?.trim(),
-        hasVerificationFile: !!formData.verificationFile
-      });
-      
-      // Handle doctor signup with verification
+      setInlineError("")
+      setInlineSuccess("")
+      // Doctor signup uses multipart/form-data to include verification file
       if (formData.userType === 'doctor') {
-        // Create FormData for file upload
         const signupData = new FormData();
         signupData.append('email', formData.email.trim());
         signupData.append('password', formData.password);
@@ -160,26 +154,25 @@ const MedichainSignup = () => {
         signupData.append('userType', formData.userType);
         signupData.append('specialization', formData.specialization.trim());
         signupData.append('verificationFile', formData.verificationFile);
-        
-        // Call doctor signup API endpoint
+
         const response = await fetch('http://localhost:5000/api/auth/doctor-signup', {
           method: 'POST',
           body: signupData
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
-          showToast.success(
-            result.message || 
-            "Doctor account submitted for verification! You'll receive an email once your account is reviewed."
-          );
-          navigate("/login");
+          setInlineSuccess("Doctor account created successfully. Your documents are under review.")
+          showToast.success(result.message || "Doctor account created successfully! Your documents are under review.");
+          localStorage.setItem('medichain_token', result.data.token);
+          localStorage.setItem('medichain_user', JSON.stringify(result.data.user));
+          navigate("/dashboard");
         } else {
+          setInlineError(result.error || "Doctor signup failed. Please try again.")
           showToast.error(result.error || "Doctor signup failed");
         }
       } else {
-        // Regular patient signup
         const result = await signup(
           formData.email.trim(),
           formData.password,
@@ -187,16 +180,19 @@ const MedichainSignup = () => {
           formData.lastName.trim(),
           formData.userType
         );
-        
+
         if (result.success) {
-          showToast.success(result.message || "Account created successfully! Welcome to Medichain.");
+          setInlineSuccess("Account created successfully! Welcome to MediChain.")
+          showToast.success(result.message || "Account created successfully! Welcome to MediChain.");
           navigate("/dashboard");
         } else {
+          setInlineError(result.error || "Signup failed. Please try again.")
           showToast.error(result.error || "Signup failed");
         }
       }
     } catch (error) {
       console.error("Signup error:", error);
+      setInlineError("An unexpected error occurred. Please try again.")
       showToast.error("An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -204,7 +200,7 @@ const MedichainSignup = () => {
   }
 
   return (
-    <div className="medichain-container">
+    <div className={`medichain-container ${(((searchParams.get('theme') || '').toLowerCase()) === 'modern') ? 'theme-modern' : 'theme-classic'}`}>
       {/* Background crosses */}
       <div className="background-crosses">
         {[...Array(24)].map((_, i) => (
@@ -235,7 +231,17 @@ const MedichainSignup = () => {
                 <p>Join MediChain today</p>
               </div>
 
-              <form onSubmit={handleSubmit} className="login-form-wrapper">
+              <form onSubmit={handleSubmit} className="login-form-wrapper" noValidate>
+                {inlineError && (
+                  <div className="form-alert error" role="alert" aria-live="assertive">
+                    <p>{inlineError}</p>
+                  </div>
+                )}
+                {inlineSuccess && (
+                  <div className="form-alert success" role="status" aria-live="polite">
+                    <p>{inlineSuccess}</p>
+                  </div>
+                )}
                 <div className="input-group">
                   <label htmlFor="firstName">First Name</label>
                   <div className="input-wrapper">
@@ -244,6 +250,8 @@ const MedichainSignup = () => {
                       id="firstName"
                       name="firstName"
                       type="text"
+                      autoComplete="given-name"
+                      aria-required="true"
                       value={formData.firstName}
                       onChange={handleInputChange}
                       placeholder="Enter your first name"
@@ -261,6 +269,8 @@ const MedichainSignup = () => {
                       id="lastName"
                       name="lastName"
                       type="text"
+                      autoComplete="family-name"
+                      aria-required="true"
                       value={formData.lastName}
                       onChange={handleInputChange}
                       placeholder="Enter your last name"
@@ -278,6 +288,8 @@ const MedichainSignup = () => {
                       id="email"
                       name="email"
                       type="email"
+                      autoComplete="email"
+                      aria-required="true"
                       value={formData.email}
                       onChange={handleInputChange}
                       placeholder="Enter your email"
@@ -316,6 +328,7 @@ const MedichainSignup = () => {
                           id="specialization"
                           name="specialization"
                           type="text"
+                          aria-required={formData.userType === 'doctor'}
                           value={formData.specialization}
                           onChange={handleInputChange}
                           placeholder="e.g., Cardiology, Pediatrics, Internal Medicine"
@@ -328,13 +341,13 @@ const MedichainSignup = () => {
                     <div className="input-group">
                       <label htmlFor="verificationFile">Verification Document</label>
                       <div className="input-wrapper file-upload-wrapper">
-                        <FileText className="input-icon" size={20} />
                         <input
                           id="verificationFile"
                           name="verificationFile"
                           type="file"
                           onChange={handleInputChange}
                           accept=".pdf,.jpg,.jpeg,.png"
+                          aria-required={formData.userType === 'doctor'}
                           disabled={isSubmitting}
                           required
                           style={{ display: 'none' }}
@@ -359,6 +372,8 @@ const MedichainSignup = () => {
                       id="password"
                       name="password"
                       type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      aria-required="true"
                       value={formData.password}
                       onChange={handleInputChange}
                       placeholder="Enter your password"
@@ -369,6 +384,7 @@ const MedichainSignup = () => {
                       type="button"
                       className="password-toggle"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                       tabIndex={-1}
                     >
                       {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -384,6 +400,8 @@ const MedichainSignup = () => {
                       id="confirmPassword"
                       name="confirmPassword"
                       type={showConfirmPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      aria-required="true"
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
                       placeholder="Confirm your password"
@@ -394,6 +412,7 @@ const MedichainSignup = () => {
                       type="button"
                       className="password-toggle"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                       tabIndex={-1}
                     >
                       {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}

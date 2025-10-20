@@ -34,9 +34,22 @@ def verify_firebase_token(f):
             return jsonify({'error': 'No token provided'}), 401
             
         try:
-            # Verify the ID token
-            decoded_token = auth.verify_id_token(token)
-            request.user = decoded_token  # Add user info to request
+            # Use centralized Firebase auth service for verification (handles clock skew)
+            from auth.firebase_auth import firebase_auth_service
+            result = firebase_auth_service.verify_token(token)
+
+            if not result.get('success'):
+                return jsonify({'error': f"Invalid token: {result.get('error', 'verification failed')}"}), 401
+
+            # Add user info to request
+            # Prefer full token data; ensure role comes from custom claims if present
+            token_data = result.get('token_data') or {}
+            if 'role' not in token_data:
+                # Map custom claims role if available
+                role = (token_data.get('custom_claims') or {}).get('role')
+                if role:
+                    token_data['role'] = role
+            request.user = token_data
             return f(*args, **kwargs)
         except Exception as e:
             return jsonify({'error': f'Invalid token: {str(e)}'}), 401

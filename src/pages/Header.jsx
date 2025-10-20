@@ -1,12 +1,13 @@
-import React from "react"
+import React, { useState } from "react"
 import { NavLink, useNavigate } from "react-router-dom"
-import { Settings, User, LogOut } from "lucide-react"
+import { Menu, X, User, LogOut } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import MedichainLogo from "../components/MedichainLogo"
 import "../assets/styles/Header.css"
 
 const Header = () => {
   const { logout } = useAuth()
+  const [mobileOpen, setMobileOpen] = useState(false)
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -53,17 +54,25 @@ const Header = () => {
 
         {/* Right: Action Buttons */}
         <div className="header-right">
-          <button className="icon-button" title="Settings">
-            <Settings size={20} />
-          </button>
           <button className="icon-button" title="Profile" onClick={handleProfileClick}>
             <User size={20} />
+          </button>
+          <button className="icon-button" title="Menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen(!mobileOpen)}>
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <button className="icon-button" onClick={handleLogout} title="Logout">
             <LogOut size={20} />
           </button>
         </div>
       </div>
+      {mobileOpen && (
+        <div className="mobile-dashboard-nav" role="navigation">
+          <NavLink to="/dashboard" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")} onClick={() => setMobileOpen(false)}>DASHBOARD</NavLink>
+          <NavLink to="/notifications" className={({ isActive }) => "nav-link" + (isActive ? " active" : "")} onClick={() => setMobileOpen(false)}>NOTIFICATIONS</NavLink>
+          <button className="nav-link" onClick={() => { setMobileOpen(false); handleProfileClick(); }}>PROFILE</button>
+          <button className="nav-link" onClick={handleLogout}>LOG OUT</button>
+        </div>
+      )}
     </header>
   )
 }

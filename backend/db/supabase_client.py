@@ -192,11 +192,15 @@ class SupabaseClient:
             result = firebase_auth_service.verify_token(token)
 
             if result['success']:
-                user_info = result['user']
+                # The verify_token returns top-level user fields
+                user_info = result
+                # Try to derive role from token data if present
+                token_data = result.get('token_data') or {}
+                role = (token_data.get('custom_claims') or {}).get('role') or token_data.get('role') or 'patient'
                 return {
                     'user_id': user_info.get('uid'),
                     'email': user_info.get('email'),
-                    'role': user_info.get('custom_claims', {}).get('role', 'patient')
+                    'role': role
                 }
             else:
                 print(f"Firebase token verification failed: {result.get('error', 'Unknown error')}")
