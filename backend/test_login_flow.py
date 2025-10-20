@@ -4,10 +4,12 @@ Test script to verify login flow and Supabase integration
 
 import requests
 import json
+import pytest
 
 # Configuration
 BASE_URL = "http://localhost:5000/api"
 
+@pytest.mark.skip(reason="This is an HTTP smoke script, not a pytest unit test")
 def test_health_check():
     """Test if backend is running"""
     print("\n" + "="*60)
@@ -23,6 +25,7 @@ def test_health_check():
         print(f"❌ Error: {e}")
         return False
 
+@pytest.mark.skip(reason="External HTTP flow helper, skip in unit test suite")
 def test_signup(email, password, name, role="patient"):
     """Test user registration"""
     print("\n" + "="*60)
@@ -49,6 +52,7 @@ def test_signup(email, password, name, role="patient"):
         print(f"❌ Error: {e}")
         return False, None
 
+@pytest.mark.skip(reason="External HTTP flow helper, skip in unit test suite")
 def test_login(email, password):
     """Test user login"""
     print("\n" + "="*60)
@@ -76,6 +80,7 @@ def test_login(email, password):
         print(f"❌ Error: {e}")
         return False, None
 
+@pytest.mark.skip(reason="External HTTP flow helper, skip in unit test suite")
 def test_get_user(token):
     """Test get current user endpoint"""
     print("\n" + "="*60)
@@ -99,6 +104,7 @@ def test_get_user(token):
         print(f"❌ Error: {e}")
         return False, None
 
+@pytest.mark.skip(reason="External HTTP flow helper, skip in unit test suite")
 def test_resend_verification(email):
     """Test resend verification endpoint"""
     print("\n" + "="*60)
