@@ -761,10 +761,10 @@ def login():
             # Generate token
             token = auth_utils.generate_token(user["id"], user["email"], user["role"])
 
-        # Construct full name from first and last name
-        full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
-        if not full_name:
-            full_name = user.get("email", "").split("@")[0]
+            # Construct full name from first and last name
+            full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
+            if not full_name:
+                full_name = user.get("email", "").split("@")[0]
 
             # Optionally include doctor profile
             doctor_profile = None
@@ -780,9 +780,9 @@ def login():
 
             print(f"[DEBUG] ✅ Login successful for user {user['email']}")
             return jsonify({
-                    "success": True,
+                "success": True,
                 "message": "Login successful! Welcome back.",
-                    "data": {
+                "data": {
                         "user": {
                             "id": user["id"],
                             "email": user["email"],
