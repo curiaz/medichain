@@ -8,6 +8,38 @@
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   background: linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,255,255,0.9));
   backdrop-filter: blur(8px);
+  animation: fadeIn 0.4s ease-in;
+}
+
+/* Fade in animation when component appears */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade out for approved status */
+.verification-status.verification-approved.hiding {
+  animation: fadeOut 0.8s ease-out forwards;
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 .verification-status-header {
@@ -83,6 +115,83 @@
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
 }
 .reapply-btn:hover { background: #dc2626; transform: translateY(-1px); }
+
+/* Resend verification button styles */
+.resend-verification-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #0288d1, #0277bd);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(2, 136, 209, 0.3);
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.resend-verification-btn:hover:not(.disabled) {
+  background: linear-gradient(135deg, #0277bd, #01579b);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(2, 136, 209, 0.4);
+}
+
+.resend-verification-btn:active:not(.disabled) {
+  transform: translateY(0);
+}
+
+.resend-verification-btn.disabled {
+  background: linear-gradient(135deg, #94a3b8, #64748b);
+  cursor: not-allowed;
+  box-shadow: 0 2px 6px rgba(100, 116, 139, 0.2);
+}
+
+.resend-verification-btn svg.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.cooldown-note {
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+  margin: 4px 0 0 0;
+  font-style: italic;
+}
+
+/* Message alerts */
+.verification-message-alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.verification-message-alert.success {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.verification-message-alert.error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
 
 /* Status-specific palettes */
 .verification-pending {

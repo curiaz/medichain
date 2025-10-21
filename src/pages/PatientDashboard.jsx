@@ -64,7 +64,7 @@ const PatientDashboard = () => {
   }
 
   const handleNewAppointment = () => {
-    toast.info("Appointment booking feature coming soon!")
+    navigate('/book-appointment')
   }
   
   return (
@@ -119,6 +119,17 @@ const PatientDashboard = () => {
           <div className="main-and-sidebar-grid">
             <div className="main-content-area">
               <div className="patient-actions-grid">
+                <div className="action-card" onClick={handleNewAppointment}>
+                  <div className="action-icon appointment-icon">
+                    <Calendar size={48} />
+                  </div>
+                  <div className="action-content">
+                    <h3>Book an Appointment</h3>
+                    <p>Schedule a consultation with our verified doctors</p>
+                    <span className="action-status available">Available Now</span>
+                  </div>
+                </div>
+
                 <div className="action-card" onClick={handleHealthRecord}>
                   <div className="action-icon">
                     <FileText size={48} />
