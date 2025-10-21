@@ -250,14 +250,14 @@ class TestAppointmentSystem:
 def run_appointment_tests():
     """Run all appointment tests with detailed output"""
     print("\n" + "="*60)
-    print("🧪 APPOINTMENT BOOKING SYSTEM - UNIT TESTS")
+    print("APPOINTMENT BOOKING SYSTEM - UNIT TESTS")
     print("="*60 + "\n")
     
     # Run pytest with verbose output
     pytest.main([__file__, "-v", "-s", "--tb=short"])
     
     print("\n" + "="*60)
-    print("✅ Test Suite Complete")
+    print("Test Suite Complete")
     print("="*60 + "\n")
 
 
