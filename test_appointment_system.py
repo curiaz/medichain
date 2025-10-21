@@ -147,14 +147,14 @@ class TestAppointmentSystem:
             pytest.skip("Test users not available")
         
         appointment_date = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
-        appointment_time = "10:00"
+        appointment_time = "10:00:00"
         
         appointment_data = {
-            "patient_uid": test_patient_uid,
-            "doctor_uid": test_doctor_uid,
+            "patient_firebase_uid": test_patient_uid,
+            "doctor_firebase_uid": test_doctor_uid,
             "appointment_date": appointment_date,
             "appointment_time": appointment_time,
-            "status": "pending",
+            "status": "scheduled",
             "notes": "Unit test appointment"
         }
         
@@ -176,8 +176,8 @@ class TestAppointmentSystem:
         
         try:
             result = supabase.client.table("appointments")\
-                .select("*, doctor:doctor_uid(first_name, last_name)")\
-                .eq("patient_uid", test_patient_uid)\
+                .select("*")\
+                .eq("patient_firebase_uid", test_patient_uid)\
                 .execute()
             
             assert result.data is not None
@@ -192,8 +192,8 @@ class TestAppointmentSystem:
         
         try:
             result = supabase.client.table("appointments")\
-                .select("*, patient:patient_uid(first_name, last_name)")\
-                .eq("doctor_uid", test_doctor_uid)\
+                .select("*")\
+                .eq("doctor_firebase_uid", test_doctor_uid)\
                 .execute()
             
             assert result.data is not None
@@ -210,7 +210,7 @@ class TestAppointmentSystem:
             # Get a test appointment
             appointments = supabase.client.table("appointments")\
                 .select("*")\
-                .eq("patient_uid", test_patient_uid)\
+                .eq("patient_firebase_uid", test_patient_uid)\
                 .limit(1)\
                 .execute()
             
@@ -239,7 +239,7 @@ class TestAppointmentSystem:
             # Delete all test appointments
             response = supabase.client.table("appointments")\
                 .delete()\
-                .eq("patient_uid", test_patient_uid)\
+                .eq("patient_firebase_uid", test_patient_uid)\
                 .execute()
             
             print("✅ Test 10: Test appointments cleaned up")
