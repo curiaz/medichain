@@ -7,7 +7,7 @@ import os
 import secrets
 import smtplib
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -831,3 +831,177 @@ def submit_doctor_verification():
             ),
             500,
         )
+
+
+@doctor_verification_bp.route("/resend-verification-request", methods=["POST"])
+def resend_verification_request():
+    """
+    Resend verification request email to admin
+    Enforces 24-hour cooldown to prevent spam
+    """
+    try:
+        data = request.get_json()
+        firebase_uid = data.get("firebase_uid")
+        
+        if not firebase_uid:
+            return jsonify({"success": False, "error": "Firebase UID is required"}), 400
+
+        # Get doctor profile and user data
+        doctor_profile_response = (
+            supabase.service_client.table("doctor_profiles")
+            .select("*, last_verification_request_sent")
+            .eq("firebase_uid", firebase_uid)
+            .execute()
+        )
+
+        if not doctor_profile_response.data:
+            return jsonify({"success": False, "error": "Doctor profile not found"}), 404
+
+        doctor_profile = doctor_profile_response.data[0]
+        
+        # Check if doctor is already approved
+        user_response = (
+            supabase.service_client.table("user_profiles")
+            .select("verification_status")
+            .eq("firebase_uid", firebase_uid)
+            .execute()
+        )
+        
+        if user_response.data and user_response.data[0].get("verification_status") == "approved":
+            return jsonify({
+                "success": False, 
+                "error": "Your account is already approved"
+            }), 400
+
+        # Check 24-hour cooldown period
+        last_request_sent = doctor_profile.get("last_verification_request_sent")
+        if last_request_sent:
+            last_sent_time = datetime.fromisoformat(last_request_sent.replace('Z', '+00:00'))
+            time_since_last_request = datetime.now(timezone.utc) - last_sent_time
+            hours_since_last_request = time_since_last_request.total_seconds() / 3600
+            
+            if hours_since_last_request < 24:
+                hours_remaining = 24 - hours_since_last_request
+                return jsonify({
+                    "success": False,
+                    "error": "Cooldown period active",
+                    "message": f"You can request verification again in {hours_remaining:.1f} hours",
+                    "hours_remaining": hours_remaining,
+                    "can_resend": False
+                }), 429  # Too Many Requests
+
+        # Get user profile for email
+        user_profile = user_response.data[0] if user_response.data else None
+        if not user_profile:
+            return jsonify({"success": False, "error": "User profile not found"}), 404
+
+        # Prepare doctor data for email
+        doctor_data = {
+            "firstName": doctor_profile.get("first_name", ""),
+            "lastName": doctor_profile.get("last_name", ""),
+            "email": user_profile.get("email", ""),
+            "specialization": doctor_profile.get("specialization", "General Practitioner")
+        }
+
+        # Generate new verification token
+        verification_token = generate_verification_token()
+        
+        # Update doctor profile with new token and timestamp
+        update_response = (
+            supabase.service_client.table("doctor_profiles")
+            .update({
+                "verification_token": verification_token,
+                "last_verification_request_sent": datetime.now(timezone.utc).isoformat()
+            })
+            .eq("firebase_uid", firebase_uid)
+            .execute()
+        )
+
+        # Get verification document path
+        file_path = doctor_profile.get("verification_document_path", "")
+        doctor_id = doctor_profile.get("id")
+
+        # Send notification email
+        email_sent = send_admin_notification_email(
+            doctor_data, 
+            file_path, 
+            doctor_id, 
+            verification_token
+        )
+
+        if email_sent:
+            return jsonify({
+                "success": True,
+                "message": "Verification request has been resent to admin. You will be notified once reviewed.",
+                "email_sent": True,
+                "next_request_available": (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Failed to send verification email. Please try again later."
+            }), 500
+
+    except Exception as e:
+        print(f"Resend verification error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": f"Failed to resend verification request: {str(e)}"
+        }), 500
+
+
+@doctor_verification_bp.route("/verification-status", methods=["GET"])
+def get_verification_status():
+    """
+    Get verification status including cooldown information
+    """
+    try:
+        firebase_uid = request.args.get("firebase_uid")
+        
+        if not firebase_uid:
+            return jsonify({"success": False, "error": "Firebase UID is required"}), 400
+
+        # Get doctor profile
+        doctor_profile_response = (
+            supabase.service_client.table("doctor_profiles")
+            .select("last_verification_request_sent")
+            .eq("firebase_uid", firebase_uid)
+            .execute()
+        )
+
+        if not doctor_profile_response.data:
+            return jsonify({"success": False, "error": "Doctor profile not found"}), 404
+
+        doctor_profile = doctor_profile_response.data[0]
+        last_request_sent = doctor_profile.get("last_verification_request_sent")
+        
+        can_resend = True
+        hours_remaining = 0
+        next_available_time = None
+        
+        if last_request_sent:
+            last_sent_time = datetime.fromisoformat(last_request_sent.replace('Z', '+00:00'))
+            time_since_last_request = datetime.now(timezone.utc) - last_sent_time
+            hours_since_last_request = time_since_last_request.total_seconds() / 3600
+            
+            if hours_since_last_request < 24:
+                can_resend = False
+                hours_remaining = 24 - hours_since_last_request
+                next_available_time = (last_sent_time + timedelta(hours=24)).isoformat()
+
+        return jsonify({
+            "success": True,
+            "can_resend": can_resend,
+            "hours_remaining": hours_remaining,
+            "last_request_sent": last_request_sent,
+            "next_available_time": next_available_time
+        }), 200
+
+    except Exception as e:
+        print(f"Get verification status error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": f"Failed to get verification status: {str(e)}"
+        }), 500

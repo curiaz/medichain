@@ -13,10 +13,12 @@ import HealthRecord from './pages/HealthRecord'; // Patient health record page
 import ProfilePage from './pages/ProfilePage'; // Profile management page
 import PatientList from './pages/PatientList'; // Patient list management page
 import Notifications from './pages/Notifications'; // Notifications page
+import BookAppointment from './pages/BookAppointment'; // Book appointment page
+import SelectGP from './pages/SelectGP'; // Select GP page
+import BookAppointmentForm from './pages/BookAppointmentForm'; // Appointment booking form
+import DoctorAvailability from './pages/DoctorAvailability'; // Doctor availability management
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
-
-// Placeholder components for development
 
 function App() {
   return (
@@ -89,6 +91,42 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/book-appointment" 
+              element={
+                <ProtectedRoute>
+                  <BookAppointment />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/select-gp" 
+              element={
+                <ProtectedRoute>
+                  <SelectGP />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/book-appointment-form" 
+              element={
+                <ProtectedRoute>
+                  <BookAppointmentForm />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/doctor-availability" 
+              element={
+                <ProtectedRoute>
+                  <DoctorAvailability />
                 </ProtectedRoute>
               } 
             />
