@@ -159,7 +159,8 @@ class TestAppointmentSystem:
         }
         
         try:
-            response = supabase.client.table("appointments").insert(appointment_data).execute()
+            # Use service_client to bypass PostgREST schema cache
+            response = supabase.service_client.table("appointments").insert(appointment_data).execute()
             assert response.data is not None
             assert len(response.data) > 0
             
@@ -201,26 +202,44 @@ class TestAppointmentSystem:
         except Exception as e:
             print(f"⚠️  Test 8: Could not get doctor appointments: {e}")
     
-    def test_update_appointment_status(self, supabase, test_patient_uid):
+    def test_update_appointment_status(self, supabase, test_patient_uid, test_doctor_uid):
         """Test 9: Update appointment status"""
-        if not test_patient_uid:
-            pytest.skip("Test patient not available")
+        if not test_patient_uid or not test_doctor_uid:
+            pytest.skip("Test users not available")
         
         try:
-            # Get a test appointment
-            appointments = supabase.client.table("appointments")\
+            # First, check if any appointments exist
+            appointments = supabase.service_client.table("appointments")\
                 .select("*")\
                 .eq("patient_firebase_uid", test_patient_uid)\
                 .limit(1)\
                 .execute()
             
-            if not appointments.data:
-                pytest.skip("No appointments to update")
+            appointment_id = None
             
-            appointment_id = appointments.data[0]['id']
+            if not appointments.data:
+                # Create a test appointment for this test
+                print("  Creating test appointment for update test...")
+                appointment_date = (datetime.now() + timedelta(days=8)).strftime("%Y-%m-%d")
+                appointment_data = {
+                    "patient_firebase_uid": test_patient_uid,
+                    "doctor_firebase_uid": test_doctor_uid,
+                    "appointment_date": appointment_date,
+                    "appointment_time": "11:00:00",
+                    "status": "scheduled",
+                    "notes": "Test appointment for status update"
+                }
+                create_response = supabase.service_client.table("appointments").insert(appointment_data).execute()
+                if create_response.data:
+                    appointment_id = create_response.data[0]['id']
+            else:
+                appointment_id = appointments.data[0]['id']
+            
+            if not appointment_id:
+                pytest.skip("Could not create test appointment")
             
             # Update status
-            response = supabase.client.table("appointments")\
+            response = supabase.service_client.table("appointments")\
                 .update({"status": "confirmed"})\
                 .eq("id", appointment_id)\
                 .execute()
@@ -236,8 +255,8 @@ class TestAppointmentSystem:
             pytest.skip("Test patient not available")
         
         try:
-            # Delete all test appointments
-            response = supabase.client.table("appointments")\
+            # Delete all test appointments using service_client
+            response = supabase.service_client.table("appointments")\
                 .delete()\
                 .eq("patient_firebase_uid", test_patient_uid)\
                 .execute()
