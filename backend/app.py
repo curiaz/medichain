@@ -553,10 +553,12 @@ app = Flask(__name__)
 from auth.auth_routes import auth_bp
 from doctor_verification import doctor_verification_bp
 from notifications.notification_routes import notifications_bp
+from prescription_qr_routes import prescription_qr_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(doctor_verification_bp)
 app.register_blueprint(notifications_bp)
+app.register_blueprint(prescription_qr_bp)
 
 # 🔧 FIXED: CORS configuration with credentials support (removed "*" to fix CORS issues)
 CORS(app, resources={
