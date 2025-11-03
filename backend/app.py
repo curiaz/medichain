@@ -11,13 +11,23 @@ import sys
 import traceback
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
-import joblib
 from typing import Dict, List, Tuple, Optional
 import re
+
+# Lazy import sklearn to avoid Python 3.13 compatibility issues on startup
+def _import_sklearn():
+    """Lazy import sklearn components"""
+    try:
+        from sklearn.ensemble import RandomForestClassifier
+        from sklearn.preprocessing import LabelEncoder
+        from sklearn.model_selection import train_test_split
+        from sklearn.metrics import accuracy_score, classification_report
+        import joblib
+        return RandomForestClassifier, LabelEncoder, train_test_split, accuracy_score, classification_report, joblib
+    except Exception as e:
+        print(f"⚠️ Warning: sklearn import failed: {e}")
+        return None, None, None, None, None, None
+
 from db.supabase_client import SupabaseClient
 
 # Load environment variables
@@ -133,6 +143,11 @@ class StreamlinedAIDiagnosis:
         """Train the AI model"""
         try:
             print("🔄 Training AI model...")
+            
+            # Lazy import sklearn
+            RandomForestClassifier, LabelEncoder, train_test_split, accuracy_score, classification_report, joblib = _import_sklearn()
+            if not RandomForestClassifier:
+                raise Exception("sklearn import failed - cannot train model")
             
             # Prepare features and labels
             X = self.conditions_df[self.symptom_columns].values
@@ -553,10 +568,12 @@ app = Flask(__name__)
 from auth.auth_routes import auth_bp
 from doctor_verification import doctor_verification_bp
 from notifications.notification_routes import notifications_bp
+from appointment_routes import appointments_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(doctor_verification_bp)
 app.register_blueprint(notifications_bp)
+app.register_blueprint(appointments_bp)
 
 # 🔧 FIXED: CORS configuration with credentials support (removed "*" to fix CORS issues)
 CORS(app, resources={

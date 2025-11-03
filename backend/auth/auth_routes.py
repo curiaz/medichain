@@ -144,7 +144,9 @@ def signup():
 def register():
     """User registration endpoint - handles both Firebase tokens and direct registration"""
     try:
+        print("[DEBUG] 📥 Register endpoint called")
         data = request.get_json(silent=True)
+        print(f"[DEBUG] 📦 Received data keys: {list(data.keys()) if data else 'None'}")
         
         if not isinstance(data, dict):
             print("[DEBUG] ❌ Invalid JSON body received")
@@ -195,8 +197,8 @@ def register():
                     email = result.get("email")
                     print(f"[DEBUG] ✅ Firebase user verified: {email} (UID: {uid})")
                     
-                    # Check if user already exists
-                    existing = supabase.client.table("user_profiles").select("*").eq("firebase_uid", uid).execute()
+                    # Check if user already exists by email OR firebase_uid
+                    existing = supabase.client.table("user_profiles").select("*").or_(f"firebase_uid.eq.{uid},email.eq.{email}").execute()
                     
                     if existing.data:
                         print("[DEBUG] User already exists, returning existing profile")
@@ -233,21 +235,58 @@ def register():
                         "role": role
                     }
                     
-                    # 🆕 FIXED: Hash and store password if provided
+                    # 🆕 FIXED: Hash and store password if provided (optional - column may not exist)
                     password = data.get('password')
                     if password:
-                        password_hash = auth_utils.hash_password(password)
-                        user_data["password_hash"] = password_hash
-                        print(f"[DEBUG] ✅ Password hash generated and will be stored")
+                        try:
+                            password_hash = auth_utils.hash_password(password)
+                            user_data["password_hash"] = password_hash
+                            print(f"[DEBUG] ✅ Password hash generated and will be stored")
+                        except Exception as hash_error:
+                            print(f"[DEBUG] ⚠️  Could not hash password: {hash_error}")
+                            # Continue without password hash
                     
                     try:
+                        print(f"[DEBUG] Inserting user data: {user_data}")
                         response = supabase.client.table("user_profiles").insert(user_data).execute()
+                        print(f"[DEBUG] ✅ Database insert response: {response}")
                     except Exception as db_error:
-                        print(f"[DEBUG] ❌ Database error: {db_error}")
-                        return jsonify({
-                            "success": False,
-                            "error": "Failed to create user profile in database. Please try again."
-                        }), 500
+                        print(f"[DEBUG] ❌ Database error details: {type(db_error).__name__}: {db_error}")
+                        import traceback
+                        traceback.print_exc()
+                        
+                        # Check for duplicate email error
+                        error_str = str(db_error)
+                        if "23505" in error_str or "duplicate key" in error_str.lower():
+                            if "email" in error_str.lower():
+                                return jsonify({
+                                    "success": False,
+                                    "error": "This email is already registered. Please login instead or use a different email."
+                                }), 409
+                            else:
+                                return jsonify({
+                                    "success": False,
+                                    "error": "Account already exists. Please login instead."
+                                }), 409
+                        
+                        # Try without password_hash if that's the issue
+                        if "password_hash" in user_data and "column" in error_str.lower():
+                            print(f"[DEBUG] Retrying without password_hash column...")
+                            del user_data["password_hash"]
+                            try:
+                                response = supabase.client.table("user_profiles").insert(user_data).execute()
+                                print(f"[DEBUG] ✅ Insert succeeded without password_hash")
+                            except Exception as retry_error:
+                                print(f"[DEBUG] ❌ Retry also failed: {retry_error}")
+                                return jsonify({
+                                    "success": False,
+                                    "error": f"Database error: {str(retry_error)}"
+                                }), 500
+                        else:
+                            return jsonify({
+                                "success": False,
+                                "error": f"Failed to create user profile: {str(db_error)}"
+                            }), 500
                     
                     if response.data:
                         user = response.data[0]
