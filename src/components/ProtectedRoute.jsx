@@ -7,17 +7,30 @@ const ProtectedRoute = ({ children, allowedRoles = [], requireDoctorVerified = f
   const { isAuthenticated, user, loading } = useAuth();
   const location = useLocation();
 
+  // DEBUG: Log protection check
+  console.log("🔒 ProtectedRoute: Checking access for", location.pathname);
+  console.log("🔒 ProtectedRoute: isAuthenticated =", isAuthenticated);
+  console.log("🔒 ProtectedRoute: user =", user);
+  console.log("🔒 ProtectedRoute: allowedRoles =", allowedRoles);
+  console.log("🔒 ProtectedRoute: loading =", loading);
+
   if (loading) {
+    console.log("⏳ ProtectedRoute: Still loading, showing spinner...");
     return <LoadingSpinner fullScreen={true} text="Checking authentication..." />;
   }
 
   if (!isAuthenticated) {
+    console.log("❌ ProtectedRoute: Not authenticated, redirecting to /login");
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
+    console.log("❌ ProtectedRoute: Role mismatch! User role:", user?.role, "Allowed:", allowedRoles);
+    console.log("❌ ProtectedRoute: Redirecting to /dashboard");
     return <Navigate to="/dashboard" replace />;
   }
+
+  console.log("✅ ProtectedRoute: Access granted!");
 
   // If route requires verified doctor, enforce it
   if (requireDoctorVerified && user?.role === 'doctor') {

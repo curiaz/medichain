@@ -66,6 +66,10 @@ const PatientDashboard = () => {
   const handleNewAppointment = () => {
     navigate('/book-appointment')
   }
+
+  const handleMyAppointments = () => {
+    navigate('/my-appointments')
+  }
   
   return (
     <div className="dashboard-container fade-in">
@@ -126,6 +130,17 @@ const PatientDashboard = () => {
                   <div className="action-content">
                     <h3>Book an Appointment</h3>
                     <p>Schedule a consultation with our verified doctors</p>
+                    <span className="action-status available">Available Now</span>
+                  </div>
+                </div>
+
+                <div className="action-card" onClick={handleMyAppointments}>
+                  <div className="action-icon">
+                    <Calendar size={48} />
+                  </div>
+                  <div className="action-content">
+                    <h3>My Appointments</h3>
+                    <p>View scheduled consultations and join video calls</p>
                     <span className="action-status available">Available Now</span>
                   </div>
                 </div>

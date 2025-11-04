@@ -63,6 +63,11 @@ const DoctorDashboard = () => {
     navigate('/patients')
   }
 
+  const handleSchedule = () => {
+    if (blockIfUnverified('Schedule Management')) return
+    navigate('/doctor-schedule')
+  }
+
   return (
     <div className="dashboard-container fade-in">
       {/* Background crosses */}
@@ -213,7 +218,7 @@ const DoctorDashboard = () => {
                   </div>
                 </div>
 
-                <div className="action-card secondary-action" onClick={() => blockIfUnverified('Schedule Management') || null}>
+                <div className="action-card secondary-action" onClick={handleSchedule}>
                   <div className="action-icon">
                     <Calendar size={48} />
                   </div>

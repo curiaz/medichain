@@ -39,6 +39,11 @@ const BookAppointment = () => {
   ];
 
   const handleSelectType = (type) => {
+    console.log("🎯 BookAppointment: handleSelectType called");
+    console.log("🎯 BookAppointment: type =", type);
+    console.log("🎯 BookAppointment: navigating to:", type.route);
+    console.log("🎯 BookAppointment: state:", { appointmentType: type.id });
+    
     if (type.available) {
       navigate(type.route, { state: { appointmentType: type.id } });
     } else {
