@@ -1,55 +1,56 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "./Header";
 import { Search, Stethoscope, Mail, User, Calendar, ChevronRight } from "lucide-react";
 import axios from "axios";
-import { auth } from "../config/firebase";
+import { useAuth } from "../context/AuthContext";
 import "../assets/styles/ModernDashboard.css";
 import "../assets/styles/SelectGP.css";
 
 const SelectGP = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, isAuthenticated } = useAuth();
   const [doctors, setDoctors] = useState([]);
   const [filteredDoctors, setFilteredDoctors] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchApprovedDoctors();
-  }, []);
-
-  useEffect(() => {
-    // Filter doctors based on search query
-    if (searchQuery.trim() === "") {
-      setFilteredDoctors(doctors);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = doctors.filter((doctor) => {
-        const name = `${doctor.first_name} ${doctor.last_name}`.toLowerCase();
-        const specialization = doctor.specialization?.toLowerCase() || "";
-        return name.includes(query) || specialization.includes(query);
-      });
-      setFilteredDoctors(filtered);
-    }
-  }, [searchQuery, doctors]);
-
-  const fetchApprovedDoctors = async () => {
+  const fetchApprovedDoctors = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Get Firebase auth token from current user
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
+      // DEBUG: Log component mount
+      console.log("🔍 SelectGP: fetchApprovedDoctors called");
+      console.log("🔍 SelectGP: location.state =", location.state);
+      console.log("🔍 SelectGP: isAuthenticated =", isAuthenticated);
+      console.log("🔍 SelectGP: user =", user);
+
+      // Check if user is authenticated via AuthContext
+      if (!isAuthenticated || !user) {
+        console.log("❌ SelectGP: Not authenticated, redirecting to /login");
         setError("Please log in to view doctors");
         setLoading(false);
         navigate("/login");
         return;
       }
+      
+      console.log("✅ SelectGP: User authenticated, fetching token...");
 
-      const token = await currentUser.getIdToken();
+      // Get token from localStorage (works for both Firebase and Supabase auth)
+      const token = localStorage.getItem('medichain_token');
+      
+      if (!token) {
+        console.log("❌ SelectGP: No token found, redirecting to /login");
+        setError("Session expired. Please log in again.");
+        setLoading(false);
+        navigate("/login");
+        return;
+      }
+      
+      console.log("✅ SelectGP: Token found, making API call...");
 
       const response = await axios.get(
         "http://localhost:5000/api/appointments/doctors/approved",
@@ -77,7 +78,26 @@ const SelectGP = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated, user, navigate, location.state]);
+
+  useEffect(() => {
+    fetchApprovedDoctors();
+  }, [fetchApprovedDoctors]);
+
+  useEffect(() => {
+    // Filter doctors based on search query
+    if (searchQuery.trim() === "") {
+      setFilteredDoctors(doctors);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = doctors.filter((doctor) => {
+        const name = `${doctor.first_name} ${doctor.last_name}`.toLowerCase();
+        const specialization = doctor.specialization?.toLowerCase() || "";
+        return name.includes(query) || specialization.includes(query);
+      });
+      setFilteredDoctors(filtered);
+    }
+  }, [searchQuery, doctors]);
 
   const handleSelectDoctor = (doctor) => {
     // Navigate to appointment booking form with doctor details

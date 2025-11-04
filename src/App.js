@@ -17,6 +17,8 @@ import BookAppointment from './pages/BookAppointment'; // Book appointment page
 import SelectGP from './pages/SelectGP'; // Select GP page
 import BookAppointmentForm from './pages/BookAppointmentForm'; // Appointment booking form
 import DoctorAvailability from './pages/DoctorAvailability'; // Doctor availability management
+import DoctorSchedule from './pages/DoctorSchedule'; // Doctor schedule management
+import PatientAppointments from './pages/PatientAppointments'; // Patient appointments list
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
@@ -64,6 +66,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <HealthRecord />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/my-appointments" 
+              element={
+                <ProtectedRoute>
+                  <PatientAppointments />
                 </ProtectedRoute>
               } 
             />
@@ -127,6 +138,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <DoctorAvailability />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/doctor-schedule" 
+              element={
+                <ProtectedRoute allowedRoles={["doctor"]} requireDoctorVerified={true}>
+                  <DoctorSchedule />
                 </ProtectedRoute>
               } 
             />
