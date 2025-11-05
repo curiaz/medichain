@@ -399,6 +399,49 @@
   }
 }
 
+/* Embedded Mode Styles */
+.embedded-availability-content {
+  padding: 0;
+}
+
+.embedded-availability-content .availability-form-card {
+  margin: 0 0 20px 0;
+  padding: 20px;
+}
+
+.embedded-availability-content .current-availability {
+  margin-top: 20px;
+}
+
+.embedded-availability-content .section-title {
+  font-size: 1.2rem;
+  margin-bottom: 16px;
+}
+
+.embedded-availability-content .availability-grid {
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.embedded-availability-content .availability-card {
+  padding: 16px;
+}
+
+.embedded-availability-content .save-section {
+  margin-top: 20px;
+}
+
+.embedded-availability-content .save-button {
+  padding: 12px 24px;
+  font-size: 1rem;
+  width: 100%;
+}
+
+.embedded-availability-content .alert {
+  margin: 12px 0;
+  padding: 12px 16px;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .form-row {

@@ -5,6 +5,19 @@ Handles appointment scheduling and management
 
 from flask import Blueprint, jsonify, request
 from functools import wraps
+from datetime import datetime, timedelta
+try:
+    import pytz
+    MANILA_TZ = pytz.timezone('Asia/Manila')
+except ImportError:
+    # Fallback to zoneinfo for Python 3.9+
+    try:
+        from zoneinfo import ZoneInfo
+        MANILA_TZ = ZoneInfo('Asia/Manila')
+    except ImportError:
+        # If neither available, use UTC offset (UTC+8)
+        from datetime import timezone
+        MANILA_TZ = timezone(timedelta(hours=8))
 
 from auth.firebase_auth import firebase_auth_required
 from db.supabase_client import SupabaseClient
@@ -17,6 +30,15 @@ try:
 except Exception as e:
     print(f"❌ Error initializing Supabase client for appointments: {e}")
     supabase = None
+
+def get_manila_now():
+    """Get current datetime in Asia/Manila timezone"""
+    if hasattr(MANILA_TZ, 'localize'):
+        # pytz timezone
+        return datetime.now(MANILA_TZ)
+    else:
+        # zoneinfo or timezone offset
+        return datetime.now(MANILA_TZ)
 
 
 def auth_required(f):
@@ -121,18 +143,76 @@ def get_approved_doctors():
                 specialization = "General Practitioner"
                 availability = []
                 has_availability = False
+                is_accepting_appointments = True  # Default to True if column doesn't exist
                 
                 if doctor_profile_response.data and len(doctor_profile_response.data) > 0:
                     specialization = doctor_profile_response.data[0].get("specialization", "General Practitioner")
-                    availability = doctor_profile_response.data[0].get("availability", [])
-                    # Check if doctor has any future available time slots
-                    has_availability = len(availability) > 0 if isinstance(availability, list) else False
+                    availability_raw = doctor_profile_response.data[0].get("availability", {})
+                    
+                    # Try to get is_accepting_appointments, default to True if not present
+                    try:
+                        is_accepting_appointments = doctor_profile_response.data[0].get("is_accepting_appointments", True)
+                    except (KeyError, AttributeError):
+                        is_accepting_appointments = True
+                    
+                    # Debug logging
+                    print(f"🔍 Doctor {user.get('email')}: availability_raw type = {type(availability_raw)}")
+                    print(f"🔍 Doctor {user.get('email')}: availability_raw = {availability_raw}")
+                    print(f"🔍 Doctor {user.get('email')}: is_accepting_appointments = {is_accepting_appointments}")
+                    
+                    # Check availability based on format
+                    # New format: { time_ranges: [{ start_time, end_time, interval }, ...] }
+                    # Old format: [{ date: "...", time_slots: [...] }, ...]
+                    if isinstance(availability_raw, dict) and availability_raw:
+                        # New format with time_ranges
+                        if "time_ranges" in availability_raw and isinstance(availability_raw["time_ranges"], list):
+                            print(f"🔍 Doctor {user.get('email')}: Found time_ranges with {len(availability_raw['time_ranges'])} ranges")
+                            if len(availability_raw["time_ranges"]) > 0:
+                                # If doctor has time_ranges defined AND is accepting appointments, they have availability
+                                has_availability = is_accepting_appointments
+                                print(f"✅ Doctor {user.get('email')}: has_availability = {has_availability} (has time_ranges, accepting={is_accepting_appointments})")
+                            else:
+                                print(f"❌ Doctor {user.get('email')}: has_availability = False (empty time_ranges)")
+                            availability = availability_raw  # Store the raw availability object
+                        # Legacy single range format: { start_time, end_time, interval }
+                        elif "start_time" in availability_raw and "end_time" in availability_raw:
+                            print(f"✅ Doctor {user.get('email')}: Found legacy format, converting to time_ranges")
+                            # Convert to time_ranges format for consistency
+                            availability = {
+                                "time_ranges": [{
+                                    "start_time": availability_raw.get("start_time", "07:00"),
+                                    "end_time": availability_raw.get("end_time", "17:00"),
+                                    "interval": availability_raw.get("interval", 30)
+                                }]
+                            }
+                            has_availability = is_accepting_appointments
+                        else:
+                            print(f"❌ Doctor {user.get('email')}: Dict format but no time_ranges or start_time/end_time found")
+                    elif isinstance(availability_raw, list) and len(availability_raw) > 0:
+                        print(f"🔍 Doctor {user.get('email')}: Found list format (old format)")
+                        # Old format: array of date slots
+                        availability = availability_raw
+                        # Check if any slots are in the future
+                        today = datetime.now().date()
+                        for slot in availability_raw:
+                            if isinstance(slot, dict) and "date" in slot:
+                                slot_date = datetime.strptime(slot["date"], "%Y-%m-%d").date()
+                                if slot_date >= today and slot.get("time_slots"):
+                                    has_availability = is_accepting_appointments
+                                    break
+                    else:
+                        print(f"❌ Doctor {user.get('email')}: availability_raw is empty or invalid: {type(availability_raw)}")
+                    
+                    print(f"🔍 Doctor {user.get('email')}: Final has_availability = {has_availability}")
             except Exception as profile_error:
                 print(f"⚠️  Error fetching profile for {user.get('email')}: {profile_error}")
+                import traceback
+                traceback.print_exc()
                 # Continue with default values if profile fetch fails
                 specialization = "General Practitioner"
                 availability = []
                 has_availability = False
+                is_accepting_appointments = True
 
             doctors.append(
                 {
@@ -149,6 +229,7 @@ def get_approved_doctors():
                 }
             )
 
+        print(f"✅ Returning {len(doctors)} doctors")
         return jsonify({"success": True, "doctors": doctors, "count": len(doctors)}), 200
 
     except Exception as e:
@@ -265,15 +346,82 @@ def create_appointment():
         if not doctor_profile.data:
             return jsonify({"success": False, "error": "Doctor not found"}), 404
 
-        availability = doctor_profile.data[0].get("availability", [])
+        availability = doctor_profile.data[0].get("availability", {})
         appointment_date = data["appointment_date"]
         appointment_time = data["appointment_time"]
 
-        # Find the date in availability
-        date_slot = next((slot for slot in availability if slot["date"] == appointment_date), None)
+        # Check availability based on format
+        # New format: { time_ranges: [{ start_time, end_time, interval }, ...] }
+        # or legacy single range: { start_time, end_time, interval }
+        if isinstance(availability, dict):
+            time_ranges = []
+            # Check for new format with time_ranges array
+            if "time_ranges" in availability and isinstance(availability["time_ranges"], list):
+                time_ranges = availability["time_ranges"]
+            # Legacy single range format
+            elif "start_time" in availability:
+                time_ranges = [{
+                    "start_time": availability.get("start_time", "07:00"),
+                    "end_time": availability.get("end_time", "17:00"),
+                    "interval": availability.get("interval", 30)
+                }]
+            
+            if time_ranges:
+                # Parse appointment time
+                try:
+                    appt_hour, appt_min = map(int, appointment_time.split(":"))
+                    appt_minutes = appt_hour * 60 + appt_min
+                except ValueError:
+                    return jsonify({"success": False, "error": "Invalid appointment time format"}), 400
+                
+                # Check if appointment time matches any range
+                time_found = False
+                for time_range in time_ranges:
+                    start_hour, start_min = map(int, time_range["start_time"].split(":"))
+                    end_hour, end_min = map(int, time_range["end_time"].split(":"))
+                    start_minutes = start_hour * 60 + start_min
+                    end_minutes = end_hour * 60 + end_min
+                    interval = time_range.get("interval", 30)
+                    
+                    # Check if time is within this range
+                    if appt_minutes >= start_minutes and appt_minutes < end_minutes:
+                        # Check if time matches interval
+                        relative_minutes = appt_minutes - start_minutes
+                        if relative_minutes % interval == 0:
+                            time_found = True
+                            break
+                
+                if not time_found:
+                    return jsonify({"success": False, "error": "Selected time is outside doctor's availability hours or doesn't match the interval"}), 400
+                
+                # Check if appointment time is in the past (using Manila timezone)
+                try:
+                    now_manila = get_manila_now()
+                    slot_datetime_naive = datetime.strptime(f"{appointment_date} {appointment_time}", "%Y-%m-%d %H:%M")
+                    
+                    # Localize to Manila timezone
+                    if hasattr(MANILA_TZ, 'localize'):
+                        # pytz timezone
+                        slot_datetime_manila = MANILA_TZ.localize(slot_datetime_naive)
+                    else:
+                        # zoneinfo or timezone offset
+                        slot_datetime_manila = slot_datetime_naive.replace(tzinfo=MANILA_TZ)
+                    
+                    if slot_datetime_manila <= now_manila:
+                        return jsonify({"success": False, "error": "Cannot book appointments in the past"}), 400
+                except ValueError:
+                    return jsonify({"success": False, "error": "Invalid date or time format"}), 400
         
-        if not date_slot or appointment_time not in date_slot.get("time_slots", []):
-            return jsonify({"success": False, "error": "Selected time slot is not available"}), 400
+        # Old format: array of date slots
+        elif isinstance(availability, list):
+            date_slot = next((slot for slot in availability if slot.get("date") == appointment_date), None)
+            
+            if not date_slot or appointment_time not in date_slot.get("time_slots", []):
+                return jsonify({"success": False, "error": "Selected time slot is not available"}), 400
+        
+        # No availability set
+        else:
+            return jsonify({"success": False, "error": "Doctor has not set availability"}), 400
 
         # Check if appointment already exists for this time slot
         existing_appointment = (
@@ -313,25 +461,27 @@ def create_appointment():
         if not response.data:
             return jsonify({"success": False, "error": "Failed to create appointment"}), 500
 
-        # Remove the booked time slot from doctor's availability
-        updated_availability = []
-        for slot in availability:
-            if slot["date"] == appointment_date:
-                # Remove the booked time
-                remaining_times = [t for t in slot["time_slots"] if t != appointment_time]
-                # Only keep the date if there are remaining time slots
-                if remaining_times:
-                    updated_availability.append({
-                        "date": slot["date"],
-                        "time_slots": remaining_times
-                    })
-            else:
-                updated_availability.append(slot)
+        # For old format only: Remove the booked time slot from doctor's availability
+        # New format doesn't need this since availability is schedule-based
+        if isinstance(availability, list):
+            updated_availability = []
+            for slot in availability:
+                if slot["date"] == appointment_date:
+                    # Remove the booked time
+                    remaining_times = [t for t in slot["time_slots"] if t != appointment_time]
+                    # Only keep the date if there are remaining time slots
+                    if remaining_times:
+                        updated_availability.append({
+                            "date": slot["date"],
+                            "time_slots": remaining_times
+                        })
+                else:
+                    updated_availability.append(slot)
 
-        # Update doctor's availability
-        supabase.client.table("doctor_profiles").update({
-            "availability": updated_availability
-        }).eq("firebase_uid", data["doctor_firebase_uid"]).execute()
+            # Update doctor's availability (old format only)
+            supabase.client.table("doctor_profiles").update({
+                "availability": updated_availability
+            }).eq("firebase_uid", data["doctor_firebase_uid"]).execute()
 
         # Optionally: send notifications (stubbed route currently)
         try:
@@ -398,19 +548,36 @@ def get_doctor_availability():
         if not user_response.data or user_response.data[0]["role"] != "doctor":
             return jsonify({"success": False, "error": "Only doctors can access this endpoint"}), 403
 
-        # Get doctor's availability
-        response = (
-            supabase.client.table("doctor_profiles")
-            .select("availability")
-            .eq("firebase_uid", uid)
-            .execute()
-        )
-
+        # Get doctor's availability and accepting status (handle gracefully if column doesn't exist)
+        try:
+            response = (
+                supabase.client.table("doctor_profiles")
+                .select("availability, is_accepting_appointments")
+                .eq("firebase_uid", uid)
+                .execute()
+            )
+        except Exception as select_error:
+            # If column doesn't exist, try without it
+            print(f"⚠️  Warning: Error selecting is_accepting_appointments: {select_error}")
+            print(f"⚠️  Falling back to availability only (assuming is_accepting_appointments = True)")
+            response = (
+                supabase.client.table("doctor_profiles")
+                .select("availability")
+                .eq("firebase_uid", uid)
+                .execute()
+            )
+        
         if not response.data:
             return jsonify({"success": False, "error": "Doctor profile not found"}), 404
 
-        availability = response.data[0].get("availability", [])
-        return jsonify({"success": True, "availability": availability}), 200
+        availability = response.data[0].get("availability", {})
+        is_accepting_appointments = response.data[0].get("is_accepting_appointments", True)
+        
+        return jsonify({
+            "success": True, 
+            "availability": availability,
+            "is_accepting_appointments": is_accepting_appointments
+        }), 200
 
     except Exception as e:
         print(f"Error fetching availability: {str(e)}")
@@ -420,58 +587,339 @@ def get_doctor_availability():
 @appointments_bp.route("/availability", methods=["PUT"])
 @firebase_auth_required
 def update_doctor_availability():
-    """Update doctor's availability schedule"""
+    """Update doctor's availability schedule (new format: time range + interval)"""
     try:
         firebase_user = request.firebase_user
         uid = firebase_user["uid"]
         data = request.get_json()
+        
+        print(f"DEBUG: Received availability update request from user {uid}")
+        print(f"DEBUG: Request data: {data}")
+        print(f"DEBUG: Request Content-Type: {request.content_type}")
+        
+        if data is None:
+            return jsonify({"success": False, "error": "Invalid request. JSON data is required."}), 400
+        
+        # Check if Supabase client is available
+        if supabase is None or supabase.client is None:
+            print("ERROR: Supabase client is not initialized")
+            return jsonify({"success": False, "error": "Database connection failed. Please try again later."}), 500
 
         # Verify user is a doctor
         user_response = supabase.client.table("user_profiles").select("role").eq("firebase_uid", uid).execute()
         if not user_response.data or user_response.data[0]["role"] != "doctor":
             return jsonify({"success": False, "error": "Only doctors can update availability"}), 403
 
-        # Validate availability data
-        availability = data.get("availability", [])
-        if not isinstance(availability, list):
-            return jsonify({"success": False, "error": "Availability must be an array"}), 400
+        # Validate availability data - support both old format (array) and new format (object)
+        availability = data.get("availability", {})
+        
+        if not availability:
+            return jsonify({"success": False, "error": "Availability data is required"}), 400
+        
+        print(f"DEBUG: Availability data: {availability}")
+        print(f"DEBUG: Availability type: {type(availability)}")
+        
+        # New format: { time_ranges: [{ start_time, end_time, interval }, ...] }
+        # or legacy single range: { start_time, end_time, interval }
+        if isinstance(availability, dict):
+            # Check for new format with time_ranges array
+            if "time_ranges" in availability and isinstance(availability["time_ranges"], list):
+                if len(availability["time_ranges"]) == 0:
+                    return jsonify({"success": False, "error": "At least one time range is required"}), 400
+                
+                # Validate each time range
+                for i, time_range in enumerate(availability["time_ranges"]):
+                    if not isinstance(time_range, dict):
+                        return jsonify({"success": False, "error": f"Time range {i+1} must be an object"}), 400
+                    
+                    if "start_time" not in time_range or "end_time" not in time_range or "interval" not in time_range:
+                        return jsonify({"success": False, "error": f"Time range {i+1} must include start_time, end_time, and interval"}), 400
+                    
+                    # Validate time format
+                    try:
+                        datetime.strptime(time_range["start_time"], "%H:%M")
+                        datetime.strptime(time_range["end_time"], "%H:%M")
+                    except ValueError:
+                        return jsonify({"success": False, "error": f"Time range {i+1}: Invalid time format. Use HH:MM"}), 400
+                    
+                    # Validate interval
+                    interval = time_range.get("interval")
+                    if interval is None:
+                        return jsonify({"success": False, "error": f"Time range {i+1}: Interval is required"}), 400
+                    
+                    # Convert interval to int if it's a string
+                    try:
+                        interval = int(interval)
+                    except (ValueError, TypeError):
+                        return jsonify({"success": False, "error": f"Time range {i+1}: Interval must be a number"}), 400
+                    
+                    if interval not in [15, 25, 30]:
+                        return jsonify({"success": False, "error": f"Time range {i+1}: Interval must be 15, 25, or 30 minutes"}), 400
+                    
+                    # Validate end time is after start time
+                    start_hour, start_min = map(int, time_range["start_time"].split(":"))
+                    end_hour, end_min = map(int, time_range["end_time"].split(":"))
+                    start_minutes = start_hour * 60 + start_min
+                    end_minutes = end_hour * 60 + end_min
+                    
+                    if end_minutes <= start_minutes:
+                        return jsonify({"success": False, "error": f"Time range {i+1}: End time must be after start time"}), 400
+                
+                # Check for overlaps between ranges
+                for i in range(len(availability["time_ranges"])):
+                    for j in range(i + 1, len(availability["time_ranges"])):
+                        range1 = availability["time_ranges"][i]
+                        range2 = availability["time_ranges"][j]
+                        
+                        start1_hour, start1_min = map(int, range1["start_time"].split(":"))
+                        end1_hour, end1_min = map(int, range1["end_time"].split(":"))
+                        start2_hour, start2_min = map(int, range2["start_time"].split(":"))
+                        end2_hour, end2_min = map(int, range2["end_time"].split(":"))
+                        
+                        start1_minutes = start1_hour * 60 + start1_min
+                        end1_minutes = end1_hour * 60 + end1_min
+                        start2_minutes = start2_hour * 60 + start2_min
+                        end2_minutes = end2_hour * 60 + end2_min
+                        
+                        # Check if ranges overlap
+                        if not (end1_minutes <= start2_minutes or start1_minutes >= end2_minutes):
+                            return jsonify({"success": False, "error": f"Time ranges {i+1} and {j+1} overlap. Please adjust them."}), 400
+            
+            # Legacy single range format: { start_time, end_time, interval }
+            elif "start_time" in availability and "end_time" in availability:
+                # Validate time format
+                try:
+                    datetime.strptime(availability["start_time"], "%H:%M")
+                    datetime.strptime(availability["end_time"], "%H:%M")
+                except ValueError:
+                    return jsonify({"success": False, "error": "Invalid time format. Use HH:MM"}), 400
+                
+                # Validate interval
+                if availability.get("interval") not in [15, 25, 30]:
+                    return jsonify({"success": False, "error": "Interval must be 15, 25, or 30 minutes"}), 400
+                
+                # Validate end time is after start time
+                start_hour, start_min = map(int, availability["start_time"].split(":"))
+                end_hour, end_min = map(int, availability["end_time"].split(":"))
+                start_minutes = start_hour * 60 + start_min
+                end_minutes = end_hour * 60 + end_min
+                
+                if end_minutes <= start_minutes:
+                    return jsonify({"success": False, "error": "End time must be after start time"}), 400
+            
+            else:
+                return jsonify({"success": False, "error": "Availability must include time_ranges array or start_time/end_time/interval"}), 400
+        
+        # Old format: array of date slots (keep for backward compatibility)
+        elif isinstance(availability, list):
+            if not all(isinstance(slot, dict) and "date" in slot and "time_slots" in slot for slot in availability):
+                return jsonify({"success": False, "error": "Invalid availability format"}), 400
 
-        # Update doctor's availability
-        response = (
-            supabase.client.table("doctor_profiles")
-            .update({"availability": availability})
-            .eq("firebase_uid", uid)
-            .execute()
-        )
+        # Get is_accepting_appointments from request (optional, defaults to True if not provided)
+        is_accepting_appointments = data.get("is_accepting_appointments", True)
+        
+        # Update doctor's availability and accepting status
+        try:
+            # Try to update both fields, but handle gracefully if column doesn't exist
+            update_data = {
+                "availability": availability
+            }
+            
+            # Only include is_accepting_appointments if the column exists
+            # If it doesn't exist, the update will still succeed but won't set this field
+            try:
+                update_data["is_accepting_appointments"] = is_accepting_appointments
+            except Exception:
+                pass  # Column might not exist yet
+            
+            print(f"DEBUG: Updating availability for user {uid}")
+            print(f"DEBUG: Update data: {update_data}")
+            
+            response = (
+                supabase.client.table("doctor_profiles")
+                .update(update_data)
+                .eq("firebase_uid", uid)
+                .execute()
+            )
 
-        if not response.data:
-            return jsonify({"success": False, "error": "Failed to update availability"}), 400
+            if not response.data:
+                print(f"ERROR: Supabase update returned no data for user {uid}")
+                return jsonify({"success": False, "error": "Failed to update availability. Doctor profile may not exist."}), 400
 
-        return jsonify({"success": True, "availability": availability, "message": "Availability updated successfully"}), 200
+            print(f"DEBUG: Successfully updated availability for user {uid}")
+            return jsonify({
+                "success": True, 
+                "availability": availability,
+                "is_accepting_appointments": is_accepting_appointments,
+                "message": "Availability updated successfully"
+            }), 200
+        
+        except Exception as db_error:
+            print(f"ERROR: Database update failed: {str(db_error)}")
+            # Check if error is about missing column
+            if "is_accepting_appointments" in str(db_error).lower() or "column" in str(db_error).lower():
+                print(f"⚠️  Warning: is_accepting_appointments column may not exist. Updating availability only.")
+                # Try updating without is_accepting_appointments
+                try:
+                    response = (
+                        supabase.client.table("doctor_profiles")
+                        .update({"availability": availability})
+                        .eq("firebase_uid", uid)
+                        .execute()
+                    )
+                    if response.data:
+                        return jsonify({
+                            "success": True, 
+                            "availability": availability,
+                            "message": "Availability updated successfully (Note: Please run database migration to enable toggle feature)"
+                        }), 200
+                except Exception as retry_error:
+                    return jsonify({"success": False, "error": f"Database error: {str(retry_error)}"}), 500
+            return jsonify({"success": False, "error": f"Database error: {str(db_error)}"}), 500
 
     except Exception as e:
-        print(f"Error updating availability: {str(e)}")
+        print(f"ERROR: Exception in update_doctor_availability: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 
 @appointments_bp.route("/availability/<doctor_firebase_uid>", methods=["GET"])
-@firebase_auth_required
+@auth_required
 def get_doctor_availability_by_uid(doctor_firebase_uid):
-    """Get specific doctor's availability (for patients booking appointments)"""
+    """Get specific doctor's availability (for patients booking appointments)
+    Returns availability in format that can be used to generate date-time slots"""
     try:
-        # Get doctor's availability
-        response = (
-            supabase.client.table("doctor_profiles")
-            .select("availability")
-            .eq("firebase_uid", doctor_firebase_uid)
-            .execute()
-        )
+        print(f"🔍 Getting availability for doctor: {doctor_firebase_uid}")
+        
+        # Get doctor's availability and accepting status (handle gracefully if column doesn't exist)
+        try:
+            response = (
+                supabase.client.table("doctor_profiles")
+                .select("availability, is_accepting_appointments")
+                .eq("firebase_uid", doctor_firebase_uid)
+                .execute()
+            )
+        except Exception as select_error:
+            # If column doesn't exist, try without it
+            print(f"⚠️  Warning: Error selecting is_accepting_appointments: {select_error}")
+            print(f"⚠️  Falling back to availability only (assuming is_accepting_appointments = True)")
+            response = (
+                supabase.client.table("doctor_profiles")
+                .select("availability")
+                .eq("firebase_uid", doctor_firebase_uid)
+                .execute()
+            )
 
         if not response.data:
+            print(f"❌ Doctor not found: {doctor_firebase_uid}")
             return jsonify({"success": False, "error": "Doctor not found"}), 404
 
-        availability = response.data[0].get("availability", [])
-        return jsonify({"success": True, "availability": availability}), 200
+        availability = response.data[0].get("availability", {})
+        is_accepting_appointments = response.data[0].get("is_accepting_appointments", True)
+        
+        print(f"🔍 Doctor availability data: {availability}")
+        print(f"🔍 Is accepting appointments: {is_accepting_appointments}")
+        
+        # If doctor is not accepting appointments, return empty availability
+        if not is_accepting_appointments:
+            print(f"⚠️  Doctor {doctor_firebase_uid} is not accepting appointments")
+            return jsonify({
+                "success": True,
+                "availability": {},
+                "schedule": availability,
+                "message": "Doctor is currently not accepting appointments"
+            }), 200
+        
+        # New format with multiple ranges: { time_ranges: [{ start_time, end_time, interval }, ...] }
+        # or legacy single range: { start_time, end_time, interval }
+        if isinstance(availability, dict):
+            time_ranges = []
+            
+            # Check for new format with time_ranges array
+            if "time_ranges" in availability and isinstance(availability["time_ranges"], list):
+                time_ranges = availability["time_ranges"]
+            # Legacy single range format
+            elif "start_time" in availability:
+                time_ranges = [{
+                    "start_time": availability.get("start_time", "07:00"),
+                    "end_time": availability.get("end_time", "17:00"),
+                    "interval": availability.get("interval", 30)
+                }]
+            
+            if time_ranges:
+                # Generate time slots for next 30 days based on Asia/Manila timezone
+                time_slots_per_date = {}
+                now_manila = get_manila_now()
+                today_manila = now_manila.date()
+                
+                for day_offset in range(30):
+                    date = today_manila + timedelta(days=day_offset)
+                    date_str = date.isoformat()
+                    
+                    # Generate time slots for this date from all ranges
+                    all_slots = []
+                    
+                    for time_range in time_ranges:
+                        start_time = time_range.get("start_time", "07:00")
+                        end_time = time_range.get("end_time", "17:00")
+                        interval = time_range.get("interval", 30)
+                        
+                        # Parse times
+                        start_hour, start_min = map(int, start_time.split(":"))
+                        end_hour, end_min = map(int, end_time.split(":"))
+                        start_minutes = start_hour * 60 + start_min
+                        end_minutes = end_hour * 60 + end_min
+                        
+                        # Generate time slots for this range
+                        current_minutes = start_minutes
+                        
+                        while current_minutes < end_minutes:
+                            hour = current_minutes // 60
+                            minute = current_minutes % 60
+                            time_str = f"{hour:02d}:{minute:02d}"
+                            
+                            # Check if this time slot is in the future (for today only)
+                            if day_offset == 0:
+                                # Create datetime in Manila timezone for this slot
+                                slot_time = datetime.strptime(time_str, "%H:%M").time()
+                                slot_datetime_naive = datetime.combine(date, slot_time)
+                                
+                                # Localize to Manila timezone
+                                if hasattr(MANILA_TZ, 'localize'):
+                                    # pytz timezone
+                                    slot_datetime_manila = MANILA_TZ.localize(slot_datetime_naive)
+                                else:
+                                    # zoneinfo or timezone offset
+                                    slot_datetime_manila = slot_datetime_naive.replace(tzinfo=MANILA_TZ)
+                                
+                                # Only include if slot is in the future
+                                if slot_datetime_manila > now_manila:
+                                    if time_str not in all_slots:
+                                        all_slots.append(time_str)
+                            else:
+                                # For future dates, include all slots
+                                if time_str not in all_slots:
+                                    all_slots.append(time_str)
+                            
+                            current_minutes += interval
+                    
+                    if all_slots:
+                        time_slots_per_date[date_str] = sorted(all_slots)
+                
+                return jsonify({
+                    "success": True, 
+                    "availability": time_slots_per_date,
+                    "schedule": availability  # Include original schedule for reference
+                }), 200
+        
+        # Old format: array of date slots (backward compatibility)
+        elif isinstance(availability, list):
+            return jsonify({"success": True, "availability": availability}), 200
+        
+        # Empty or invalid format
+        else:
+            return jsonify({"success": True, "availability": {}}), 200
 
     except Exception as e:
         print(f"Error fetching doctor availability: {str(e)}")

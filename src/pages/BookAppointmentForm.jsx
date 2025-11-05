@@ -22,12 +22,62 @@ const BookAppointmentForm = () => {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
+    console.log("🔍 BookAppointmentForm: Component mounted");
+    console.log("🔍 BookAppointmentForm: location.state =", location.state);
+    console.log("🔍 BookAppointmentForm: doctor =", doctor);
+    console.log("🔍 BookAppointmentForm: selectedDate =", location.state?.selectedDate);
+    console.log("🔍 BookAppointmentForm: selectedTime =", location.state?.selectedTime);
+    
     if (!doctor) {
+      console.log("❌ BookAppointmentForm: No doctor found, redirecting to /select-gp");
       navigate("/select-gp");
       return;
     }
+    
+    // If date and time are passed from SelectDateTime, use them
+    if (location.state?.selectedDate && location.state?.selectedTime) {
+      console.log("✅ BookAppointmentForm: Date and time pre-selected");
+      setSelectedDate(location.state.selectedDate);
+      setSelectedTime(location.state.selectedTime);
+    }
+    
+    console.log("✅ BookAppointmentForm: Doctor found, fetching availability");
     fetchDoctorAvailability();
   }, [doctor]);
+
+  // Get current time in Asia/Manila timezone
+  const getManilaNow = () => {
+    const now = new Date();
+    // Convert to Manila time (UTC+8)
+    const manilaOffset = 8 * 60; // Manila is UTC+8
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const manilaTime = new Date(utc + (manilaOffset * 60000));
+    return manilaTime;
+  };
+
+  // Filter out past time slots based on Manila timezone
+  const filterPastTimeSlots = (date, timeSlots) => {
+    if (!date || !timeSlots || timeSlots.length === 0) return [];
+    
+    const now = getManilaNow();
+    const today = now.toISOString().split('T')[0];
+    
+    // If it's today, filter out past times
+    if (date === today) {
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const currentMinutes = currentHour * 60 + currentMinute;
+      
+      return timeSlots.filter(time => {
+        const [hours, minutes] = time.split(':').map(Number);
+        const slotMinutes = hours * 60 + minutes;
+        return slotMinutes > currentMinutes;
+      });
+    }
+    
+    // For future dates, return all slots
+    return timeSlots;
+  };
 
   const fetchDoctorAvailability = async () => {
     try {
@@ -52,13 +102,41 @@ const BookAppointmentForm = () => {
       );
 
       if (response.data.success) {
-        // Filter out past dates and sort
-        const today = new Date().toISOString().split('T')[0];
-        const futureAvailability = response.data.availability.filter(
-          slot => slot.date >= today
-        ).sort((a, b) => new Date(a.date) - new Date(b.date));
+        // New format: { "2025-11-06": ["07:00", "07:30", ...], ... }
+        // Old format: [{ date: "2025-11-06", time_slots: [...] }, ...]
+        const avail = response.data.availability || {};
         
-        setAvailability(futureAvailability);
+        if (typeof avail === 'object' && !Array.isArray(avail)) {
+          // New format: object with dates as keys
+          const sortedDates = Object.keys(avail).sort();
+          const now = getManilaNow();
+          const today = now.toISOString().split('T')[0];
+          
+          // Filter out past dates and filter past time slots for today
+          const formattedAvailability = sortedDates
+            .filter(date => date >= today) // Only include today and future dates
+            .map(date => {
+              const timeSlots = avail[date] || [];
+              // Filter past time slots for today
+              const filteredSlots = filterPastTimeSlots(date, timeSlots);
+              return {
+                date,
+                time_slots: filteredSlots
+              };
+            })
+            .filter(slot => slot.time_slots.length > 0); // Remove dates with no available slots
+          
+          setAvailability(formattedAvailability);
+        } else if (Array.isArray(avail)) {
+          // Old format: array
+          const today = getManilaNow().toISOString().split('T')[0];
+          const futureAvailability = avail.filter(
+            slot => slot.date >= today
+          ).sort((a, b) => new Date(a.date) - new Date(b.date));
+          setAvailability(futureAvailability);
+        } else {
+          setAvailability([]);
+        }
       } else {
         setError(response.data.error || "Failed to load availability");
       }
@@ -121,10 +199,24 @@ const BookAppointmentForm = () => {
     }
   };
 
+  // Convert 24-hour format to 12-hour format with AM/PM
+  const formatTimeTo12Hour = (time24) => {
+    if (!time24) return '';
+    const [hours, minutes] = time24.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
   const getAvailableTimesForDate = () => {
     if (!selectedDate) return [];
     const dateSlot = availability.find(slot => slot.date === selectedDate);
-    return dateSlot ? dateSlot.time_slots : [];
+    if (!dateSlot) return [];
+    
+    const timeSlots = dateSlot.time_slots || [];
+    // Filter out past time slots based on Manila timezone
+    return filterPastTimeSlots(selectedDate, timeSlots);
   };
 
   if (!doctor) {
@@ -250,7 +342,7 @@ const BookAppointmentForm = () => {
                         onClick={() => setSelectedTime(time)}
                       >
                         <Clock size={16} />
-                        {time}
+                        {formatTimeTo12Hour(time)}
                       </button>
                     ))}
                   </div>
@@ -291,7 +383,7 @@ const BookAppointmentForm = () => {
                     </div>
                     <div className="summary-item">
                       <Clock size={18} />
-                      <span>{selectedTime}</span>
+                      <span>{formatTimeTo12Hour(selectedTime)}</span>
                     </div>
                   </div>
                 </div>

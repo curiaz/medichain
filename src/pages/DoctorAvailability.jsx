@@ -7,18 +7,18 @@ import { auth } from "../config/firebase";
 import "../assets/styles/ModernDashboard.css";
 import "../assets/styles/DoctorAvailability.css";
 
-const DoctorAvailability = () => {
+const DoctorAvailability = ({ embedded = false }) => {
   const navigate = useNavigate();
-  const [availability, setAvailability] = useState([]);
+  const [availability, setAvailability] = useState({
+    time_ranges: [
+      { start_time: "07:00", end_time: "17:00", interval: 30 }
+    ]
+  });
+  const [isAcceptingAppointments, setIsAcceptingAppointments] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [newSlot, setNewSlot] = useState({
-    date: "",
-    time_slots: []
-  });
-  const [newTime, setNewTime] = useState("");
 
   useEffect(() => {
     fetchAvailability();
@@ -47,7 +47,42 @@ const DoctorAvailability = () => {
       );
 
       if (response.data.success) {
-        setAvailability(response.data.availability || []);
+        const avail = response.data.availability || {};
+        const accepting = response.data.is_accepting_appointments !== undefined 
+          ? response.data.is_accepting_appointments 
+          : true;
+        
+        setIsAcceptingAppointments(accepting);
+        
+        // Handle both old format (array) and new format (object)
+        if (Array.isArray(avail)) {
+          // Old format - convert to new format
+          setAvailability({
+            time_ranges: [
+              { start_time: "07:00", end_time: "17:00", interval: 30 }
+            ]
+          });
+        } else if (avail.time_ranges && Array.isArray(avail.time_ranges)) {
+          // New format with multiple ranges
+          setAvailability(avail);
+        } else if (avail.start_time && avail.end_time) {
+          // Legacy single range format - convert to new format
+          setAvailability({
+            time_ranges: [
+              {
+                start_time: avail.start_time || "07:00",
+                end_time: avail.end_time || "17:00",
+                interval: avail.interval || 30
+              }
+            ]
+          });
+        } else {
+          setAvailability({
+            time_ranges: [
+              { start_time: "07:00", end_time: "17:00", interval: 30 }
+            ]
+          });
+        }
       } else {
         setError(response.data.error || "Failed to load availability");
       }
@@ -73,9 +108,23 @@ const DoctorAvailability = () => {
 
       const token = await currentUser.getIdToken();
 
+      // Ensure availability structure is correct
+      const availabilityData = {
+        time_ranges: availability.time_ranges.map(range => ({
+          start_time: range.start_time, // Should be in HH:MM format (24-hour)
+          end_time: range.end_time,     // Should be in HH:MM format (24-hour)
+          interval: parseInt(range.interval) || 30
+        }))
+      };
+
+      console.log("Saving availability:", availabilityData);
+
       const response = await axios.put(
         "http://localhost:5000/api/appointments/availability",
-        { availability },
+        { 
+          availability: availabilityData,
+          is_accepting_appointments: isAcceptingAppointments
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -85,121 +134,392 @@ const DoctorAvailability = () => {
       );
 
       if (response.data.success) {
-        setSuccess("Availability updated successfully!");
-        setTimeout(() => setSuccess(null), 3000);
+        setSuccess("Availability updated successfully! This schedule applies to all days of the week.");
+        setTimeout(() => setSuccess(null), 5000);
       } else {
         setError(response.data.error || "Failed to save availability");
+        setTimeout(() => setError(null), 5000);
       }
     } catch (err) {
       console.error("Error saving availability:", err);
-      setError("Failed to save availability. Please try again.");
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || "Failed to save availability. Please try again.";
+      console.error("Error details:", {
+        status: err.response?.status,
+        data: err.response?.data,
+        message: errorMessage
+      });
+      setError(errorMessage);
+      setTimeout(() => setError(null), 5000);
     } finally {
       setSaving(false);
     }
   };
 
-  const addTimeSlot = () => {
-    if (!newTime) {
-      setError("Please select a time");
-      return;
-    }
-
-    if (!newSlot.time_slots.includes(newTime)) {
-      setNewSlot({
-        ...newSlot,
-        time_slots: [...newSlot.time_slots, newTime].sort()
-      });
-      setNewTime("");
-    }
-  };
-
-  const removeTimeFromNew = (time) => {
-    setNewSlot({
-      ...newSlot,
-      time_slots: newSlot.time_slots.filter(t => t !== time)
+  const handleAvailabilityChange = (index, field, value) => {
+    const updatedRanges = [...availability.time_ranges];
+    updatedRanges[index] = {
+      ...updatedRanges[index],
+      [field]: field === 'interval' ? parseInt(value) : value
+    };
+    setAvailability({
+      ...availability,
+      time_ranges: updatedRanges
     });
   };
 
-  const addDateSlot = () => {
-    if (!newSlot.date) {
-      setError("Please select a date");
-      return;
-    }
+  // Convert 24-hour format to 12-hour format with AM/PM for preview
+  const formatTimeTo12Hour = (time24) => {
+    if (!time24) return '';
+    const [hours, minutes] = time24.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
 
-    if (newSlot.time_slots.length === 0) {
-      setError("Please add at least one time slot");
-      return;
-    }
+  const addTimeRange = () => {
+    setAvailability({
+      ...availability,
+      time_ranges: [
+        ...availability.time_ranges,
+        { start_time: "09:00", end_time: "17:00", interval: 30 }
+      ]
+    });
+  };
 
-    // Check if date already exists
-    const existingIndex = availability.findIndex(slot => slot.date === newSlot.date);
-    
-    if (existingIndex >= 0) {
-      // Merge time slots
-      const updated = [...availability];
-      updated[existingIndex].time_slots = [
-        ...new Set([...updated[existingIndex].time_slots, ...newSlot.time_slots])
-      ].sort();
-      setAvailability(updated);
+  const removeTimeRange = (index) => {
+    if (availability.time_ranges.length > 1) {
+      const updatedRanges = availability.time_ranges.filter((_, i) => i !== index);
+      setAvailability({
+        ...availability,
+        time_ranges: updatedRanges
+      });
     } else {
-      // Add new date
-      setAvailability([...availability, newSlot].sort((a, b) => 
-        new Date(a.date) - new Date(b.date)
-      ));
+      setError("You must have at least one time range");
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const generateTimeSlots = () => {
+    if (!availability.time_ranges || availability.time_ranges.length === 0) {
+      return [];
     }
 
-    // Reset form
-    setNewSlot({ date: "", time_slots: [] });
-    setError(null);
-  };
-
-  const removeDateSlot = (date) => {
-    setAvailability(availability.filter(slot => slot.date !== date));
-  };
-
-  const removeTimeSlot = (date, time) => {
-    setAvailability(availability.map(slot => {
-      if (slot.date === date) {
-        const updatedTimeSlots = slot.time_slots.filter(t => t !== time);
-        return updatedTimeSlots.length > 0 
-          ? { ...slot, time_slots: updatedTimeSlots }
-          : null;
+    const allSlots = [];
+    
+    availability.time_ranges.forEach((range) => {
+      if (!range.start_time || !range.end_time || !range.interval) {
+        return;
       }
-      return slot;
-    }).filter(slot => slot !== null));
+
+      const slots = [];
+      const [startHour, startMin] = range.start_time.split(':').map(Number);
+      const [endHour, endMin] = range.end_time.split(':').map(Number);
+      
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      const interval = range.interval;
+
+      for (let minutes = startMinutes; minutes < endMinutes; minutes += interval) {
+        const hour = Math.floor(minutes / 60);
+        const min = minutes % 60;
+        const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+        if (!allSlots.includes(timeStr)) {
+          allSlots.push(timeStr);
+        }
+      }
+    });
+
+    return allSlots.sort();
   };
 
-  // Generate time options (9 AM to 5 PM, 1-hour intervals)
-  const timeOptions = [];
-  for (let hour = 9; hour <= 17; hour++) {
-    timeOptions.push(`${hour.toString().padStart(2, '0')}:00`);
-    if (hour < 17) {
-      timeOptions.push(`${hour.toString().padStart(2, '0')}:30`);
+  const handleSave = () => {
+    if (!availability.time_ranges || availability.time_ranges.length === 0) {
+      setError("Please add at least one time range");
+      return;
     }
-  }
+
+    // Validate each time range
+    for (let i = 0; i < availability.time_ranges.length; i++) {
+      const range = availability.time_ranges[i];
+      
+      if (!range.start_time || !range.end_time) {
+        setError(`Time range ${i + 1}: Please set both start and end times`);
+        return;
+      }
+
+      const [startHour, startMin] = range.start_time.split(':').map(Number);
+      const [endHour, endMin] = range.end_time.split(':').map(Number);
+      
+      if (endHour * 60 + endMin <= startHour * 60 + startMin) {
+        setError(`Time range ${i + 1}: End time must be after start time`);
+        return;
+      }
+
+      // Check for overlaps with other ranges
+      for (let j = i + 1; j < availability.time_ranges.length; j++) {
+        const otherRange = availability.time_ranges[j];
+        const [otherStartHour, otherStartMin] = otherRange.start_time.split(':').map(Number);
+        const [otherEndHour, otherEndMin] = otherRange.end_time.split(':').map(Number);
+        
+        const rangeStart = startHour * 60 + startMin;
+        const rangeEnd = endHour * 60 + endMin;
+        const otherStart = otherStartHour * 60 + otherStartMin;
+        const otherEnd = otherEndHour * 60 + otherEndMin;
+
+        // Check if ranges overlap
+        if (!(rangeEnd <= otherStart || rangeStart >= otherEnd)) {
+          setError(`Time ranges ${i + 1} and ${j + 1} overlap. Please adjust them.`);
+          return;
+        }
+      }
+    }
+
+    saveAvailability();
+  };
 
   return (
-    <div className="dashboard-container fade-in">
-      {/* Background crosses */}
-      <div className="background-crosses">
-        {[...Array(24)].map((_, i) => (
-          <span key={i} className={`cross cross-${i + 1}`}>
-            +
-          </span>
-        ))}
-      </div>
+    <>
+      {!embedded ? (
+        <>
+          <div className="dashboard-container fade-in">
+            {/* Background crosses */}
+            <div className="background-crosses">
+              {[...Array(24)].map((_, i) => (
+                <span key={i} className={`cross cross-${i + 1}`}>
+                  +
+                </span>
+              ))}
+            </div>
 
-      <Header />
+            <Header />
 
-      <main className="dashboard-main-content">
-        <div className="dashboard-header-section">
-          <div className="dashboard-title-section">
-            <h1 className="dashboard-title">MANAGE AVAILABILITY</h1>
-            <p className="dashboard-subtitle">
-              Set your available dates and times for patient appointments
-            </p>
+            <main className="dashboard-main-content">
+              <div className="dashboard-header-section">
+                <div className="dashboard-title-section">
+                  <h1 className="dashboard-title">MANAGE AVAILABILITY</h1>
+                  <p className="dashboard-subtitle">
+                    Set your available dates and times for patient appointments
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                {/* Success/Error Messages */}
+                {success && (
+                  <div className="alert alert-success">
+                    <AlertCircle size={20} />
+                    {success}
+                  </div>
+                )}
+
+                {error && (
+                  <div className="alert alert-error">
+                    <AlertCircle size={20} />
+                    {error}
+                  </div>
+                )}
+
+                {/* Availability Settings Form */}
+                <div className="availability-form-card">
+                  <h3 className="form-card-title">
+                    <Clock size={20} />
+                    Set Your Weekly Availability
+                  </h3>
+                  <p style={{ marginBottom: '20px', color: '#666', fontSize: '0.95rem' }}>
+                    This schedule will apply to all days of the week (Monday to Sunday). You can add multiple time ranges.
+                  </p>
+                  
+                  {loading ? (
+                    <div className="loading-container">
+                      <div className="loading-spinner"></div>
+                      <p>Loading availability...</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Toggle Button for Accepting Appointments */}
+                      <div style={{ 
+                        marginBottom: '24px', 
+                        padding: '16px', 
+                        backgroundColor: '#f5f5f5', 
+                        borderRadius: '8px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <div>
+                          <label style={{ 
+                            fontSize: '1rem', 
+                            fontWeight: '600', 
+                            color: '#333',
+                            display: 'block',
+                            marginBottom: '4px'
+                          }}>
+                            Accepting Appointments
+                          </label>
+                          <span style={{ fontSize: '0.85rem', color: '#666' }}>
+                            {isAcceptingAppointments 
+                              ? 'Patients can book appointments with you' 
+                              : 'Patients will see you as unavailable'}
+                            </span>
+                        </div>
+                        <button
+                          onClick={() => setIsAcceptingAppointments(!isAcceptingAppointments)}
+                          style={{
+                            width: '56px',
+                            height: '32px',
+                            borderRadius: '16px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            position: 'relative',
+                            backgroundColor: isAcceptingAppointments ? '#4CAF50' : '#ccc',
+                            transition: 'background-color 0.3s',
+                            padding: '0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: isAcceptingAppointments ? 'flex-end' : 'flex-start',
+                            paddingLeft: isAcceptingAppointments ? '0' : '4px',
+                            paddingRight: isAcceptingAppointments ? '4px' : '0'
+                          }}
+                          aria-label={isAcceptingAppointments ? 'Disable appointments' : 'Enable appointments'}
+                        >
+                          <span style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            backgroundColor: 'white',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                            transition: 'transform 0.3s'
+                          }} />
+                        </button>
+                      </div>
+                      
+                      {availability.time_ranges.map((range, index) => (
+                        <div key={index} className="time-range-card" style={{ 
+                          marginBottom: '24px', 
+                          padding: '20px', 
+                          border: '2px solid #e0e0e0', 
+                          borderRadius: '12px',
+                          backgroundColor: '#f9f9f9'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h4 style={{ margin: 0, color: '#2196F3', fontSize: '1.1rem' }}>
+                              Time Range {index + 1}
+                            </h4>
+                            {availability.time_ranges.length > 1 && (
+                              <button
+                                onClick={() => removeTimeRange(index)}
+                                style={{
+                                  padding: '6px 12px',
+                                  background: '#e74c3c',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.9rem',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}
+                              >
+                                <Trash2 size={16} /> Remove
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="form-row">
+                            <div className="form-group">
+                              <label>Start Time</label>
+                              <input
+                                type="time"
+                                className="form-input"
+                                value={range.start_time}
+                                onChange={(e) => handleAvailabilityChange(index, 'start_time', e.target.value)}
+                              />
+                            </div>
+
+                            <div className="form-group">
+                              <label>End Time</label>
+                              <input
+                                type="time"
+                                className="form-input"
+                                value={range.end_time}
+                                onChange={(e) => handleAvailabilityChange(index, 'end_time', e.target.value)}
+                              />
+                            </div>
+
+                            <div className="form-group">
+                              <label>Time Interval (minutes)</label>
+                              <select
+                                className="form-input"
+                                value={range.interval}
+                                onChange={(e) => handleAvailabilityChange(index, 'interval', parseInt(e.target.value))}
+                              >
+                                <option value={15}>15 minutes</option>
+                                <option value={25}>25 minutes</option>
+                                <option value={30}>30 minutes</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      <button
+                        onClick={addTimeRange}
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          background: 'linear-gradient(135deg, #4CAF50, #8BC34A)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          fontSize: '1rem',
+                          fontWeight: '600',
+                          marginBottom: '24px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        <Plus size={20} />
+                        Add Another Time Range
+                      </button>
+
+                      {/* Preview Time Slots */}
+                      <div className="selected-times" style={{ marginTop: '24px' }}>
+                        <label>Combined Time Slots Preview:</label>
+                        <div className="time-tags">
+                          {generateTimeSlots().map((time, idx) => (
+                            <span key={idx} className="time-tag">
+                              <Clock size={14} />
+                              {formatTimeTo12Hour(time)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Save Button */}
+                      <div className="save-section" style={{ marginTop: '24px' }}>
+                        <button
+                          className="save-button"
+                          onClick={handleSave}
+                          disabled={saving}
+                        >
+                          <Save size={20} />
+                          {saving ? "Saving..." : "Save Availability"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </main>
           </div>
-
+        </>
+      ) : (
+        <div className="embedded-availability-content">
           {/* Success/Error Messages */}
           {success && (
             <div className="alert alert-success">
@@ -215,153 +535,196 @@ const DoctorAvailability = () => {
             </div>
           )}
 
-          {/* Add New Availability Slot */}
-          <div className="availability-form-card">
-            <h3 className="form-card-title">
-              <Plus size={20} />
-              Add New Availability
-            </h3>
-            
-            <div className="form-row">
-              <div className="form-group">
-                <label>Date</label>
-                <input
-                  type="date"
-                  className="form-input"
-                  value={newSlot.date}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => setNewSlot({ ...newSlot, date: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Time Slot</label>
-                <div className="time-input-group">
-                  <select
-                    className="form-input"
-                    value={newTime}
-                    onChange={(e) => setNewTime(e.target.value)}
-                  >
-                    <option value="">Select time</option>
-                    {timeOptions.map(time => (
-                      <option key={time} value={time}>{time}</option>
-                    ))}
-                  </select>
-                  <button 
-                    className="add-time-button"
-                    onClick={addTimeSlot}
-                    type="button"
-                  >
-                    <Plus size={18} />
-                    Add
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Preview Selected Times */}
-            {newSlot.time_slots.length > 0 && (
-              <div className="selected-times">
-                <label>Selected Times for {newSlot.date}:</label>
-                <div className="time-tags">
-                  {newSlot.time_slots.map(time => (
-                    <span key={time} className="time-tag">
-                      <Clock size={14} />
-                      {time}
-                      <button onClick={() => removeTimeFromNew(time)}>×</button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <button 
-              className="add-slot-button"
-              onClick={addDateSlot}
-              disabled={!newSlot.date || newSlot.time_slots.length === 0}
-            >
-              <Calendar size={18} />
-              Add to Schedule
-            </button>
-          </div>
-
-          {/* Current Availability */}
+          {/* Availability Settings Form */}
           {loading ? (
             <div className="loading-container">
               <div className="loading-spinner"></div>
               <p>Loading availability...</p>
             </div>
           ) : (
-            <div className="current-availability">
-              <h3 className="section-title">Current Availability</h3>
+            <>
+              {/* Toggle Button for Accepting Appointments */}
+              <div style={{ 
+                marginBottom: '16px', 
+                padding: '12px', 
+                backgroundColor: '#f5f5f5', 
+                borderRadius: '8px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <label style={{ 
+                    fontSize: '0.95rem', 
+                    fontWeight: '600', 
+                    color: '#333',
+                    display: 'block',
+                    marginBottom: '2px'
+                  }}>
+                    Accepting Appointments
+                  </label>
+                  <span style={{ fontSize: '0.8rem', color: '#666' }}>
+                    {isAcceptingAppointments 
+                      ? 'Available for booking' 
+                      : 'Not available'}
+                    </span>
+                </div>
+                <button
+                  onClick={() => setIsAcceptingAppointments(!isAcceptingAppointments)}
+                  style={{
+                    width: '48px',
+                    height: '28px',
+                    borderRadius: '14px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    backgroundColor: isAcceptingAppointments ? '#4CAF50' : '#ccc',
+                    transition: 'background-color 0.3s',
+                    padding: '0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: isAcceptingAppointments ? 'flex-end' : 'flex-start',
+                    paddingLeft: isAcceptingAppointments ? '0' : '3px',
+                    paddingRight: isAcceptingAppointments ? '3px' : '0'
+                  }}
+                  aria-label={isAcceptingAppointments ? 'Disable appointments' : 'Enable appointments'}
+                >
+                  <span style={{
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '50%',
+                    backgroundColor: 'white',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    transition: 'transform 0.3s'
+                  }} />
+                </button>
+              </div>
               
-              {availability.length === 0 ? (
-                <div className="no-availability">
-                  <Calendar size={48} />
-                  <p>No availability set yet</p>
-                  <span>Add dates and times above to get started</span>
-                </div>
-              ) : (
-                <div className="availability-grid">
-                  {availability.map((slot) => (
-                    <div key={slot.date} className="availability-card">
-                      <div className="card-header">
-                        <div className="date-info">
-                          <Calendar size={20} />
-                          <span className="date-text">
-                            {new Date(slot.date + 'T00:00:00').toLocaleDateString('en-US', {
-                              weekday: 'long',
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}
-                          </span>
-                        </div>
-                        <button
-                          className="delete-button"
-                          onClick={() => removeDateSlot(slot.date)}
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                      
-                      <div className="time-slots">
-                        {slot.time_slots.map((time) => (
-                          <div key={time} className="time-slot">
-                            <Clock size={16} />
-                            <span>{time}</span>
-                            <button
-                              className="remove-time"
-                              onClick={() => removeTimeSlot(slot.date, time)}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+              {availability.time_ranges.map((range, index) => (
+                <div key={index} style={{ 
+                  marginBottom: '16px', 
+                  padding: '16px', 
+                  border: '2px solid #e0e0e0', 
+                  borderRadius: '8px',
+                  backgroundColor: '#f9f9f9'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <span style={{ fontWeight: '600', color: '#2196F3', fontSize: '0.95rem' }}>
+                      Range {index + 1}
+                    </span>
+                    {availability.time_ranges.length > 1 && (
+                      <button
+                        onClick={() => removeTimeRange(index)}
+                        style={{
+                          padding: '4px 8px',
+                          background: '#e74c3c',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.8rem'
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
 
-          {/* Save Button */}
-          {availability.length > 0 && (
-            <div className="save-section">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Start</label>
+                      <input
+                        type="time"
+                        className="form-input"
+                        value={range.start_time}
+                        onChange={(e) => handleAvailabilityChange(index, 'start_time', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>End</label>
+                      <input
+                        type="time"
+                        className="form-input"
+                        value={range.end_time}
+                        onChange={(e) => handleAvailabilityChange(index, 'end_time', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Interval</label>
+                      <select
+                        className="form-input"
+                        value={range.interval}
+                        onChange={(e) => handleAvailabilityChange(index, 'interval', parseInt(e.target.value))}
+                      >
+                        <option value={15}>15 minutes</option>
+                        <option value={25}>25 minutes</option>
+                        <option value={30}>30 minutes</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
               <button
-                className="save-button"
-                onClick={saveAvailability}
-                disabled={saving}
+                onClick={addTimeRange}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: 'linear-gradient(135deg, #4CAF50, #8BC34A)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '600',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
               >
-                <Save size={20} />
-                {saving ? "Saving..." : "Save Availability"}
+                <Plus size={16} />
+                Add Range
               </button>
-            </div>
+
+              {/* Preview Time Slots */}
+              <div className="selected-times" style={{ marginTop: '12px' }}>
+                <label>Preview:</label>
+                <div className="time-tags">
+                  {generateTimeSlots().slice(0, 10).map((time, idx) => (
+                    <span key={idx} className="time-tag">
+                      <Clock size={14} />
+                      {formatTimeTo12Hour(time)}
+                    </span>
+                  ))}
+                  {generateTimeSlots().length > 10 && (
+                    <span className="time-tag" style={{ opacity: 0.7 }}>
+                      +{generateTimeSlots().length - 10} more
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <div className="save-section" style={{ marginTop: '16px' }}>
+                <button
+                  className="save-button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  style={{ width: '100%', padding: '12px' }}
+                >
+                  <Save size={18} />
+                  {saving ? "Saving..." : "Save Schedule"}
+                </button>
+              </div>
+            </>
           )}
         </div>
-      </main>
-    </div>
+      )}
+    </>
   );
 };
 

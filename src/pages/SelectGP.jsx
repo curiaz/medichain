@@ -100,12 +100,37 @@ const SelectGP = () => {
   }, [searchQuery, doctors]);
 
   const handleSelectDoctor = (doctor) => {
-    // Navigate to appointment booking form with doctor details
-    navigate("/book-appointment-form", {
+    console.log("🔍 SelectGP: handleSelectDoctor called for", doctor.email);
+    console.log("🔍 SelectGP: doctor.has_availability =", doctor.has_availability);
+    console.log("🔍 SelectGP: Full doctor object:", JSON.stringify(doctor, null, 2));
+    
+    if (!doctor.has_availability) {
+      console.log("❌ SelectGP: Doctor has no availability, not navigating");
+      return;
+    }
+    
+    // Store doctor in sessionStorage as backup
+    try {
+      sessionStorage.setItem('selectedDoctor', JSON.stringify(doctor));
+      sessionStorage.setItem('appointmentType', location.state?.appointmentType || "general-practitioner");
+      console.log("✅ SelectGP: Doctor stored in sessionStorage");
+    } catch (e) {
+      console.warn("⚠️ SelectGP: Could not store doctor in sessionStorage:", e);
+    }
+    
+    // Navigate to date/time selection page
+    console.log("✅ SelectGP: Navigating to /select-date-time");
+    console.log("✅ SelectGP: Navigation state:", {
+      doctor: doctor,
+      appointmentType: location.state?.appointmentType || "general-practitioner",
+    });
+    
+    navigate("/select-date-time", {
       state: {
         doctor: doctor,
         appointmentType: location.state?.appointmentType || "general-practitioner",
       },
+      replace: false, // Don't replace history
     });
   };
 
@@ -194,7 +219,16 @@ const SelectGP = () => {
                     <div
                       key={doctor.firebase_uid}
                       className={`doctor-card ${!doctor.has_availability ? 'unavailable' : ''}`}
-                      onClick={() => doctor.has_availability && handleSelectDoctor(doctor)}
+                      onClick={(e) => {
+                        // Only handle card click if button wasn't clicked
+                        if (e.target.closest('.select-doctor-button')) {
+                          return; // Button click will handle it
+                        }
+                        if (doctor.has_availability) {
+                          console.log("🖱️ SelectGP: Card clicked for doctor:", doctor.email);
+                          handleSelectDoctor(doctor);
+                        }
+                      }}
                       style={{ cursor: doctor.has_availability ? 'pointer' : 'not-allowed' }}
                     >
                       <div className="doctor-header">
@@ -231,6 +265,18 @@ const SelectGP = () => {
                         <button 
                           className="select-doctor-button"
                           disabled={!doctor.has_availability}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation(); // Prevent card click
+                            console.log("🖱️ SelectGP: Button clicked for doctor:", doctor.email);
+                            console.log("🖱️ SelectGP: doctor.has_availability =", doctor.has_availability);
+                            if (doctor.has_availability) {
+                              console.log("🖱️ SelectGP: Calling handleSelectDoctor");
+                              handleSelectDoctor(doctor);
+                            } else {
+                              console.log("❌ SelectGP: Doctor has no availability, button disabled");
+                            }
+                          }}
                           style={{
                             opacity: doctor.has_availability ? 1 : 0.5,
                             cursor: doctor.has_availability ? 'pointer' : 'not-allowed'

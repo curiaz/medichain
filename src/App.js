@@ -16,6 +16,7 @@ import PatientList from './pages/PatientList'; // Patient list management page
 import Notifications from './pages/Notifications'; // Notifications page
 import BookAppointment from './pages/BookAppointment'; // Book appointment page
 import SelectGP from './pages/SelectGP'; // Select GP page
+import SelectDateTime from './pages/SelectDateTime'; // Select Date & Time page
 import BookAppointmentForm from './pages/BookAppointmentForm'; // Appointment booking form
 import DoctorAvailability from './pages/DoctorAvailability'; // Doctor availability management
 import DoctorSchedule from './pages/DoctorSchedule'; // Doctor schedule management
@@ -122,6 +123,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <SelectGP />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/select-date-time" 
+              element={
+                <ProtectedRoute>
+                  <SelectDateTime />
                 </ProtectedRoute>
               } 
             />
