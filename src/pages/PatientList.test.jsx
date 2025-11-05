@@ -2,7 +2,6 @@ import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import PatientList from '../pages/PatientList';
-import { AuthProvider } from '../context/AuthContext';
 import DatabaseService from '../services/databaseService';
 
 // Mock the DatabaseService
@@ -22,20 +21,19 @@ const mockUser = {
   }
 };
 
-const MockAuthProvider = ({ children }) => {
-  return (
-    <AuthProvider value={{ user: mockUser }}>
-      {children}
-    </AuthProvider>
-  );
-};
+jest.mock('../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: mockUser,
+    isAuthenticated: true,
+    loading: false
+  }),
+  AuthProvider: ({ children }) => children
+}));
 
 const renderWithProviders = (component) => {
   return render(
     <BrowserRouter>
-      <MockAuthProvider>
-        {component}
-      </MockAuthProvider>
+      {component}
     </BrowserRouter>
   );
 };

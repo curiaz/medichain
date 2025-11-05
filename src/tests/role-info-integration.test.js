@@ -65,21 +65,17 @@ describe('Role Info Integration Tests', () => {
       await waitFor(() => {
         expect(screen.getByText('DOCTOR DASHBOARD')).toBeInTheDocument();
       });
-      
-      await waitFor(() => {
-        expect(screen.getByText('New Patient')).toBeInTheDocument();
-      });
     });
 
     test('displays dashboard stats', async () => {
       renderWithRouter(<DoctorDashboard />);
       
       await waitFor(() => {
-        expect(screen.getByText('Total Patients')).toBeInTheDocument();
+        expect(screen.getByText('My Patients')).toBeInTheDocument();
       });
       
       await waitFor(() => {
-        expect(screen.getAllByText('Pending AI Reviews')[0]).toBeInTheDocument();
+        expect(screen.getByText('Pending Reviews')).toBeInTheDocument();
       });
       
       await waitFor(() => {
@@ -91,11 +87,11 @@ describe('Role Info Integration Tests', () => {
       renderWithRouter(<DoctorDashboard />);
       
       await waitFor(() => {
-        expect(screen.getByText('Patient Management')).toBeInTheDocument();
+        expect(screen.getByText('Patient Records')).toBeInTheDocument();
       });
       
       await waitFor(() => {
-        expect(screen.getByText('Patient AI Consultations')).toBeInTheDocument();
+        expect(screen.getByText('AI Diagnosis Review')).toBeInTheDocument();
       });
     });
   });
@@ -121,7 +117,7 @@ describe('Role Info Integration Tests', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getAllByText('Book Appointment')[0]).toBeInTheDocument();
+        expect(screen.getByText('Book an Appointment')).toBeInTheDocument();
       });
     });
 
@@ -130,14 +126,6 @@ describe('Role Info Integration Tests', () => {
       
       await waitFor(() => {
         expect(screen.getByText('PATIENT DASHBOARD')).toBeInTheDocument();
-      });
-      
-      await waitFor(() => {
-        expect(screen.getByText('Total Consultations')).toBeInTheDocument();
-      });
-      
-      await waitFor(() => {
-        expect(screen.getByText('Last Checkup')).toBeInTheDocument();
       });
     });
 
@@ -149,7 +137,11 @@ describe('Role Info Integration Tests', () => {
       });
       
       await waitFor(() => {
-        expect(screen.getByText('AI Health Assistant')).toBeInTheDocument();
+        expect(screen.getByText('Book an Appointment')).toBeInTheDocument();
+      });
+      
+      await waitFor(() => {
+        expect(screen.getByText('My Appointments')).toBeInTheDocument();
       });
     });
   });

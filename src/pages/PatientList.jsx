@@ -92,6 +92,12 @@ const PatientList = () => {
       <Header />
 
       <main className="dashboard-main-content">
+        <div className="dashboard-header-section">
+          <div className="dashboard-title-section">
+            <h1 className="dashboard-title">PATIENT LIST</h1>
+          </div>
+        </div>
+
         <div style={{
           backgroundColor: '#ffffff',
           margin: '20px',
@@ -104,6 +110,13 @@ const PatientList = () => {
             <div className="error-message" style={{ color: '#e74c3c', fontSize: '0.9rem', margin: '16px 0', textAlign: 'center' }}>
               <AlertCircle size={16} style={{ marginRight: '4px' }} />
               {error}
+            </div>
+          )}
+          
+          {/* Search Stats Display */}
+          {!loading && !error && (
+            <div style={{ textAlign: 'center', marginBottom: '16px', fontSize: '16px', fontWeight: '500', color: '#64748b' }}>
+              Managing {patients.length} {patients.length === 1 ? 'patient' : 'patients'}
             </div>
           )}
         
