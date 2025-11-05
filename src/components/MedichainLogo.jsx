@@ -19,15 +19,31 @@ const MedichainLogo = ({
     <div className={`medichain-logo-container ${className}`} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
       {/* Logo - PNG or SVG */}
       {usePng ? (
-        <img 
-          src={medichainLogo} 
-          alt="MediChain Logo" 
+        <div
+          className="logo-icon"
           style={{
             width: size,
             height: size,
-            objectFit: 'contain'
+            background: 'linear-gradient(135deg, #0288d1, #0277bd)',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden'
           }}
-        />
+        >
+          <img 
+            src={medichainLogo} 
+            alt="MediChain Logo" 
+            className="medichain-logo"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              borderRadius: '12px'
+            }}
+          />
+        </div>
       ) : (
         <div 
           style={{

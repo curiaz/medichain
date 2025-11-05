@@ -261,19 +261,16 @@ const LandingPage = () => {
               The Future of <span className="highlight">Healthcare</span> is Here
             </h1>
             <p className="hero-subtitle">
-              Revolutionary AI-powered diagnosis combined with secure blockchain health records. 
-              Experience healthcare that's intelligent, secure, and designed for the digital age.
+              Secure health records combined with modern healthcare solutions. 
+              Experience healthcare that's secure, efficient, and designed for the digital age.
             </p>
             <div className="hero-buttons">
               <button
                 className="btn btn-primary btn-extra-large"
-                onClick={() => navigate('/ai-health')}
+                onClick={handleGetStarted}
               >
-                Try AI Diagnosis & Prescription
+                Get Started
               </button>
-              <p className="ai-disclaimer">
-                Note: This is only a predicted condition. Please seek professional medical advice for accurate diagnosis.
-              </p>
             </div>
           </div>
         </div>

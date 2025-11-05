@@ -275,22 +275,22 @@ body {
 }
 
 .logo-icon {
-  width: 45px;
-  height: 45px;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #0288d1, #0277bd);
   border-radius: 12px;
   display: flex !important;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6px 20px rgba(25, 118, 210, 0.4);
   transition: all 0.3s ease;
   opacity: 1 !important;
   visibility: visible !important;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #1976d2, #1565c0, #0d47a1);
 }
 
-.logo-image {
+.logo-image,
+.medichain-logo {
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -1260,11 +1260,15 @@ body {
   .logo-icon {
     width: 40px;
     height: 40px;
+    border-radius: 12px;
   }
   
-  .logo-image {
+  .logo-image,
+  .medichain-logo {
     width: 100%;
     height: 100%;
+    object-fit: contain;
+    border-radius: 12px;
   }
   
   .hero {
