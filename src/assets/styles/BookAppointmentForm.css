@@ -333,10 +333,250 @@
   box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
 }
 
-.back-button-inline:hover {
+/* Date Grid */
+.date-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.date-card {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-card:hover {
+  border-color: #2196F3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+}
+
+.date-card.selected {
+  background: linear-gradient(135deg, #2196F3, #00BCD4);
+  border-color: #2196F3;
+  color: white;
+  box-shadow: 0 4px 16px rgba(33, 150, 243, 0.4);
+}
+
+.date-day {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.date-card.selected .date-day {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.date-number {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #333;
+  line-height: 1;
+}
+
+.date-card.selected .date-number {
+  color: white;
+}
+
+.date-month {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #999;
+  text-transform: uppercase;
+}
+
+.date-card.selected .date-month {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.date-slots-count {
+  font-size: 0.75rem;
+  color: #2196F3;
+  font-weight: 600;
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: rgba(33, 150, 243, 0.1);
+  border-radius: 12px;
+}
+
+.date-card.selected .date-slots-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+/* Time Grid */
+.time-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.time-slot-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.time-slot-button:hover {
+  border-color: #2196F3;
+  background: rgba(33, 150, 243, 0.05);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+}
+
+.time-slot-button.selected {
+  background: linear-gradient(135deg, #2196F3, #00BCD4);
+  border-color: #2196F3;
+  color: white;
+  box-shadow: 0 4px 16px rgba(33, 150, 243, 0.4);
+}
+
+.time-slot-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.no-times-message {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+  font-style: italic;
+}
+
+/* Appointment Summary */
+.appointment-summary {
+  background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+  border: 2px solid #2196F3;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 24px;
+}
+
+.appointment-summary h4 {
+  margin: 0 0 16px 0;
+  color: #1976D2;
+  font-size: 1.1rem;
+}
+
+.summary-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #333;
+  font-weight: 500;
+}
+
+.summary-item svg {
+  color: #2196F3;
+}
+
+/* Form Actions */
+.form-actions {
+  margin-top: 32px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.primary-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #2196F3, #00BCD4);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.primary-button:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
 }
+
+.primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .date-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 12px;
+  }
+
+  .time-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+  }
+
+  .date-card {
+    padding: 12px;
+  }
+
+  .time-slot-button {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+
+  .appointment-summary {
+    padding: 16px;
+  }
+
+  .form-actions {
+    justify-content: center;
+  }
+
+  .primary-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .date-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .time-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 
 /* Alert Messages */
 .alert {
