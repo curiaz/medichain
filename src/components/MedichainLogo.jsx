@@ -8,6 +8,8 @@ const MedichainLogo = ({
   className = '',
   usePng = false 
 }) => {
+  // Convert string size to number if needed
+  const numericSize = typeof size === 'string' ? parseInt(size, 10) || 40 : size;
   const textSizes = {
     sm: '16px',
     md: '20px',
@@ -22,8 +24,8 @@ const MedichainLogo = ({
         <div
           className="logo-icon"
           style={{
-            width: size,
-            height: size,
+            width: numericSize,
+            height: numericSize,
             background: 'linear-gradient(135deg, #0288d1, #0277bd)',
             borderRadius: '12px',
             display: 'flex',
@@ -47,15 +49,15 @@ const MedichainLogo = ({
       ) : (
         <div 
           style={{
-            width: size,
-            height: size,
+            width: numericSize,
+            height: numericSize,
             background: 'linear-gradient(135deg, #4dd0e1, #2196f3)',
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'white',
-            fontSize: size * 0.45,
+            fontSize: numericSize * 0.45,
             fontWeight: 'bold',
             boxShadow: '0 4px 15px rgba(77, 208, 225, 0.3)',
             position: 'relative',
@@ -63,7 +65,7 @@ const MedichainLogo = ({
           }}
         >
           {/* Medical Cross */}
-          <span style={{ fontSize: size * 0.6, lineHeight: 1 }}>+</span>
+          <span style={{ fontSize: numericSize * 0.6, lineHeight: 1 }}>+</span>
           
           {/* Shimmer effect */}
           <div 

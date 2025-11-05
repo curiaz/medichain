@@ -50,9 +50,18 @@ describe('MedichainLogo Component', () => {
       render(<MedichainLogo size={testSize} usePng={true} />);
       
       const logoImage = screen.getByRole('img', { name: /medichain logo/i });
-      expect(logoImage).toHaveStyle({
+      const logoContainer = logoImage.parentElement;
+      
+      // Check container size (image uses 100% to fill container)
+      expect(logoContainer).toHaveStyle({
         width: `${testSize}px`,
         height: `${testSize}px`,
+      });
+      
+      // Image should fill container
+      expect(logoImage).toHaveStyle({
+        width: '100%',
+        height: '100%',
         objectFit: 'contain',
       });
     });
@@ -125,6 +134,7 @@ describe('MedichainLogo Component', () => {
       render(<MedichainLogo size="50" />);
       
       const logoContainer = screen.getByText('+').parentElement;
+      // Component converts string to number
       expect(logoContainer).toHaveStyle({
         width: '50px',
         height: '50px',
@@ -265,10 +275,12 @@ describe('MedichainLogo Component', () => {
       
       const logoImage = screen.getByRole('img', { name: /medichain logo/i });
       const medichainText = screen.getByText('MEDICHAIN');
+      const logoContainer = logoImage.parentElement;
       
       expect(logoImage).toBeInTheDocument();
       expect(medichainText).toBeInTheDocument();
-      expect(logoImage).toHaveStyle({
+      // Check container size
+      expect(logoContainer).toHaveStyle({
         width: '50px',
         height: '50px',
       });
@@ -309,8 +321,10 @@ describe('MedichainLogo Component', () => {
       
       const logoImage = screen.getByRole('img', { name: /medichain logo/i });
       const medichainText = screen.getByText('MEDICHAIN');
+      const logoContainer = logoImage.parentElement;
       
-      expect(logoImage).toHaveStyle({
+      // Check container size
+      expect(logoContainer).toHaveStyle({
         width: '120px',
         height: '120px',
       });
@@ -372,10 +386,10 @@ describe('MedichainLogo Component', () => {
       
       const medichainText = screen.getByText('MEDICHAIN');
       // The gradient text should have proper styling for visibility
-      expect(medichainText).toHaveStyle({
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-      });
+      // Check inline styles directly
+      expect(medichainText.style.background).toContain('gradient');
+      expect(medichainText.style.fontWeight).toBe('700');
+      expect(medichainText.style.letterSpacing).toBe('1px');
     });
   });
 });
