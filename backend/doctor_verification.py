@@ -860,7 +860,15 @@ def resend_verification_request():
 
         doctor_profile = doctor_profile_response.data[0]
         
-        # Check if doctor is already approved
+        # Check if doctor is already approved - check doctor_profiles.verification_status first
+        doctor_status = doctor_profile.get("verification_status")
+        if doctor_status == "approved":
+            return jsonify({
+                "success": False, 
+                "error": "Your account is already approved"
+            }), 400
+        
+        # Also check user_profiles.verification_status as fallback
         user_response = (
             supabase.service_client.table("user_profiles")
             .select("verification_status")
@@ -869,6 +877,12 @@ def resend_verification_request():
         )
         
         if user_response.data and user_response.data[0].get("verification_status") == "approved":
+            # If user_profiles says approved but doctor_profiles doesn't, sync them
+            if doctor_status != "approved":
+                supabase.service_client.table("doctor_profiles").update({
+                    "verification_status": "approved"
+                }).eq("firebase_uid", firebase_uid).execute()
+            
             return jsonify({
                 "success": False, 
                 "error": "Your account is already approved"

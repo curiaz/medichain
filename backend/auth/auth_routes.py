@@ -494,7 +494,8 @@ def doctor_signup():
                 "first_name": first_name,
                 "last_name": last_name,
                 "role": "doctor",
-                "password_hash": password_hash
+                "password_hash": password_hash,
+                "verification_status": "pending"  # Set to pending for doctor verification
             }
             
             user_response = supabase.client.table("user_profiles").insert(user_data).execute()
