@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import BottomNavigation from './components/BottomNavigation';
 import LandingPage from './pages/LandingPage';
 import MedichainLogin from './frontend/MedichainLogin';
 import MedichainSignup from './frontend/MedichainSignup';
@@ -21,6 +22,7 @@ import DoctorSchedule from './pages/DoctorSchedule'; // Doctor schedule manageme
 import PatientAppointments from './pages/PatientAppointments'; // Patient appointments list
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
+import './assets/styles/AndroidApp.css';
 
 function App() {
   return (
@@ -154,6 +156,9 @@ function App() {
             {/* Redirect any unknown routes to landing page */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          
+          {/* Android-style Bottom Navigation */}
+          <BottomNavigation />
         </div>
       </Router>
     </AuthProvider>

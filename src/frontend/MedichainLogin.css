@@ -984,15 +984,17 @@
 
 @media (max-width: 480px) {
   .main-content {
-    padding: 12px;
+    padding: 12px 8px;
   }
   
   .login-container {
     border-radius: 12px;
+    margin: 0 auto;
+    max-width: 100%;
   }
   
   .login-form {
-    padding: 32px 24px;
+    padding: 32px 20px;
   }
   
   .form-content {
@@ -1008,11 +1010,11 @@
   }
   
   .doctor-image {
-    padding: 24px 20px;
+    padding: 24px 16px;
   }
   
   .doctor-placeholder {
-    padding: 24px 20px;
+    padding: 24px 16px;
     border-radius: 16px;
   }
   
@@ -1022,6 +1024,23 @@
   
   .doctor-placeholder p {
     font-size: 14px;
+  }
+
+  /* Ensure form inputs are touch-friendly */
+  input, textarea, select, button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .file-upload-label {
+    min-height: 44px;
+    padding: 12px 14px;
+    padding-left: 46px;
+  }
+
+  /* Prevent horizontal overflow */
+  * {
+    max-width: 100%;
   }
 }
 

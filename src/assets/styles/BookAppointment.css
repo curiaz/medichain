@@ -151,6 +151,13 @@
   .appointment-types-container {
     grid-template-columns: 1fr;
     gap: 20px;
+    padding: 0 16px;
+    margin: 30px auto;
+  }
+
+  .appointment-type-card {
+    padding: 24px 20px;
+    min-width: 0; /* Prevent overflow */
   }
 
   .appointment-icon {
@@ -169,5 +176,46 @@
 
   .appointment-description {
     font-size: 0.9rem;
+  }
+
+  /* Ensure touch-friendly interaction */
+  .appointment-type-card {
+    touch-action: manipulation;
+    min-height: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .appointment-types-container {
+    padding: 0 12px;
+    gap: 16px;
+    margin: 20px auto;
+  }
+
+  .appointment-type-card {
+    padding: 20px 16px;
+  }
+
+  .appointment-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .appointment-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .appointment-content h3 {
+    font-size: 1.1rem;
+  }
+
+  .appointment-description {
+    font-size: 0.85rem;
+  }
+
+  /* Prevent horizontal overflow */
+  * {
+    max-width: 100%;
   }
 }

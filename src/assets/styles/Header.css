@@ -143,21 +143,89 @@
   }
 }
 
+/* Hide burger menu on desktop */
+.burger-menu-button {
+  display: none;
+}
+
+/* Ensure burger menu button gets icon-button styling */
+.burger-menu-button.icon-button {
+  display: none;
+}
+
+/* Hide desktop buttons on mobile */
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+  
+  .burger-menu-button.icon-button {
+    display: flex !important;
+  }
+}
+
+/* Hide burger menu on desktop */
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
+  }
+  
+  .desktop-only {
+    display: flex !important;
+  }
+  
+  .burger-menu-button {
+    display: none !important;
+  }
+}
+
 @media (max-width: 768px) {
   .dashboard-header {
-    padding: 0 1rem;
+    padding: 0;
   }
+  
   .dashboard-header-container {
-    grid-template-columns: 1fr auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 0 16px;
+    width: 100%;
+    gap: 0;
   }
   
   .header-left {
-    gap: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex: 0 0 auto;
+    padding: 0;
+    margin: 0;
+    gap: 12px;
   }
   
-  .nav-links { display: none; }
-  .header-center { display: none; min-width: 0; padding: 0; }
+  .header-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+    padding: 0;
+    margin: 0;
+    gap: 0;
+  }
+  
+  .nav-links { 
+    display: none; 
+  }
+  
+  .header-center { 
+    display: none; 
+    min-width: 0; 
+    padding: 0; 
+  }
+  
+  .logo-container {
+    gap: 12px;
+  }
   
   .logo-container div {
     font-size: 20px;
@@ -179,7 +247,7 @@
     border-top: 1px solid rgba(0,0,0,0.06);
     box-shadow: 0 8px 20px rgba(0,0,0,0.06);
     position: fixed;
-    top: 70px; /* below header */
+    top: 70px; /* below header for tablets */
     left: 0;
     right: 0;
     z-index: 90;
@@ -193,22 +261,114 @@
   }
 }
 
+@media (max-width: 480px) {
+  .mobile-dashboard-nav {
+    top: 56px; /* below header for phones */
+  }
+}
+
+
 @media (max-width: 640px) {
   .dashboard-header {
     height: 70px;
-    padding: 0 0.75rem;
+    padding: 0;
+  }
+
+  .dashboard-header-container {
+    padding: 0 12px;
+  }
+  
+  /* Only add padding-left when back button is present (SelectGP page) */
+  /* Use a more specific selector if needed */
+  .header-left {
+    padding-left: 0; /* Reset to 0, back button will handle its own spacing */
+  }
+
+  /* Add padding only for SelectGP page with back button */
+  .dashboard-header-container:has(+ .back-button-header) .header-left {
+    padding-left: 52px;
   }
   
   .header-right {
-    gap: 0.5rem;
+    gap: 0;
+    padding: 0;
+    margin: 0;
   }
   
-  .icon-button {
+  .burger-menu-button {
     width: 40px;
     height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    touch-action: manipulation;
+    margin: 0;
+    padding: 0;
   }
   
   .logo-container div {
     font-size: 18px;
+  }
+
+  .logo-container {
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Android phone compact header */
+  .dashboard-header {
+    height: 56px;
+    padding: 0;
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  .dashboard-header-container {
+    padding: 0 12px;
+    gap: 0;
+  }
+
+  /* Reset padding for clean mobile layout */
+  .header-left {
+    padding-left: 0;
+    margin: 0;
+  }
+
+  .header-right {
+    padding: 0;
+    margin: 0;
+    gap: 0;
+  }
+
+  .logo-container {
+    gap: 8px;
+  }
+
+  .logo-container div {
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .logo-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .burger-menu-button {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .burger-menu-button svg {
+    width: 18px;
+    height: 18px;
   }
 }

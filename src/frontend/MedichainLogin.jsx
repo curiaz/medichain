@@ -3,10 +3,10 @@ import "./MedichainLogin.css"
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { Eye, EyeOff, Lock, Mail, Plus, ChevronRight, AlertCircle } from "lucide-react"
-import MedichainLogo from "../components/MedichainLogo"
 import LoadingSpinner from "../components/LoadingSpinner"
 import RoleSelectionModal from "../components/RoleSelectionModal"
 import { showToast } from "../components/CustomToast"
+import medichainLogo from "../assets/medichain_logo.png"
 
 const MedichainLogin = () => {
   const navigate = useNavigate()
@@ -180,7 +180,7 @@ const MedichainLogin = () => {
       <div className="header">
         <div className="logo-container" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
           <div className="logo-icon">
-            <MedichainLogo size={50} usePng={true} />
+            <img src={medichainLogo} alt="MediChain Logo" width={40} height={40} />
           </div>
           <h1>MEDICHAIN</h1>
         </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "./Header";
-import { Search, Stethoscope, Mail, User, Calendar, ChevronRight } from "lucide-react";
+import { Search, Stethoscope, Mail, ArrowLeft } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import "../assets/styles/ModernDashboard.css";
@@ -122,6 +122,15 @@ const SelectGP = () => {
 
       <Header />
 
+      {/* Back Button in Header Area */}
+      <button
+        className="back-button-header"
+        onClick={() => navigate("/book-appointment")}
+        aria-label="Go back"
+      >
+        <ArrowLeft size={24} />
+      </button>
+
       <main className="dashboard-main-content">
         <div className="dashboard-header-section">
           <div className="dashboard-title-section">
@@ -190,7 +199,7 @@ const SelectGP = () => {
                     >
                       <div className="doctor-header">
                         <div className="doctor-avatar">
-                          <User size={32} />
+                          <Stethoscope size={32} />
                         </div>
                         <div className="doctor-info">
                           <h3 className="doctor-name">
@@ -227,9 +236,7 @@ const SelectGP = () => {
                             cursor: doctor.has_availability ? 'pointer' : 'not-allowed'
                           }}
                         >
-                          <Calendar size={18} />
-                          {doctor.has_availability ? 'Book Appointment' : 'No Slots Available'}
-                          <ChevronRight size={18} />
+                          {doctor.has_availability ? 'Select' : 'No Slots Available'}
                         </button>
                       </div>
                     </div>
@@ -246,16 +253,6 @@ const SelectGP = () => {
               )}
             </>
           )}
-        </div>
-
-        {/* Back Button */}
-        <div className="back-button-container">
-          <button
-            className="back-button"
-            onClick={() => navigate("/book-appointment")}
-          >
-            ← Back to Appointment Types
-          </button>
         </div>
       </main>
     </div>

@@ -98,12 +98,6 @@ const BookAppointment = () => {
             </div>
           ))}
         </div>
-
-        <div className="back-button-container">
-          <button className="back-button" onClick={() => navigate('/dashboard')}>
-            ← Back to Dashboard
-          </button>
-        </div>
       </main>
     </div>
   );

@@ -54,14 +54,17 @@ const Header = () => {
 
         {/* Right: Action Buttons */}
         <div className="header-right">
-          <button className="icon-button" title="Profile" onClick={handleProfileClick}>
+          {/* Desktop: Profile and Logout buttons */}
+          <button className="icon-button desktop-only" title="Profile" onClick={handleProfileClick}>
             <User size={20} />
           </button>
-          <button className="icon-button" title="Menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen(!mobileOpen)}>
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-          <button className="icon-button" onClick={handleLogout} title="Logout">
+          <button className="icon-button desktop-only" onClick={handleLogout} title="Logout">
             <LogOut size={20} />
+          </button>
+          
+          {/* Mobile: Burger menu only */}
+          <button className="icon-button mobile-only burger-menu-button" title="Menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen(!mobileOpen)}>
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
       </div>

@@ -294,7 +294,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       });
     });
 
-    it('allows reSending...async () => {
+    it('allows resending OTP', async () => {
       mockedAxios.post.mockResolvedValueOnce({
         data: { success: true, message: 'New OTP sent' }
       });

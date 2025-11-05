@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 import Header from "./Header"
-import { Plus, Activity, Brain, FileText, Calendar, User, RefreshCw } from "lucide-react"
+import { Plus, Activity, FileText, Calendar, User } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"
@@ -59,10 +59,6 @@ const PatientDashboard = () => {
     navigate('/health-record')
   }
 
-  const handleAIDiagnosis = () => {
-    navigate('/ai-health')
-  }
-
   const handleNewAppointment = () => {
     navigate('/book-appointment')
   }
@@ -105,15 +101,8 @@ const PatientDashboard = () => {
               </div>
             )}
             {error && (
-              <div className="error-message" style={{ color: '#e74c3c', fontSize: '0.9rem', marginTop: '8px' }}>
+              <div className="error-message" style={{ color: '#e74c3c', fontSize: '0.9rem' }}>
                 {error} - Using offline data
-              </div>
-            )}
-          </div>
-          <div className="dashboard-actions">
-            {loading && (
-              <div className="loading-indicator" style={{ fontSize: '0.9rem', color: '#666' }}>
-                <RefreshCw size={16} /> Loading stats...
               </div>
             )}
           </div>
@@ -153,17 +142,6 @@ const PatientDashboard = () => {
                     <h3>My Health Record</h3>
                     <p>View your complete medical history, prescriptions, and health reports</p>
                     <span className="action-status">Coming Soon</span>
-                  </div>
-                </div>
-
-                <div className="action-card" onClick={handleAIDiagnosis}>
-                  <div className="action-icon ai-icon">
-                    <Brain size={48} />
-                  </div>
-                  <div className="action-content">
-                    <h3>AI Health Assistant</h3>
-                    <p>Get instant AI-powered health insights and symptom analysis</p>
-                    <span className="action-status available">Available Now</span>
                   </div>
                 </div>
               </div>
@@ -242,10 +220,6 @@ const PatientDashboard = () => {
                   Quick Actions
                 </h3>
                 <div className="quick-actions">
-                  <button className="quick-action-btn" onClick={handleAIDiagnosis}>
-                    <Brain size={16} />
-                    Start AI Consultation
-                  </button>
                   <button className="quick-action-btn" onClick={handleHealthRecord}>
                     <FileText size={16} />
                     View Health Record
