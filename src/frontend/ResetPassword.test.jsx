@@ -232,13 +232,13 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       
       // Test empty OTP
       fireEvent.click(verifyButton);
-      expect(showToast.error).toHaveBeenCalledWith('Please enter the OTP code');
+      expect(showToast.error).toHaveBeenCalledWith('Please enter the verification code');
 
       // Test incomplete OTP
       const otpInput = screen.getByLabelText(/verification code/i);
       fireEvent.change(otpInput, { target: { value: '123' } });
       fireEvent.click(verifyButton);
-      expect(showToast.error).toHaveBeenCalledWith('Please enter a valid 6-digit OTP code');
+      expect(showToast.error).toHaveBeenCalledWith('Please enter a valid 6-digit code');
     });
 
     it('successfully verifies OTP', async () => {
@@ -264,11 +264,11 @@ describe('ResetPassword Component - OTP Enhanced', () => {
           'http://localhost:5000/api/auth/verify-otp',
           { email: 'test@example.com', otp: '123456' }
         );
-        expect(showToast.success).toHaveBeenCalledWith('OTP verified successfully!');
+        expect(showToast.success).toHaveBeenCalledWith('Code verified successfully!');
       });
 
       // Should move to step 3
-      expect(screen.getByText('Create New Password')).toBeInTheDocument();
+      expect(screen.getByText('Complete Password Reset')).toBeInTheDocument();
     });
 
     it('handles invalid OTP error', async () => {
@@ -310,13 +310,13 @@ describe('ResetPassword Component - OTP Enhanced', () => {
           'http://localhost:5000/api/auth/password-reset-request',
           { email: 'test@example.com' }
         );
-        expect(showToast.success).toHaveBeenCalledWith('New OTP has been sent to your email!');
+        expect(showToast.success).toHaveBeenCalledWith('New code sent to your email!');
       });
     });
 
     it('allows changing email', () => {
-      const changeEmailButton = screen.getByRole('button', { name: /change email/i });
-      fireEvent.click(changeEmailButton);
+      const changeEmailLink = screen.getByText('Change Email');
+      fireEvent.click(changeEmailLink);
 
       // Should go back to step 1
       expect(screen.getByText('Reset Password')).toBeInTheDocument();
@@ -362,40 +362,38 @@ describe('ResetPassword Component - OTP Enhanced', () => {
     });
 
     it('renders password form correctly', () => {
-      expect(screen.getByText('Create New Password')).toBeInTheDocument();
+      expect(screen.getByText('Complete Password Reset')).toBeInTheDocument();
       expect(screen.getByLabelText(/new password/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
-      expect(screen.getByText('Password must contain:')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /reset password/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /update password/i })).toBeInTheDocument();
     });
 
-    it('validates password requirements', () => {
+    it('validates password requirements', async () => {
       const newPasswordInput = screen.getByLabelText(/new password/i);
+      const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
+      const submitButton = screen.getByRole('button', { name: /update password/i });
       
-      // Test password length requirement
+      // Test password length requirement - button should be disabled
       fireEvent.change(newPasswordInput, { target: { value: 'abc' } });
-      const lengthRequirement = screen.getByText('At least 6 characters');
-      expect(lengthRequirement).not.toHaveClass('met');
+      fireEvent.change(confirmPasswordInput, { target: { value: 'abc' } });
+      expect(submitButton).toBeDisabled();
 
-      // Test valid password
+      // Test valid password - button should be enabled
       fireEvent.change(newPasswordInput, { target: { value: 'Test123!' } });
-      expect(lengthRequirement).toHaveClass('met');
-      expect(screen.getByText('One uppercase letter')).toHaveClass('met');
-      expect(screen.getByText('One lowercase letter')).toHaveClass('met');
-      expect(screen.getByText('One number')).toHaveClass('met');
+      fireEvent.change(confirmPasswordInput, { target: { value: 'Test123!' } });
+      expect(submitButton).not.toBeDisabled();
     });
 
     it('validates password confirmation', async () => {
       const newPasswordInput = screen.getByLabelText(/new password/i);
       const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-      const submitButton = screen.getByRole('button', { name: /reset password/i });
+      const submitButton = screen.getByRole('button', { name: /update password/i });
 
       fireEvent.change(newPasswordInput, { target: { value: 'Test123!' } });
       fireEvent.change(confirmPasswordInput, { target: { value: 'Test456!' } });
 
-      fireEvent.click(submitButton);
-
-      expect(showToast.error).toHaveBeenCalledWith('Passwords do not match');
+      // Button should be disabled when passwords don't match
+      expect(submitButton).toBeDisabled();
     });
 
     it('successfully resets password', async () => {
@@ -408,7 +406,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
 
       const newPasswordInput = screen.getByLabelText(/new password/i);
       const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-      const submitButton = screen.getByRole('button', { name: /reset password/i });
+      const submitButton = screen.getByRole('button', { name: /update password/i });
 
       fireEvent.change(newPasswordInput, { target: { value: 'Test123!' } });
       fireEvent.change(confirmPasswordInput, { target: { value: 'Test123!' } });
@@ -427,7 +425,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
           }
         );
         expect(showToast.success).toHaveBeenCalledWith(
-          'Password reset successful! You can now login with your new password.'
+          'Password updated successfully! Redirecting to login...'
         );
       });
 
@@ -448,7 +446,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
 
       const newPasswordInput = screen.getByLabelText(/new password/i);
       const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
-      const submitButton = screen.getByRole('button', { name: /reset password/i });
+      const submitButton = screen.getByRole('button', { name: /update password/i });
 
       fireEvent.change(newPasswordInput, { target: { value: 'Test123!' } });
       fireEvent.change(confirmPasswordInput, { target: { value: 'Test123!' } });
