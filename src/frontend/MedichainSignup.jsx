@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import "./MedichainLogin.css" // Reuse existing styles
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight, Upload } from "lucide-react"
+import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight, Upload, Stethoscope, Heart } from "lucide-react"
 import LoadingSpinner from "../components/LoadingSpinner"
 import { showToast } from "../components/CustomToast"
 import medichainLogo from "../assets/medichain_logo.png"
@@ -19,7 +19,7 @@ const MedichainSignup = () => {
     password: "",
     confirmPassword: "",
     userType: "patient", // default
-    specialization: "", // for doctors
+    specialization: "General Practitioner", // Fixed to General Practitioner for doctors
     verificationFile: null // for doctor verification
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -35,11 +35,22 @@ const MedichainSignup = () => {
     if (role && (role === 'doctor' || role === 'patient')) {
       setFormData(prev => ({
         ...prev,
-        userType: role
+        userType: role,
+        specialization: role === 'doctor' ? "General Practitioner" : prev.specialization
       }))
       setIsRolePreSelected(true) // Lock the role selection
     }
   }, [searchParams])
+  
+  // Ensure specialization is set when userType changes to doctor
+  useEffect(() => {
+    if (formData.userType === 'doctor') {
+      setFormData(prev => ({
+        ...prev,
+        specialization: "General Practitioner"
+      }))
+    }
+  }, [formData.userType])
 
   const handleInputChange = (e) => {
     const { name, value, files } = e.target
@@ -100,10 +111,8 @@ const MedichainSignup = () => {
     
     // Doctor-specific validation
     if (userType === 'doctor') {
-      if (!specialization?.trim()) {
-        showToast.error("Please enter your medical specialization")
-        return false
-      }
+      // Specialization is automatically set to "General Practitioner"
+      // No need to validate it anymore
       
       if (!verificationFile) {
         showToast.error("Please upload your verification document (ID/Certificate)")
@@ -152,7 +161,7 @@ const MedichainSignup = () => {
         signupData.append('firstName', formData.firstName.trim());
         signupData.append('lastName', formData.lastName.trim());
         signupData.append('userType', formData.userType);
-        signupData.append('specialization', formData.specialization.trim());
+        signupData.append('specialization', 'General Practitioner'); // Always set to General Practitioner
         signupData.append('verificationFile', formData.verificationFile);
 
         const response = await fetch('http://localhost:5000/api/auth/doctor-signup', {
@@ -323,17 +332,16 @@ const MedichainSignup = () => {
                     <div className="input-group">
                       <label htmlFor="specialization">Medical Specialization</label>
                       <div className="input-wrapper">
-                        <User className="input-icon" size={20} />
+                        <Stethoscope className="input-icon" size={20} />
                         <input
                           id="specialization"
                           name="specialization"
                           type="text"
                           aria-required={formData.userType === 'doctor'}
-                          value={formData.specialization}
-                          onChange={handleInputChange}
-                          placeholder="e.g., Cardiology, Pediatrics, Internal Medicine"
-                          disabled={isSubmitting}
-                          required
+                          value="General Practitioner"
+                          readOnly
+                          disabled={true}
+                          style={{ cursor: 'not-allowed', backgroundColor: '#f5f5f5' }}
                         />
                       </div>
                     </div>
@@ -458,7 +466,11 @@ const MedichainSignup = () => {
           <div className="doctor-image">
             <div className="doctor-placeholder">
               <div className="doctor-icon">
-                <Plus size={48} />
+                {formData.userType === 'doctor' ? (
+                  <Stethoscope size={48} />
+                ) : (
+                  <Heart size={48} />
+                )}
               </div>
               <h3>Join MediChain</h3>
               <p>
@@ -471,7 +483,7 @@ const MedichainSignup = () => {
                 </div>
                 <div className="login-feature-item">
                   <Plus size={16} />
-                  <span>HIPAA Compliant</span>
+                  <span>AI Driven Diagnosis</span>
                 </div>
                 <div className="login-feature-item">
                   <Plus size={16} />

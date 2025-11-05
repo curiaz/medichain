@@ -351,7 +351,8 @@ def doctor_signup():
         password = request.form.get('password', '')
         first_name = request.form.get('firstName', '').strip()
         last_name = request.form.get('lastName', '').strip()
-        specialization = request.form.get('specialization', '').strip()
+        # Force specialization to "General Practitioner" only
+        specialization = "General Practitioner"
         
         # Get uploaded file
         verification_file = request.files.get('verificationFile')
@@ -381,12 +382,7 @@ def doctor_signup():
                 "error": "Please enter your first and last name."
             }), 400
         
-        if not specialization:
-            print("[DEBUG] ❌ Missing specialization")
-            return jsonify({
-                "success": False,
-                "error": "Please enter your medical specialization."
-            }), 400
+        # Specialization is always set to "General Practitioner" - no validation needed
         
         if not verification_file:
             print("[DEBUG] ❌ Missing verification file")

@@ -838,6 +838,9 @@
   padding: 2rem 0;
   margin-top: auto;
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .footer-content {
@@ -846,12 +849,17 @@
   padding: 0 2rem;
   text-align: center;
   color: #475569;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .footer-main {
   font-size: 0.9rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
   font-weight: 500;
+  line-height: 1.5;
 }
 
 .footer-main strong {
@@ -867,7 +875,7 @@
 .footer-sub {
   font-size: 0.8rem;
   color: #64748b;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
   line-height: 1.4;
 }
 
@@ -875,6 +883,8 @@
   font-size: 0.75rem;
   color: #94a3b8;
   font-style: italic;
+  margin-bottom: 0;
+  line-height: 1.4;
 }
 
 @media (max-width: 768px) {
@@ -884,6 +894,7 @@
   
   .footer-content {
     padding: 0 1rem;
+    gap: 0.5rem;
   }
   
   .footer-main {
@@ -891,11 +902,11 @@
   }
   
   .footer-sub {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
   }
   
   .footer-academic {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
   }
 }
 
@@ -1042,7 +1053,7 @@
   border: 2px dashed #0288d1;
   border-radius: 12px;
   background: #f8fcff;
-  color: #0288d1;
+  color: #01579b !important; /* Darker blue for better readability */
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -1055,7 +1066,7 @@
 .file-upload-label:hover {
   background: #e3f2fd;
   border-color: #0277bd;
-  color: #0277bd;
+  color: #01579b !important; /* Ensure hover state is also readable */
 }
 
 .input-wrapper.file-upload-wrapper .input-icon {
@@ -1084,6 +1095,19 @@
 
 .file-upload-wrapper input[type="file"]:valid ~ .input-icon {
   color: #4caf50;
+}
+
+/* Ensure file upload label text is readable in all themes */
+.theme-classic .file-upload-label {
+  color: #01579b !important; /* Dark blue for readability on light background */
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: #0288d1 !important;
+}
+
+.theme-classic .file-upload-label:hover {
+  color: #01579b !important;
+  background: rgba(255, 255, 255, 1) !important;
+  border-color: #0277bd !important;
 }
 
 /* Doctor specialization field styling */

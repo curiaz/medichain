@@ -415,15 +415,16 @@ def doctor_signup():
         password = request.form.get("password")
         first_name = request.form.get("firstName")
         last_name = request.form.get("lastName")
-        specialization = request.form.get("specialization")
+        # Force specialization to "General Practitioner" only
+        specialization = "General Practitioner"
 
         print(f"👤 Doctor data: {email}, {first_name} {last_name}, {specialization}")
 
-        # Validate required fields
-        if not all([email, password, first_name, last_name, specialization]):
+        # Validate required fields (specialization is always set, so no need to check it)
+        if not all([email, password, first_name, last_name]):
             missing_fields = [field for field, value in [
                 ('email', email), ('password', password), ('firstName', first_name), 
-                ('lastName', last_name), ('specialization', specialization)
+                ('lastName', last_name)
             ] if not value]
             return jsonify({"success": False, "error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
 
@@ -708,16 +709,16 @@ def submit_doctor_verification():
         # Get form data
         email = request.form.get("email")
         firebase_uid = request.form.get("firebase_uid")
-        specialization = request.form.get("specialization")
+        # Force specialization to "General Practitioner" only
+        specialization = "General Practitioner"
 
         print(f"Doctor verification data: {email}, firebase_uid={firebase_uid}, specialization={specialization}")
 
-        # Validate required fields
-        if not all([email, firebase_uid, specialization]):
+        # Validate required fields (specialization is always set, so no need to check it)
+        if not all([email, firebase_uid]):
             missing_fields = []
             if not email: missing_fields.append('email')
             if not firebase_uid: missing_fields.append('firebase_uid')
-            if not specialization: missing_fields.append('specialization')
             return jsonify({"success": False, "error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
 
         # Check for verification file
