@@ -9,6 +9,31 @@ jest.mock('../services/databaseService', () => ({
   getAllPatients: jest.fn()
 }));
 
+// Mock Firebase
+jest.mock('firebase/auth', () => ({
+  signInWithEmailAndPassword: jest.fn(),
+  createUserWithEmailAndPassword: jest.fn(),
+  signOut: jest.fn(),
+  onAuthStateChanged: jest.fn((auth, callback) => {
+    callback(null);
+    return jest.fn();
+  })
+}));
+
+jest.mock('../config/firebase', () => ({
+  auth: {}
+}));
+
+// Mock axios
+jest.mock('axios', () => ({
+  default: {
+    post: jest.fn(),
+    get: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn()
+  }
+}));
+
 // Mock the AuthContext with a doctor user
 const mockUser = {
   uid: 'test-doctor-uid',
@@ -21,13 +46,15 @@ const mockUser = {
   }
 };
 
+// Mock AuthContext
 jest.mock('../context/AuthContext', () => ({
   useAuth: () => ({
     user: mockUser,
     isAuthenticated: true,
-    loading: false
+    loading: false,
+    error: null
   }),
-  AuthProvider: ({ children }) => children
+  AuthProvider: ({ children }) => <div>{children}</div>
 }));
 
 const renderWithProviders = (component) => {
@@ -43,7 +70,7 @@ describe('PatientList Component', () => {
     jest.clearAllMocks();
   });
 
-  it('renders patient list page title', async () => {
+  it('renders patient list page with stats', async () => {
     DatabaseService.getAllPatients.mockResolvedValue({
       success: true,
       data: []
@@ -51,7 +78,10 @@ describe('PatientList Component', () => {
 
     renderWithProviders(<PatientList />);
     
-    expect(screen.getByText('PATIENT LIST')).toBeInTheDocument();
+    // Check for stats cards that are now part of the UI
+    await waitFor(() => {
+      expect(screen.getByText('Total Patients')).toBeInTheDocument();
+    });
   });
 
   it('displays loading state initially', async () => {
@@ -163,7 +193,14 @@ describe('PatientList Component', () => {
     renderWithProviders(<PatientList />);
 
     await waitFor(() => {
-      expect(screen.getByText('Managing 2 patients')).toBeInTheDocument();
+      // Check for stats cards that show patient counts
+      expect(screen.getByText('Total Patients')).toBeInTheDocument();
+      expect(screen.getByText('Filtered Results')).toBeInTheDocument();
+      // Check that patient count appears in the stats
+      const totalPatientsCard = screen.getByText('Total Patients').closest('.stat-card');
+      expect(totalPatientsCard).toBeInTheDocument();
+      // The number 2 should appear in the stat-number div
+      expect(screen.getAllByText('2').length).toBeGreaterThan(0);
     });
   });
 
