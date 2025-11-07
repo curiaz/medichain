@@ -221,7 +221,8 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       expect(screen.getByText(/check your email/i)).toBeInTheDocument();
       expect(screen.getByText(/we sent a password reset email/i)).toBeInTheDocument();
       expect(screen.getByText(/enter the 6-digit verification code/i)).toBeInTheDocument();
-      expect(screen.getByText('test@example.com')).toBeInTheDocument();
+      // Email might be embedded in text, use flexible matcher
+      expect(screen.getByText(/test@example\.com/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /verify & continue/i })).toBeInTheDocument();
     });
