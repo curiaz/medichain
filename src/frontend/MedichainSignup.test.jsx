@@ -70,7 +70,9 @@ describe('MedichainSignup Component', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByText('Create Account')).toBeInTheDocument();
+      // Use getAllByText since "Create Account" appears multiple times (heading and button)
+      const createAccountTexts = screen.getAllByText('Create Account');
+      expect(createAccountTexts.length).toBeGreaterThan(0);
       expect(screen.getByText('Join MediChain today')).toBeInTheDocument();
       expect(screen.getByLabelText(/first name/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/last name/i)).toBeInTheDocument();
@@ -199,11 +201,15 @@ describe('MedichainSignup Component', () => {
       const firstNameInput = screen.getByLabelText(/first name/i);
       const lastNameInput = screen.getByLabelText(/last name/i);
       const emailInput = screen.getByLabelText(/email/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
+      const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
       const submitButton = screen.getByRole('button', { name: /create account/i });
 
       fireEvent.change(firstNameInput, { target: { value: 'John' } });
       fireEvent.change(lastNameInput, { target: { value: 'Doe' } });
       fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
+      fireEvent.change(passwordInput, { target: { value: 'password123' } });
+      fireEvent.change(confirmPasswordInput, { target: { value: 'password123' } });
 
       await act(async () => {
         fireEvent.click(submitButton);
@@ -223,12 +229,14 @@ describe('MedichainSignup Component', () => {
       const lastNameInput = screen.getByLabelText(/last name/i);
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/^password$/i);
+      const confirmPasswordInput = screen.getByLabelText(/confirm password/i);
       const submitButton = screen.getByRole('button', { name: /create account/i });
 
       fireEvent.change(firstNameInput, { target: { value: 'John' } });
       fireEvent.change(lastNameInput, { target: { value: 'Doe' } });
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(passwordInput, { target: { value: '12345' } });
+      fireEvent.change(confirmPasswordInput, { target: { value: '12345' } });
 
       await act(async () => {
         fireEvent.click(submitButton);
