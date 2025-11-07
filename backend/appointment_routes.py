@@ -466,16 +466,34 @@ def get_appointments():
                                     # Patient not in cache - either doesn't exist or was skipped due to empty fields
                                     print(f"⚠️  Appointment {appt.get('id')}: Patient UID {pfuid} not in cache (missing or empty profile)")
                                 
+                                # Check if we need Firebase Auth fallback
+                                needs_fallback = False
+                                if pfuid not in uid_to_patient:
+                                    needs_fallback = True
+                                    print(f"🔄 Patient UID {pfuid} not in cache - needs Firebase Auth fallback")
+                                else:
+                                    cached_patient = uid_to_patient.get(pfuid, {})
+                                    cached_fname = cached_patient.get("first_name", "") or ""
+                                    cached_email = cached_patient.get("email", "") or ""
+                                    if not cached_fname.strip() and not cached_email.strip():
+                                        needs_fallback = True
+                                        print(f"🔄 Patient UID {pfuid} in cache but has empty data - needs Firebase Auth fallback")
+                                
                                 # If patient info is missing or empty, try Firebase Auth fallback
-                                if pfuid not in uid_to_patient or (not uid_to_patient.get(pfuid, {}).get("first_name") and not uid_to_patient.get(pfuid, {}).get("email")):
+                                if needs_fallback:
                                     print(f"🔄 Attempting Firebase Auth fallback for patient UID: {pfuid}")
                                     try:
                                         from auth.firebase_auth import firebase_auth_service
+                                        print(f"🔍 Calling Firebase Auth service for UID: {pfuid}")
                                         firebase_result = firebase_auth_service.get_user_by_uid(pfuid)
+                                        print(f"🔍 Firebase Auth result: success={firebase_result.get('success')}, has_user={bool(firebase_result.get('user'))}")
+                                        
                                         if firebase_result.get("success") and firebase_result.get("user"):
                                             firebase_user = firebase_result["user"]
                                             firebase_email = firebase_user.get("email", "") or ""
                                             firebase_display_name = firebase_user.get("display_name", "") or ""
+                                            
+                                            print(f"🔍 Firebase user data: email='{firebase_email}', display_name='{firebase_display_name}'")
                                             
                                             # Extract name from Firebase
                                             if firebase_display_name:
@@ -514,25 +532,30 @@ def get_appointments():
                                                 print(f"✅ Updated patient profile in database with Firebase Auth data")
                                             except Exception as update_error:
                                                 print(f"⚠️  Could not update patient profile: {update_error}")
+                                                import traceback
+                                                traceback.print_exc()
                                         else:
                                             error_msg = firebase_result.get("error", "Unknown error") if firebase_result else "No response"
                                             print(f"❌ Firebase Auth lookup failed for {pfuid}: {error_msg}")
+                                            print(f"   Full Firebase result: {firebase_result}")
                                             # Set empty patient object as last resort
-                                            appt["patient"] = {
-                                                "first_name": "",
-                                                "last_name": "",
-                                                "email": ""
-                                            }
+                                            if "patient" not in appt:
+                                                appt["patient"] = {
+                                                    "first_name": "",
+                                                    "last_name": "",
+                                                    "email": ""
+                                                }
                                     except Exception as firebase_fallback_error:
                                         print(f"❌ Error in Firebase Auth fallback: {firebase_fallback_error}")
                                         import traceback
                                         traceback.print_exc()
                                         # Set empty patient object as last resort
-                                        appt["patient"] = {
-                                            "first_name": "",
-                                            "last_name": "",
-                                            "email": ""
-                                        }
+                                        if "patient" not in appt:
+                                            appt["patient"] = {
+                                                "first_name": "",
+                                                "last_name": "",
+                                                "email": ""
+                                            }
                             else:
                                 print(f"⚠️  Appointment {appt.get('id')}: No patient_firebase_uid found in appointment record")
                                 # Add empty patient object
@@ -575,8 +598,23 @@ def get_appointments():
                 
                 if meeting_url:
                     appt["meeting_url"] = meeting_url
-            except Exception:
-                pass
+                
+                # Final verification: Log patient data being sent to frontend
+                patient = appt.get("patient", {})
+                patient_fname = patient.get("first_name", "")
+                patient_lname = patient.get("last_name", "")
+                patient_email = patient.get("email", "")
+                patient_full = f"{patient_fname} {patient_lname}".strip()
+                
+                if patient_full or patient_email:
+                    print(f"📤 Sending appointment {appt.get('id')} with patient: Name='{patient_full}' Email='{patient_email}'")
+                else:
+                    print(f"⚠️  WARNING: Sending appointment {appt.get('id')} with EMPTY patient data! UID: {appt.get('patient_firebase_uid')}")
+                    print(f"   Patient object: {patient}")
+            except Exception as enrich_error:
+                print(f"❌ Error enriching appointment {appt.get('id')}: {enrich_error}")
+                import traceback
+                traceback.print_exc()
             enriched.append(appt)
 
         return jsonify({"success": True, "appointments": enriched}), 200
