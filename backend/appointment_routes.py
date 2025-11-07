@@ -60,11 +60,11 @@ def auth_required(f):
         from auth.firebase_auth import firebase_auth_service
         firebase_verified = False
         try:
-        firebase_result = firebase_auth_service.verify_token(token)
+            firebase_result = firebase_auth_service.verify_token(token)
             if firebase_result.get("success"):
-            request.firebase_user = firebase_result
+                request.firebase_user = firebase_result
                 print(f"✅ Firebase token verified for user: {firebase_result.get('email', 'unknown')}")
-            return f(*args, **kwargs)
+                return f(*args, **kwargs)
             else:
                 # Firebase verification failed - check if it's a JWT format issue
                 error_msg = firebase_result.get('error', '')
@@ -133,14 +133,14 @@ def auth_required(f):
                             firebase_uid = user_profile.get('firebase_uid')
                             
                             if firebase_uid:
-                request.firebase_user = {
-                    "success": True,
+                                request.firebase_user = {
+                                    "success": True,
                                     "uid": firebase_uid,  # Use Firebase UID
-                    "email": app_payload.get('email'),
-                    "role": app_payload.get('role')
-                }
+                                    "email": app_payload.get('email'),
+                                    "role": app_payload.get('role')
+                                }
                                 print(f"✅ App JWT accepted for user: {app_payload.get('email')} (firebase_uid: {firebase_uid})")
-                return f(*args, **kwargs)
+                                return f(*args, **kwargs)
                             else:
                                 print(f"⚠️  User profile found but no firebase_uid for user_id: {user_id}")
                         else:
@@ -262,7 +262,7 @@ def get_approved_doctors():
                     availability_raw = doctor_profile_response.data[0].get("availability", {})
                     
                     # Get is_accepting_appointments from response, default to True if not present
-                        is_accepting_appointments = doctor_profile_response.data[0].get("is_accepting_appointments", True)
+                    is_accepting_appointments = doctor_profile_response.data[0].get("is_accepting_appointments", True)
                     # Handle None/null values and ensure it's a boolean
                     if is_accepting_appointments is None:
                         is_accepting_appointments = True
@@ -277,55 +277,55 @@ def get_approved_doctors():
                         has_availability = False
                         print(f"🚫 Doctor {user.get('email')}: NOT accepting appointments - has_availability = False")
                     else:
-                    # Debug logging
-                    print(f"🔍 Doctor {user.get('email')}: availability_raw type = {type(availability_raw)}")
-                    print(f"🔍 Doctor {user.get('email')}: availability_raw = {availability_raw}")
-                    print(f"🔍 Doctor {user.get('email')}: is_accepting_appointments = {is_accepting_appointments}")
-                    
-                    # Check availability based on format
-                    # New format: { time_ranges: [{ start_time, end_time, interval }, ...] }
-                    # Old format: [{ date: "...", time_slots: [...] }, ...]
-                    if isinstance(availability_raw, dict) and availability_raw:
-                        # New format with time_ranges
-                        if "time_ranges" in availability_raw and isinstance(availability_raw["time_ranges"], list):
-                            print(f"🔍 Doctor {user.get('email')}: Found time_ranges with {len(availability_raw['time_ranges'])} ranges")
-                            if len(availability_raw["time_ranges"]) > 0:
+                        # Debug logging
+                        print(f"🔍 Doctor {user.get('email')}: availability_raw type = {type(availability_raw)}")
+                        print(f"🔍 Doctor {user.get('email')}: availability_raw = {availability_raw}")
+                        print(f"🔍 Doctor {user.get('email')}: is_accepting_appointments = {is_accepting_appointments}")
+                        
+                        # Check availability based on format
+                        # New format: { time_ranges: [{ start_time, end_time, interval }, ...] }
+                        # Old format: [{ date: "...", time_slots: [...] }, ...]
+                        if isinstance(availability_raw, dict) and availability_raw:
+                            # New format with time_ranges
+                            if "time_ranges" in availability_raw and isinstance(availability_raw["time_ranges"], list):
+                                print(f"🔍 Doctor {user.get('email')}: Found time_ranges with {len(availability_raw['time_ranges'])} ranges")
+                                if len(availability_raw["time_ranges"]) > 0:
                                     # Doctor is accepting appointments AND has time_ranges defined
                                     has_availability = True
                                     print(f"✅ Doctor {user.get('email')}: has_availability = True (has time_ranges, accepting={is_accepting_appointments})")
-                            else:
-                                print(f"❌ Doctor {user.get('email')}: has_availability = False (empty time_ranges)")
-                            availability = availability_raw  # Store the raw availability object
-                        # Legacy single range format: { start_time, end_time, interval }
-                        elif "start_time" in availability_raw and "end_time" in availability_raw:
-                            print(f"✅ Doctor {user.get('email')}: Found legacy format, converting to time_ranges")
-                            # Convert to time_ranges format for consistency
-                            availability = {
-                                "time_ranges": [{
-                                    "start_time": availability_raw.get("start_time", "07:00"),
-                                    "end_time": availability_raw.get("end_time", "17:00"),
-                                    "interval": availability_raw.get("interval", 30)
-                                }]
-                            }
+                                else:
+                                    print(f"❌ Doctor {user.get('email')}: has_availability = False (empty time_ranges)")
+                                availability = availability_raw  # Store the raw availability object
+                            # Legacy single range format: { start_time, end_time, interval }
+                            elif "start_time" in availability_raw and "end_time" in availability_raw:
+                                print(f"✅ Doctor {user.get('email')}: Found legacy format, converting to time_ranges")
+                                # Convert to time_ranges format for consistency
+                                availability = {
+                                    "time_ranges": [{
+                                        "start_time": availability_raw.get("start_time", "07:00"),
+                                        "end_time": availability_raw.get("end_time", "17:00"),
+                                        "interval": availability_raw.get("interval", 30)
+                                    }]
+                                }
                                 has_availability = True  # Doctor is accepting and has time range
-                        else:
-                            print(f"❌ Doctor {user.get('email')}: Dict format but no time_ranges or start_time/end_time found")
-                    elif isinstance(availability_raw, list) and len(availability_raw) > 0:
-                        print(f"🔍 Doctor {user.get('email')}: Found list format (old format)")
-                        # Old format: array of date slots
-                        availability = availability_raw
-                        # Check if any slots are in the future
-                        today = datetime.now().date()
-                        for slot in availability_raw:
-                            if isinstance(slot, dict) and "date" in slot:
-                                slot_date = datetime.strptime(slot["date"], "%Y-%m-%d").date()
-                                if slot_date >= today and slot.get("time_slots"):
+                            else:
+                                print(f"❌ Doctor {user.get('email')}: Dict format but no time_ranges or start_time/end_time found")
+                        elif isinstance(availability_raw, list) and len(availability_raw) > 0:
+                            print(f"🔍 Doctor {user.get('email')}: Found list format (old format)")
+                            # Old format: array of date slots
+                            availability = availability_raw
+                            # Check if any slots are in the future
+                            today = datetime.now().date()
+                            for slot in availability_raw:
+                                if isinstance(slot, dict) and "date" in slot:
+                                    slot_date = datetime.strptime(slot["date"], "%Y-%m-%d").date()
+                                    if slot_date >= today and slot.get("time_slots"):
                                         has_availability = True  # Doctor is accepting and has future slots
-                                    break
-                    else:
-                        print(f"❌ Doctor {user.get('email')}: availability_raw is empty or invalid: {type(availability_raw)}")
-                    
-                    print(f"🔍 Doctor {user.get('email')}: Final has_availability = {has_availability}, is_accepting_appointments = {is_accepting_appointments}")
+                                        break
+                        else:
+                            print(f"❌ Doctor {user.get('email')}: availability_raw is empty or invalid: {type(availability_raw)}")
+                        
+                        print(f"🔍 Doctor {user.get('email')}: Final has_availability = {has_availability}, is_accepting_appointments = {is_accepting_appointments}")
             except Exception as profile_error:
                 print(f"⚠️  Error fetching profile for {user.get('email')}: {profile_error}")
                 import traceback
@@ -420,12 +420,23 @@ def get_appointments():
                         print(f"🔍 Doctor appointments: Fetched {len(profiles_resp.data or [])} patient profiles")
                         uid_to_patient = {}
                         for p in (profiles_resp.data or []):
+                            # Get values, handling None, empty strings, and whitespace
+                            first_name = (p.get("first_name") or "").strip() if p.get("first_name") else ""
+                            last_name = (p.get("last_name") or "").strip() if p.get("last_name") else ""
+                            email = (p.get("email") or "").strip() if p.get("email") else ""
+                            
                             uid_to_patient[p["firebase_uid"]] = {
-                                "first_name": p.get("first_name") or "",
-                                "last_name": p.get("last_name") or "",
-                                "email": p.get("email") or ""
+                                "first_name": first_name,
+                                "last_name": last_name,
+                                "email": email
                             }
-                            print(f"✅ Patient profile: {p['firebase_uid']} -> '{p.get('first_name')} {p.get('last_name')}' ({p.get('email')})")
+                            
+                            full_name = f"{first_name} {last_name}".strip()
+                            print(f"✅ Patient profile: {p['firebase_uid']} -> Name: '{full_name}' Email: '{email}'")
+                            if not full_name and email:
+                                print(f"   ⚠️  Profile has email but no name - will use email for display")
+                            elif not full_name and not email:
+                                print(f"   ❌ Profile exists but has NO name and NO email!")
                         
                         # Enrich each appointment with patient info
                         for appt in response.data:
@@ -434,17 +445,54 @@ def get_appointments():
                                 if pfuid in uid_to_patient:
                                     appt["patient"] = uid_to_patient[pfuid]
                                     patient_info = uid_to_patient[pfuid]
-                                    print(f"✅ Enriched appointment {appt.get('id')} with patient: '{patient_info.get('first_name')} {patient_info.get('last_name')}' ({patient_info.get('email')})")
+                                    first_name = patient_info.get("first_name") or ""
+                                    last_name = patient_info.get("last_name") or ""
+                                    email = patient_info.get("email") or ""
+                                    full_name = f"{first_name} {last_name}".strip()
+                                    print(f"✅ Enriched appointment {appt.get('id')} with patient: Name='{full_name}' Email='{email}'")
+                                    if not full_name and not email:
+                                        print(f"⚠️  WARNING: Patient profile exists but has no name or email for UID: {pfuid}")
                                 else:
-                                    print(f"⚠️  Appointment {appt.get('id')}: Patient UID {pfuid} not found in profiles. Available UIDs: {list(uid_to_patient.keys())}")
-                                    # Still add empty patient object so frontend doesn't crash
-                                    appt["patient"] = {
-                                        "first_name": "",
-                                        "last_name": "",
-                                        "email": ""
-                                    }
+                                    print(f"⚠️  Appointment {appt.get('id')}: Patient UID {pfuid} NOT FOUND in user_profiles table!")
+                                    print(f"   Searched for UIDs: {patient_uids}")
+                                    print(f"   Found profiles for UIDs: {list(uid_to_patient.keys())}")
+                                    # Try to fetch this specific patient profile directly as fallback
+                                    try:
+                                        direct_profile = (
+                                            supabase.service_client
+                                            .table("user_profiles")
+                                            .select("firebase_uid, first_name, last_name, email")
+                                            .eq("firebase_uid", pfuid)
+                                            .execute()
+                                        )
+                                        if direct_profile.data and len(direct_profile.data) > 0:
+                                            p = direct_profile.data[0]
+                                            first_name = (p.get("first_name") or "").strip() if p.get("first_name") else ""
+                                            last_name = (p.get("last_name") or "").strip() if p.get("last_name") else ""
+                                            email = (p.get("email") or "").strip() if p.get("email") else ""
+                                            appt["patient"] = {
+                                                "first_name": first_name,
+                                                "last_name": last_name,
+                                                "email": email
+                                            }
+                                            full_name = f"{first_name} {last_name}".strip()
+                                            print(f"✅ Found patient via direct lookup: Name='{full_name}' Email='{email}'")
+                                        else:
+                                            print(f"❌ Direct lookup also failed - patient profile does not exist for UID: {pfuid}")
+                                            appt["patient"] = {
+                                                "first_name": "",
+                                                "last_name": "",
+                                                "email": ""
+                                            }
+                                    except Exception as direct_error:
+                                        print(f"❌ Error in direct patient lookup: {direct_error}")
+                                        appt["patient"] = {
+                                            "first_name": "",
+                                            "last_name": "",
+                                            "email": ""
+                                        }
                             else:
-                                print(f"⚠️  Appointment {appt.get('id')}: No patient_firebase_uid found")
+                                print(f"⚠️  Appointment {appt.get('id')}: No patient_firebase_uid found in appointment record")
                                 # Add empty patient object
                                 appt["patient"] = {
                                     "first_name": "",
@@ -477,11 +525,11 @@ def get_appointments():
                 
                 # Fallback to parsing from notes if meeting_link is not available
                 if not meeting_url:
-                notes = appt.get("notes") or ""
-                for line in str(notes).splitlines():
-                    if "Meeting:" in line and "http" in line:
-                        meeting_url = line.split("Meeting:", 1)[1].strip()
-                        break
+                    notes = appt.get("notes") or ""
+                    for line in str(notes).splitlines():
+                        if "Meeting:" in line and "http" in line:
+                            meeting_url = line.split("Meeting:", 1)[1].strip()
+                            break
                 
                 if meeting_url:
                     appt["meeting_url"] = meeting_url
@@ -513,8 +561,8 @@ def create_appointment():
                     400,
                 )
 
-        # Get user role - use service_client to bypass RLS
-        user_response = supabase.service_client.table("user_profiles").select("role, first_name, last_name").eq("firebase_uid", uid).execute()
+        # Get user role and profile info - use service_client to bypass RLS
+        user_response = supabase.service_client.table("user_profiles").select("role, first_name, last_name, email").eq("firebase_uid", uid).execute()
         if not user_response.data:
             return jsonify({"success": False, "error": "User profile not found"}), 404
 
@@ -635,7 +683,21 @@ def create_appointment():
 
         # Get patient and doctor names for notifications
         patient_profile = user_response.data[0]
-        patient_name = f"{patient_profile.get('first_name', '')} {patient_profile.get('last_name', '')}".strip()
+        patient_first_name = (patient_profile.get('first_name') or "").strip() if patient_profile.get('first_name') else ""
+        patient_last_name = (patient_profile.get('last_name') or "").strip() if patient_profile.get('last_name') else ""
+        patient_email = (patient_profile.get('email') or "").strip() if patient_profile.get('email') else ""
+        patient_name = f"{patient_first_name} {patient_last_name}".strip()
+        
+        # Ensure patient profile has email (required for display)
+        if not patient_name:
+            if patient_email:
+                patient_name = patient_email.split('@')[0] or patient_email
+            else:
+                patient_name = "Patient"
+        
+        # If patient profile is missing name/email, update it (ensure data consistency)
+        if not patient_first_name and not patient_last_name:
+            print(f"⚠️  WARNING: Patient profile for UID {uid} has no name. Email: {patient_email}")
         
         doctor_profile_response = (
             supabase.service_client.table("user_profiles")

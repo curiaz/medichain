@@ -219,16 +219,18 @@ const DoctorSchedule = () => {
                       const patient = appt.patient || {}
                     let patientName = 'Patient'
                     
-                    // Try to get full name first
-                    const firstName = patient.first_name || ""
-                    const lastName = patient.last_name || ""
+                    // Try to get full name first (handle null, undefined, empty string, whitespace)
+                    const firstName = (patient.first_name || "").trim()
+                    const lastName = (patient.last_name || "").trim()
                     const fullName = `${firstName} ${lastName}`.trim()
                     
                     if (fullName) {
                       patientName = fullName
                     } else if (patient.email) {
                       // Use email username if name not available
-                      patientName = patient.email.split('@')[0] || patient.email
+                      const emailUsername = patient.email.split('@')[0]
+                      patientName = emailUsername || patient.email
+                      console.log(`📧 Using email username for patient: ${patientName} (full email: ${patient.email})`)
                     } else {
                       // Fallback to generic name, never show UID
                       patientName = 'Patient'
@@ -236,7 +238,9 @@ const DoctorSchedule = () => {
                     
                     // Log if we're missing patient info for debugging
                     if (!fullName && !patient.email) {
-                      console.warn('⚠️ Missing patient info for appointment:', appt.id, 'Patient UID:', appt.patient_firebase_uid)
+                      console.warn('⚠️ Missing patient info for appointment:', appt.id, 'Patient UID:', appt.patient_firebase_uid, 'Patient object:', patient)
+                    } else if (!fullName && patient.email) {
+                      console.log(`ℹ️ Patient ${appt.id}: Has email (${patient.email}) but no name - using email username: ${patientName}`)
                     }
                     
                       return (
