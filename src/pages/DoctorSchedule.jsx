@@ -144,27 +144,27 @@ const DoctorSchedule = () => {
         <div className="dashboard-grid">
           <div className="main-and-sidebar-grid">
             <div className="main-content-area">
-              <div className="card-header">
-                <h3>
-                  <Calendar size={24} /> Upcoming Appointments
-                </h3>
-                <button className="view-all-btn" onClick={loadAppointments}>
-                  <RefreshCw size={16} /> Refresh
-                </button>
-              </div>
-
-              {loading ? (
-                <div className="loading-container"><div className="loading-spinner"></div><p>Loading appointments...</p></div>
-              ) : error ? (
-                <div className="error-container"><p className="error-message">{error}</p></div>
-              ) : appointments.length === 0 ? (
-                <div className="no-availability" style={{ marginTop: 16 }}>
-                  <Calendar size={48} />
-                  <p>No upcoming appointments</p>
+                <div className="card-header">
+                  <h3>
+                    <Calendar size={24} /> Upcoming Appointments
+                  </h3>
+                  <button className="view-all-btn" onClick={loadAppointments}>
+                    <RefreshCw size={16} /> Refresh
+                  </button>
                 </div>
-              ) : (
-                <div className="availability-grid">
-                  {appointments.map((appt) => {
+
+                {loading ? (
+                  <div className="loading-container"><div className="loading-spinner"></div><p>Loading appointments...</p></div>
+                ) : error ? (
+                  <div className="error-container"><p className="error-message">{error}</p></div>
+                ) : appointments.length === 0 ? (
+                  <div className="no-availability" style={{ marginTop: 16 }}>
+                    <Calendar size={48} />
+                    <p>No upcoming appointments</p>
+                  </div>
+                ) : (
+                  <div className="availability-grid">
+                    {appointments.map((appt) => {
                     // Parse date and time - handle both string and date formats
                     let appointmentDate = appt.appointment_date
                     let appointmentTime = appt.appointment_time || "00:00"
@@ -203,35 +203,52 @@ const DoctorSchedule = () => {
                       console.error('Error parsing date:', e, appt)
                     }
                     
-                    // Get patient name
-                    const patient = appt.patient || {}
-                    const patientName = `${patient.first_name || ""} ${patient.last_name || ""}`.trim() || 
-                                       patient.email || 
-                                       appt.patient_firebase_uid || 
-                                       'Patient'
+                    // Get patient name - prefer name over email, never show UID
+                      const patient = appt.patient || {}
+                    let patientName = 'Patient'
                     
-                    return (
-                      <div key={appt.id} className="availability-card">
-                        <div className="card-header">
-                          <div className="date-info">
-                            <Calendar size={20} />
-                            <span className="date-text">
+                    // Try to get full name first
+                    const firstName = patient.first_name || ""
+                    const lastName = patient.last_name || ""
+                    const fullName = `${firstName} ${lastName}`.trim()
+                    
+                    if (fullName) {
+                      patientName = fullName
+                    } else if (patient.email) {
+                      // Use email username if name not available
+                      patientName = patient.email.split('@')[0] || patient.email
+                    } else {
+                      // Fallback to generic name, never show UID
+                      patientName = 'Patient'
+                    }
+                    
+                    // Log if we're missing patient info for debugging
+                    if (!fullName && !patient.email) {
+                      console.warn('⚠️ Missing patient info for appointment:', appt.id, 'Patient UID:', appt.patient_firebase_uid)
+                    }
+                    
+                      return (
+                        <div key={appt.id} className="availability-card">
+                          <div className="card-header">
+                            <div className="date-info">
+                              <Calendar size={20} />
+                              <span className="date-text">
                               {formattedDate || appointmentDate || 'Date not available'}
-                            </span>
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                        <div className="time-slots">
-                          <div className="time-slot">
-                            <Clock size={16} />
+                          <div className="time-slots">
+                            <div className="time-slot">
+                              <Clock size={16} />
                             <span>{formattedTime || appointmentTime || 'Time not available'}</span>
-                          </div>
-                          <div className="time-slot">
-                            <User size={16} />
+                            </div>
+                            <div className="time-slot">
+                              <User size={16} />
                             <span>{patientName}</span>
-                          </div>
+                            </div>
                           {(appt.meeting_url || appt.meeting_link) && (
-                            <div className="time-slot" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                              <Video size={16} />
+                              <div className="time-slot" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <Video size={16} />
                               <button
                                 onClick={() => handleJoinVideoCall(appt.meeting_url || appt.meeting_link)}
                                 style={{ 
@@ -250,14 +267,14 @@ const DoctorSchedule = () => {
                               >
                                 Join Video Consultation
                               </button>
-                            </div>
-                          )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+                      )
+                    })}
+                  </div>
+                )}
             </div>
 
             <div className="sidebar-area">
