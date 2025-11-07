@@ -104,6 +104,18 @@ const DoctorSchedule = () => {
       })
       if (resp.data?.success) {
         const appts = Array.isArray(resp.data.appointments) ? resp.data.appointments : []
+        
+        // Debug: Log patient info for each appointment
+        appts.forEach((appt, index) => {
+          console.log(`📋 Appointment ${index + 1} (ID: ${appt.id}):`, {
+            patient_firebase_uid: appt.patient_firebase_uid,
+            patient_object: appt.patient,
+            has_patient_first_name: !!appt.patient?.first_name,
+            has_patient_last_name: !!appt.patient?.last_name,
+            has_patient_email: !!appt.patient?.email,
+          })
+        })
+        
         // Sort by date/time ascending
         appts.sort((a, b) => {
           const da = new Date(`${a.appointment_date}T${(a.appointment_time || "00:00").padStart(5, "0")}:00`)
