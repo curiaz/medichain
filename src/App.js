@@ -22,6 +22,7 @@ import DoctorAvailability from './pages/DoctorAvailability'; // Doctor availabil
 import DoctorSchedule from './pages/DoctorSchedule'; // Doctor schedule management
 import PatientAppointments from './pages/PatientAppointments'; // Patient appointments list
 import ProtectedRoute from './components/ProtectedRoute';
+import JitsiVideoConference from './components/JitsiVideoConference'; // Jitsi video conference component
 import './App.css';
 import './assets/styles/AndroidApp.css';
 
@@ -159,6 +160,15 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["doctor"]} requireDoctorVerified={true}>
                   <DoctorSchedule />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/video/:roomName" 
+              element={
+                <ProtectedRoute>
+                  <JitsiVideoConference />
                 </ProtectedRoute>
               } 
             />

@@ -22,9 +22,26 @@ const Notifications = () => {
 
   const loadNotificationStats = async () => {
     try {
-      const result = await notificationService.getNotificationStats(user?.uid || 'default_user');
-      if (result.success && result.data) {
-        setStats(result.data.stats);
+      const userId = user?.firebase_uid || user?.uid || user?.profile?.firebase_uid;
+      if (!userId) return;
+      
+      // Get token for authentication
+      let token = localStorage.getItem('medichain_token');
+      if (!token) {
+        const storedFirebaseToken = sessionStorage.getItem('firebase_id_token') || 
+                                    localStorage.getItem('firebase_id_token');
+        token = storedFirebaseToken;
+      }
+      
+      const axios = require('axios').default;
+      const response = await axios.get('http://localhost:5000/api/notifications/stats', {
+        headers: { 
+          Authorization: token ? `Bearer ${token}` : undefined
+        }
+      });
+      
+      if (response.data?.success && response.data?.stats) {
+        setStats(response.data.stats);
       }
     } catch (err) {
       console.error('Error loading notification stats:', err);
@@ -34,17 +51,39 @@ const Notifications = () => {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      console.log('Loading notifications for user:', user?.uid);
+      // Use firebase_uid from user object (could be user.uid or user.firebase_uid)
+      const userId = user?.firebase_uid || user?.uid || user?.profile?.firebase_uid;
+      console.log('Loading notifications for user:', userId);
       
-      const result = await notificationService.getNotifications({
-        user_id: user?.uid || 'default_user',
-        page: 1,
-        per_page: 50
+      if (!userId) {
+        console.warn('No user ID available, cannot load notifications');
+        setNotifications([]);
+        setLoading(false);
+        return;
+      }
+      
+      // Get token for authentication
+      let token = localStorage.getItem('medichain_token');
+      if (!token) {
+        const storedFirebaseToken = sessionStorage.getItem('firebase_id_token') || 
+                                    localStorage.getItem('firebase_id_token');
+        token = storedFirebaseToken;
+      }
+      
+      // Use axios directly with token
+      const axios = require('axios').default;
+      const response = await axios.get('http://localhost:5000/api/notifications', {
+        headers: { 
+          Authorization: token ? `Bearer ${token}` : undefined
+        },
+        params: {
+          limit: 50
+        }
       });
 
-      if (result.success && result.data) {
+      if (response.data?.success) {
         // Transform backend data to match frontend format
-        const transformedNotifications = result.data.notifications?.map(notif => ({
+        const transformedNotifications = (response.data.notifications || []).map(notif => ({
           id: notif.id,
           type: notif.category || 'system',
           title: notif.title,
@@ -54,13 +93,12 @@ const Notifications = () => {
           priority: notif.priority,
           action_url: notif.action_url,
           action_label: notif.action_label
-        })) || [];
+        }));
 
         setNotifications(transformedNotifications);
-        console.log('Loaded notifications:', transformedNotifications.length);
+        console.log('✅ Loaded notifications:', transformedNotifications.length);
       } else {
-        console.error('Failed to load notifications:', result.error);
-        // Fallback to empty array on error
+        console.error('Failed to load notifications:', response.data?.error);
         setNotifications([]);
       }
     } catch (err) {
@@ -73,9 +111,24 @@ const Notifications = () => {
 
   const markAsRead = async (notificationId) => {
     try {
-      const result = await notificationService.markAsRead(notificationId, user?.uid || 'default_user');
+      // Get token for authentication
+      let token = localStorage.getItem('medichain_token');
+      if (!token) {
+        const storedFirebaseToken = sessionStorage.getItem('firebase_id_token') || 
+                                    localStorage.getItem('firebase_id_token');
+        token = storedFirebaseToken;
+      }
       
-      if (result.success) {
+      const axios = require('axios').default;
+      const response = await axios.put(`http://localhost:5000/api/notifications/${notificationId}`, {
+        is_read: true
+      }, {
+        headers: { 
+          Authorization: token ? `Bearer ${token}` : undefined
+        }
+      });
+      
+      if (response.data?.success) {
         setNotifications(prev => 
           prev.map(notif => 
             notif.id === notificationId 
@@ -85,7 +138,7 @@ const Notifications = () => {
         );
         console.log('Marked notification as read:', notificationId);
       } else {
-        console.error('Failed to mark notification as read:', result.error);
+        console.error('Failed to mark notification as read:', response.data?.error);
       }
     } catch (err) {
       console.error('Error marking notification as read:', err);
@@ -94,15 +147,28 @@ const Notifications = () => {
 
   const markAllAsRead = async () => {
     try {
-      const result = await notificationService.markAllAsRead(user?.uid || 'default_user');
+      // Get token for authentication
+      let token = localStorage.getItem('medichain_token');
+      if (!token) {
+        const storedFirebaseToken = sessionStorage.getItem('firebase_id_token') || 
+                                    localStorage.getItem('firebase_id_token');
+        token = storedFirebaseToken;
+      }
       
-      if (result.success) {
+      const axios = require('axios').default;
+      const response = await axios.post('http://localhost:5000/api/notifications/read-all', {}, {
+        headers: { 
+          Authorization: token ? `Bearer ${token}` : undefined
+        }
+      });
+      
+      if (response.data?.success) {
         setNotifications(prev => 
           prev.map(notif => ({ ...notif, read: true }))
         );
         console.log('Marked all notifications as read');
       } else {
-        console.error('Failed to mark all notifications as read:', result.error);
+        console.error('Failed to mark all notifications as read:', response.data?.error);
       }
     } catch (err) {
       console.error('Error marking all notifications as read:', err);
@@ -111,15 +177,28 @@ const Notifications = () => {
 
   const deleteNotification = async (notificationId) => {
     try {
-      const result = await notificationService.deleteNotification(notificationId, user?.uid || 'default_user');
+      // Get token for authentication
+      let token = localStorage.getItem('medichain_token');
+      if (!token) {
+        const storedFirebaseToken = sessionStorage.getItem('firebase_id_token') || 
+                                    localStorage.getItem('firebase_id_token');
+        token = storedFirebaseToken;
+      }
       
-      if (result.success) {
+      const axios = require('axios').default;
+      const response = await axios.delete(`http://localhost:5000/api/notifications/${notificationId}`, {
+        headers: { 
+          Authorization: token ? `Bearer ${token}` : undefined
+        }
+      });
+      
+      if (response.data?.success) {
         setNotifications(prev => 
           prev.filter(notif => notif.id !== notificationId)
         );
         console.log('Deleted notification:', notificationId);
       } else {
-        console.error('Failed to delete notification:', result.error);
+        console.error('Failed to delete notification:', response.data?.error);
       }
     } catch (err) {
       console.error('Error deleting notification:', err);

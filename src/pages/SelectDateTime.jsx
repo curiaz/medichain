@@ -11,7 +11,7 @@ import "../assets/styles/SelectDateTime.css";
 const SelectDateTime = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, getFirebaseToken } = useAuth();
   
   // Try to get doctor from location.state first, then from sessionStorage as fallback
   let doctorFromState = location.state?.doctor;
@@ -142,19 +142,33 @@ const SelectDateTime = () => {
       let token = null;
       let tokenSource = 'unknown';
       
-      // Try to get Firebase token first
+      // Strategy 1: Try to get Firebase token using AuthContext helper
       try {
-        const currentUser = auth.currentUser;
-        if (currentUser) {
-          console.log("🔍 SelectDateTime: Getting Firebase token from currentUser...");
-          token = await currentUser.getIdToken(true); // Force refresh to get fresh token
-          tokenSource = 'firebase';
-          console.log("✅ SelectDateTime: Got fresh Firebase token (length:", token.length, ")");
-        } else {
-          console.warn("⚠️ SelectDateTime: auth.currentUser is null");
+        if (getFirebaseToken) {
+          console.log("🔍 SelectDateTime: Attempting to get Firebase token via AuthContext...");
+          token = await getFirebaseToken();
+          tokenSource = 'firebase_via_authcontext';
+          console.log("✅ SelectDateTime: Got Firebase token via AuthContext (length:", token.length, ")");
         }
-      } catch (firebaseError) {
-        console.warn("⚠️ SelectDateTime: Could not get Firebase token:", firebaseError);
+      } catch (authContextError) {
+        console.warn("⚠️ SelectDateTime: Could not get token via AuthContext:", authContextError);
+      }
+      
+      // Strategy 2: Try to get Firebase token from auth.currentUser
+      if (!token) {
+        try {
+          const currentUser = auth.currentUser;
+          if (currentUser) {
+            console.log("🔍 SelectDateTime: Getting Firebase token from currentUser...");
+            token = await currentUser.getIdToken(true); // Force refresh to get fresh token
+            tokenSource = 'firebase';
+            console.log("✅ SelectDateTime: Got fresh Firebase token (length:", token.length, ")");
+          } else {
+            console.warn("⚠️ SelectDateTime: auth.currentUser is null");
+          }
+        } catch (firebaseError) {
+          console.warn("⚠️ SelectDateTime: Could not get Firebase token:", firebaseError);
+        }
       }
       
       // Fallback to medichain_token if Firebase token not available
@@ -462,9 +476,28 @@ const SelectDateTime = () => {
       return;
     }
 
+    if (!doctor) {
+      console.error("❌ SelectDateTime: No doctor object available");
+      setError("Doctor information is missing. Please go back and select a doctor again.");
+      return;
+    }
+
     console.log("✅ SelectDateTime: Continuing to booking form");
     console.log("🔍 SelectDateTime: Selected date:", selectedDate);
     console.log("🔍 SelectDateTime: Selected time:", selectedTime);
+    console.log("🔍 SelectDateTime: Doctor object:", doctor);
+    console.log("🔍 SelectDateTime: Doctor firebase_uid:", doctor.firebase_uid);
+    
+    // Store doctor in sessionStorage as backup
+    try {
+      sessionStorage.setItem('selectedDoctor', JSON.stringify(doctor));
+      sessionStorage.setItem('selectedDate', selectedDate);
+      sessionStorage.setItem('selectedTime', selectedTime);
+      sessionStorage.setItem('appointmentType', location.state?.appointmentType || "general-practitioner");
+      console.log("✅ SelectDateTime: Doctor and selections stored in sessionStorage");
+    } catch (e) {
+      console.warn("⚠️ SelectDateTime: Could not store in sessionStorage:", e);
+    }
     
     // Navigate to booking form with selected date and time
     navigate("/book-appointment-form", {
@@ -474,6 +507,7 @@ const SelectDateTime = () => {
         selectedDate: selectedDate,
         selectedTime: selectedTime,
       },
+      replace: false, // Don't replace history so user can go back
     });
   };
 

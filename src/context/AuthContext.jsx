@@ -450,6 +450,38 @@ export const AuthProvider = ({ children }) => {
     setError(null);
   };
 
+  // Helper function to get Firebase token
+  const getFirebaseToken = async () => {
+    try {
+      // Wait for auth state to be ready
+      return new Promise((resolve, reject) => {
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+          unsubscribe(); // Unsubscribe immediately after first callback
+          if (firebaseUser) {
+            try {
+              const token = await firebaseUser.getIdToken(true); // Force refresh
+              resolve(token);
+            } catch (error) {
+              console.error('[Auth] Error getting Firebase token:', error);
+              reject(error);
+            }
+          } else {
+            reject(new Error('No Firebase user found'));
+          }
+        });
+        
+        // Timeout after 2 seconds
+        setTimeout(() => {
+          unsubscribe();
+          reject(new Error('Timeout waiting for Firebase auth state'));
+        }, 2000);
+      });
+    } catch (error) {
+      console.error('[Auth] Error in getFirebaseToken:', error);
+      throw error;
+    }
+  };
+
   // Resend verification email
   const resendVerification = async (email) => {
     try {
@@ -488,7 +520,8 @@ export const AuthProvider = ({ children }) => {
     updateUser,
     checkVerificationStatus,
     clearError,
-    resendVerification
+    resendVerification,
+    getFirebaseToken // Add helper to get Firebase token
   };
 
   return (

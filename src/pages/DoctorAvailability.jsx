@@ -14,14 +14,28 @@ const DoctorAvailability = ({ embedded = false }) => {
       { start_time: "07:00", end_time: "17:00", interval: 30 }
     ]
   });
-  const [isAcceptingAppointments, setIsAcceptingAppointments] = useState(true);
+  const [isAcceptingAppointments, setIsAcceptingAppointments] = useState(null); // Start with null, will be set from API
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
   useEffect(() => {
+    // Fetch availability on mount
     fetchAvailability();
+    
+    // Also listen for storage events (in case toggle was changed in another tab)
+    const handleStorageChange = (e) => {
+      if (e.key === 'availability_updated') {
+        fetchAvailability();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   const fetchAvailability = async () => {
@@ -48,10 +62,29 @@ const DoctorAvailability = ({ embedded = false }) => {
 
       if (response.data.success) {
         const avail = response.data.availability || {};
-        const accepting = response.data.is_accepting_appointments !== undefined 
-          ? response.data.is_accepting_appointments 
-          : true;
+        let accepting = response.data.is_accepting_appointments;
         
+        console.log(`📥 Raw API response for is_accepting_appointments:`, accepting, `(type: ${typeof accepting})`);
+        
+        // CRITICAL: Only default to true if the value is truly missing (undefined/null)
+        // If it's false, we MUST preserve false
+        if (accepting === undefined || accepting === null) {
+          // Value not provided by API - default to true only if truly missing
+          accepting = true;
+          console.log(`⚠️  is_accepting_appointments was undefined/null, defaulting to true`);
+        } else {
+          // Value exists - convert to boolean properly, preserving false
+          if (typeof accepting === 'string') {
+            accepting = accepting.toLowerCase() === 'true' || accepting === '1';
+            console.log(`🔄 Converted string "${response.data.is_accepting_appointments}" to boolean: ${accepting}`);
+          } else {
+            // Use Boolean() conversion which preserves false correctly
+            accepting = Boolean(accepting);
+            console.log(`✅ Using boolean value: ${accepting} (preserving false if it was false)`);
+          }
+        }
+        
+        console.log(`📥 Loaded accepting appointments state: ${accepting} (from API: ${response.data.is_accepting_appointments})`);
         setIsAcceptingAppointments(accepting);
         
         // Handle both old format (array) and new format (object)
@@ -152,6 +185,84 @@ const DoctorAvailability = ({ embedded = false }) => {
       setTimeout(() => setError(null), 5000);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleAcceptingAppointments = async (newValue) => {
+    // Optimistically update UI first
+    const previousValue = isAcceptingAppointments;
+    setIsAcceptingAppointments(newValue);
+    
+    // Save immediately to database
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        setIsAcceptingAppointments(previousValue); // Revert on auth error
+        navigate("/login");
+        return;
+      }
+
+      const token = await currentUser.getIdToken();
+
+      console.log(`🔄 Toggling accepting appointments to: ${newValue}`);
+      const response = await axios.put(
+        "http://localhost:5000/api/appointments/availability",
+        { 
+          availability: availability,
+          is_accepting_appointments: newValue
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.success) {
+        console.log(`✅ Accepting appointments ${newValue ? 'enabled' : 'disabled'} successfully`);
+        console.log(`✅ Response data:`, response.data);
+        setSuccess(`Appointments ${newValue ? 'enabled' : 'disabled'} successfully`);
+        setTimeout(() => setSuccess(null), 3000);
+        
+        // IMPORTANT: Update state from response to ensure consistency
+        const savedValue = response.data.is_accepting_appointments;
+        let finalValue = savedValue;
+        if (savedValue === undefined || savedValue === null) {
+          finalValue = newValue; // Use the value we just saved
+        } else if (typeof savedValue === 'string') {
+          finalValue = savedValue.toLowerCase() === 'true' || savedValue === '1';
+        } else {
+          finalValue = Boolean(savedValue);
+        }
+        
+        console.log(`✅ Setting toggle state to: ${finalValue} (from response: ${savedValue})`);
+        setIsAcceptingAppointments(finalValue);
+        
+        // Trigger storage event to refresh in other tabs/components
+        window.dispatchEvent(new Event('storage'));
+        localStorage.setItem('availability_updated', Date.now().toString());
+        
+        // Don't call fetchAvailability here - we already have the correct state from response
+      } else {
+        console.error("❌ Failed to update accepting appointments:", response.data.error);
+        setError(response.data.error || "Failed to update status");
+        setTimeout(() => setError(null), 3000);
+        // Revert the toggle on error
+        setIsAcceptingAppointments(previousValue);
+      }
+    } catch (err) {
+      console.error("❌ Error updating accepting appointments:", err);
+      console.error("❌ Error details:", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || err.message || "Failed to update status";
+      setError(errorMessage);
+      setTimeout(() => setError(null), 3000);
+      // Revert the toggle on error
+      setIsAcceptingAppointments(previousValue);
     }
   };
 
@@ -363,26 +474,26 @@ const DoctorAvailability = ({ embedded = false }) => {
                               : 'Patients will see you as unavailable'}
                             </span>
                         </div>
-                        <button
-                          onClick={() => setIsAcceptingAppointments(!isAcceptingAppointments)}
-                          style={{
-                            width: '56px',
-                            height: '32px',
-                            borderRadius: '16px',
-                            border: 'none',
-                            cursor: 'pointer',
-                            position: 'relative',
-                            backgroundColor: isAcceptingAppointments ? '#4CAF50' : '#ccc',
-                            transition: 'background-color 0.3s',
-                            padding: '0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: isAcceptingAppointments ? 'flex-end' : 'flex-start',
-                            paddingLeft: isAcceptingAppointments ? '0' : '4px',
-                            paddingRight: isAcceptingAppointments ? '4px' : '0'
-                          }}
-                          aria-label={isAcceptingAppointments ? 'Disable appointments' : 'Enable appointments'}
-                        >
+                <button
+                  onClick={() => handleToggleAcceptingAppointments(!isAcceptingAppointments)}
+                  style={{
+                    width: '56px',
+                    height: '32px',
+                    borderRadius: '16px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    backgroundColor: isAcceptingAppointments ? '#4CAF50' : '#ccc',
+                    transition: 'background-color 0.3s',
+                    padding: '0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: isAcceptingAppointments ? 'flex-end' : 'flex-start',
+                    paddingLeft: isAcceptingAppointments ? '0' : '4px',
+                    paddingRight: isAcceptingAppointments ? '4px' : '0'
+                  }}
+                  aria-label={isAcceptingAppointments ? 'Disable appointments' : 'Enable appointments'}
+                >
                           <span style={{
                             width: '24px',
                             height: '24px',
@@ -536,7 +647,7 @@ const DoctorAvailability = ({ embedded = false }) => {
           )}
 
           {/* Availability Settings Form */}
-          {loading ? (
+          {loading || isAcceptingAppointments === null ? (
             <div className="loading-container">
               <div className="loading-spinner"></div>
               <p>Loading availability...</p>
@@ -570,7 +681,7 @@ const DoctorAvailability = ({ embedded = false }) => {
                     </span>
                 </div>
                 <button
-                  onClick={() => setIsAcceptingAppointments(!isAcceptingAppointments)}
+                  onClick={() => handleToggleAcceptingAppointments(!isAcceptingAppointments)}
                   style={{
                     width: '48px',
                     height: '28px',

@@ -1,0 +1,165 @@
+/* Jitsi Video Conference Styles */
+
+.jitsi-conference-container {
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  background-color: #000;
+  overflow: hidden;
+}
+
+.jitsi-container {
+  width: 100%;
+  height: 100%;
+}
+
+.jitsi-exit-button {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10000;
+  padding: 10px 20px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+  transition: all 0.3s ease;
+}
+
+.jitsi-exit-button:hover {
+  background-color: #c0392b;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(231, 76, 60, 0.4);
+}
+
+.jitsi-exit-button:active {
+  transform: translateY(0);
+}
+
+.jitsi-loading-container {
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.jitsi-loading-content {
+  text-align: center;
+  color: white;
+}
+
+.jitsi-spinner {
+  width: 50px;
+  height: 50px;
+  margin: 0 auto 20px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.jitsi-loading-content p {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.jitsi-error-container {
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.jitsi-error-content {
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  max-width: 500px;
+  margin: 20px;
+}
+
+.jitsi-error-content h2 {
+  color: #e74c3c;
+  margin-bottom: 16px;
+  font-size: 24px;
+}
+
+.jitsi-error-content p {
+  color: #666;
+  margin-bottom: 24px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.jitsi-error-button {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.jitsi-error-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.jitsi-error-button:active {
+  transform: translateY(0);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .jitsi-exit-button {
+    top: 12px;
+    right: 12px;
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+
+  .jitsi-error-content {
+    padding: 30px 20px;
+    margin: 16px;
+  }
+
+  .jitsi-error-content h2 {
+    font-size: 20px;
+  }
+
+  .jitsi-error-content p {
+    font-size: 14px;
+  }
+}
+

@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Header from "./Header";
 import { Calendar, Clock, User, Stethoscope, ArrowLeft, Check, AlertCircle } from "lucide-react";
 import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 import { auth } from "../config/firebase";
 import "../assets/styles/ModernDashboard.css";
 import "../assets/styles/BookAppointmentForm.css";
@@ -10,7 +11,23 @@ import "../assets/styles/BookAppointmentForm.css";
 const BookAppointmentForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { doctor } = location.state || {};
+  const { user, isAuthenticated, loading: authLoading, getFirebaseToken } = useAuth();
+  
+  // Try to get doctor from location.state first, then from sessionStorage as fallback
+  let doctorFromState = location.state?.doctor;
+  let doctorFromStorage = null;
+  
+  try {
+    const storedDoctor = sessionStorage.getItem('selectedDoctor');
+    if (storedDoctor) {
+      doctorFromStorage = JSON.parse(storedDoctor);
+      console.log("✅ BookAppointmentForm: Found doctor in sessionStorage");
+    }
+  } catch (e) {
+    console.warn("⚠️ BookAppointmentForm: Could not read doctor from sessionStorage:", e);
+  }
+  
+  const doctor = doctorFromState || doctorFromStorage;
 
   const [availability, setAvailability] = useState([]);
   const [selectedDate, setSelectedDate] = useState("");
@@ -27,23 +44,55 @@ const BookAppointmentForm = () => {
     console.log("🔍 BookAppointmentForm: doctor =", doctor);
     console.log("🔍 BookAppointmentForm: selectedDate =", location.state?.selectedDate);
     console.log("🔍 BookAppointmentForm: selectedTime =", location.state?.selectedTime);
+    console.log("🔍 BookAppointmentForm: authLoading =", authLoading);
+    console.log("🔍 BookAppointmentForm: isAuthenticated =", isAuthenticated);
+    console.log("🔍 BookAppointmentForm: user =", user);
+    
+    // Wait for AuthContext to finish loading
+    if (authLoading) {
+      console.log("⏳ BookAppointmentForm: AuthContext still loading, waiting...");
+      setLoading(true);
+      return;
+    }
+    
+    // Check authentication after loading is complete
+    if (!isAuthenticated || !user) {
+      console.log("❌ BookAppointmentForm: Not authenticated, redirecting to login");
+      setError("Please log in to continue");
+      setTimeout(() => {
+        navigate("/login", { replace: true });
+      }, 1000);
+      return;
+    }
     
     if (!doctor) {
       console.log("❌ BookAppointmentForm: No doctor found, redirecting to /select-gp");
-      navigate("/select-gp");
+      setError("No doctor selected. Redirecting to doctor selection...");
+      setTimeout(() => {
+        navigate("/select-gp");
+      }, 2000);
       return;
     }
     
     // If date and time are passed from SelectDateTime, use them
-    if (location.state?.selectedDate && location.state?.selectedTime) {
-      console.log("✅ BookAppointmentForm: Date and time pre-selected");
-      setSelectedDate(location.state.selectedDate);
-      setSelectedTime(location.state.selectedTime);
+    const dateFromState = location.state?.selectedDate;
+    const timeFromState = location.state?.selectedTime;
+    const dateFromStorage = sessionStorage.getItem('selectedDate');
+    const timeFromStorage = sessionStorage.getItem('selectedTime');
+    
+    if (dateFromState && timeFromState) {
+      console.log("✅ BookAppointmentForm: Date and time pre-selected from state");
+      setSelectedDate(dateFromState);
+      setSelectedTime(timeFromState);
+    } else if (dateFromStorage && timeFromStorage) {
+      console.log("✅ BookAppointmentForm: Date and time pre-selected from sessionStorage");
+      setSelectedDate(dateFromStorage);
+      setSelectedTime(timeFromStorage);
     }
     
     console.log("✅ BookAppointmentForm: Doctor found, fetching availability");
     fetchDoctorAvailability();
-  }, [doctor]);
+  }, [doctor, navigate, location, isAuthenticated, user, authLoading]);
 
   // Get current time in Asia/Manila timezone
   const getManilaNow = () => {
@@ -84,13 +133,50 @@ const BookAppointmentForm = () => {
       setLoading(true);
       setError(null);
 
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        navigate("/login");
+      // Check authentication
+      if (!isAuthenticated || !user) {
+        console.log("❌ BookAppointmentForm: Not authenticated, redirecting to login");
+        navigate("/login", { replace: true });
         return;
       }
 
-      const token = await currentUser.getIdToken();
+      // Get Firebase token (required for @firebase_auth_required endpoints)
+      let token = null;
+      let tokenSource = 'unknown';
+      
+      // Try to get Firebase token first
+      try {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          console.log("🔍 BookAppointmentForm: Getting Firebase token from currentUser...");
+          token = await currentUser.getIdToken(true); // Force refresh to get fresh token
+          tokenSource = 'firebase';
+          console.log("✅ BookAppointmentForm: Got fresh Firebase token (length:", token.length, ")");
+        } else {
+          console.warn("⚠️ BookAppointmentForm: auth.currentUser is null");
+        }
+      } catch (firebaseError) {
+        console.warn("⚠️ BookAppointmentForm: Could not get Firebase token:", firebaseError);
+      }
+      
+      // Fallback to medichain_token if Firebase token not available
+      if (!token) {
+        token = localStorage.getItem('medichain_token');
+        tokenSource = 'medichain_token';
+        if (token) {
+          console.log("✅ BookAppointmentForm: Using medichain_token as fallback (length:", token.length, ")");
+        }
+      }
+      
+      if (!token) {
+        console.log("❌ BookAppointmentForm: No token found, redirecting to login");
+        setError("Session expired. Please log in again.");
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      console.log("✅ BookAppointmentForm: Token obtained from", tokenSource);
+      console.log("✅ BookAppointmentForm: Fetching availability for doctor:", doctor.firebase_uid);
 
       const response = await axios.get(
         `http://localhost:5000/api/appointments/availability/${doctor.firebase_uid}`,
@@ -154,17 +240,98 @@ const BookAppointmentForm = () => {
       return;
     }
 
+    if (!doctor) {
+      setError("Doctor information is missing. Please go back and select a doctor again.");
+      return;
+    }
+
     try {
       setBooking(true);
       setError(null);
 
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        navigate("/login");
+      // Check authentication
+      if (!isAuthenticated || !user) {
+        console.log("❌ BookAppointmentForm: Not authenticated, redirecting to login");
+        navigate("/login", { replace: true });
         return;
       }
 
-      const token = await currentUser.getIdToken();
+      // Get authentication token (@auth_required accepts both Firebase and JWT tokens)
+      let token = null;
+      let tokenSource = 'unknown';
+      
+      // Strategy 1: Try to get Firebase token using AuthContext helper
+      try {
+        if (getFirebaseToken) {
+          console.log("🔍 BookAppointmentForm: Attempting to get Firebase token via AuthContext...");
+          token = await getFirebaseToken();
+          tokenSource = 'firebase_via_authcontext';
+          console.log("✅ BookAppointmentForm: Got Firebase token via AuthContext (length:", token.length, ")");
+        }
+      } catch (authContextError) {
+        console.warn("⚠️ BookAppointmentForm: Could not get token via AuthContext:", authContextError);
+      }
+      
+      // Strategy 2: Try to get Firebase token from auth.currentUser
+      if (!token) {
+        try {
+          // Wait a bit for auth state to sync if currentUser is null
+          let currentUser = auth.currentUser;
+          if (!currentUser && user?.uid) {
+            console.log("🔍 BookAppointmentForm: currentUser is null, waiting for auth state sync...");
+            await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+            currentUser = auth.currentUser;
+          }
+          
+          if (currentUser) {
+            console.log("🔍 BookAppointmentForm: Getting Firebase token from currentUser...");
+            token = await currentUser.getIdToken(true); // Force refresh to get fresh token
+            tokenSource = 'firebase';
+            console.log("✅ BookAppointmentForm: Got fresh Firebase token (length:", token.length, ")");
+          } else {
+            console.warn("⚠️ BookAppointmentForm: auth.currentUser is null after wait");
+          }
+        } catch (firebaseError) {
+          console.warn("⚠️ BookAppointmentForm: Could not get Firebase token:", firebaseError);
+        }
+      }
+      
+      // Strategy 3: Check stored Firebase token
+      if (!token) {
+        const storedFirebaseToken = sessionStorage.getItem('firebase_id_token') || 
+                                    localStorage.getItem('firebase_id_token');
+        if (storedFirebaseToken) {
+          console.log("✅ BookAppointmentForm: Using stored Firebase token");
+          token = storedFirebaseToken;
+          tokenSource = 'stored_firebase';
+        }
+      }
+      
+      // Fallback to medichain_token if Firebase token not available
+      // @auth_required decorator accepts both Firebase tokens and JWT tokens (medichain_token)
+      if (!token) {
+        token = localStorage.getItem('medichain_token');
+        tokenSource = 'medichain_token';
+        if (token) {
+          console.log("✅ BookAppointmentForm: Using medichain_token (length:", token.length, ")");
+          console.log("ℹ️ BookAppointmentForm: @auth_required decorator accepts JWT tokens");
+        }
+      }
+      
+      if (!token) {
+        console.log("❌ BookAppointmentForm: No token found, redirecting to login");
+        setError("Session expired. Please log in again.");
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      console.log("✅ BookAppointmentForm: Token obtained from", tokenSource);
+      console.log("✅ BookAppointmentForm: Booking appointment with:", {
+        doctor_firebase_uid: doctor.firebase_uid,
+        appointment_date: selectedDate,
+        appointment_time: selectedTime,
+        appointment_type: location.state?.appointmentType || "general-practitioner",
+      });
 
       const response = await axios.post(
         "http://localhost:5000/api/appointments",
@@ -185,6 +352,11 @@ const BookAppointmentForm = () => {
 
       if (response.data.success) {
         setSuccess(true);
+        // Clear sessionStorage after successful booking
+        sessionStorage.removeItem('selectedDoctor');
+        sessionStorage.removeItem('selectedDate');
+        sessionStorage.removeItem('selectedTime');
+        sessionStorage.removeItem('appointmentType');
         setTimeout(() => {
           navigate("/dashboard");
         }, 2000);
@@ -192,8 +364,21 @@ const BookAppointmentForm = () => {
         setError(response.data.error || "Failed to book appointment");
       }
     } catch (err) {
-      console.error("Error booking appointment:", err);
-      setError(err.response?.data?.error || "Failed to book appointment. Please try again.");
+      console.error("❌ BookAppointmentForm: Error booking appointment:", err);
+      console.error("❌ BookAppointmentForm: Error response:", err.response?.data);
+      console.error("❌ BookAppointmentForm: Error status:", err.response?.status);
+      
+      if (err.response?.status === 401) {
+        const errorMsg = err.response?.data?.error || err.response?.data?.details || "Invalid token. Please log in again.";
+        console.error("❌ BookAppointmentForm: 401 Unauthorized - Token invalid");
+        setError(errorMsg);
+        // Optionally redirect to login after showing error
+        setTimeout(() => {
+          navigate("/login", { replace: true });
+        }, 3000);
+      } else {
+        setError(err.response?.data?.error || "Failed to book appointment. Please try again.");
+      }
     } finally {
       setBooking(false);
     }
@@ -298,55 +483,121 @@ const BookAppointmentForm = () => {
             </div>
           ) : (
             <div className="booking-form-card">
-              <h3 className="form-section-title">
-                <Calendar size={20} />
-                Select Appointment Date & Time
-              </h3>
+              {/* If date and time are pre-selected, show summary view */}
+              {selectedDate && selectedTime ? (
+                <>
+                  <h3 className="form-section-title">
+                    <Check size={20} />
+                    Appointment Details
+                  </h3>
 
-              {/* Date Selection */}
-              <div className="form-group">
-                <label className="form-label">Select Date</label>
-                <div className="date-options-grid">
-                  {availability.map((slot) => (
+                  {/* Selected Appointment Summary */}
+                  <div className="appointment-summary">
+                    <h4>Selected Appointment</h4>
+                    <div className="summary-details">
+                      <div className="summary-item">
+                        <User size={18} />
+                        <span>Dr. {doctor.first_name} {doctor.last_name}</span>
+                      </div>
+                      <div className="summary-item">
+                        <Calendar size={18} />
+                        <span>
+                          {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                      <div className="summary-item">
+                        <Clock size={18} />
+                        <span>{formatTimeTo12Hour(selectedTime)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Allow changing date/time if needed */}
+                  <div className="form-group" style={{ marginTop: '24px' }}>
                     <button
-                      key={slot.date}
-                      className={`date-option ${selectedDate === slot.date ? 'selected' : ''}`}
+                      className="change-selection-button"
                       onClick={() => {
-                        setSelectedDate(slot.date);
-                        setSelectedTime(""); // Reset time when date changes
+                        // Navigate back to SelectDateTime page
+                        navigate("/select-date-time", {
+                          state: {
+                            doctor: doctor,
+                            appointmentType: location.state?.appointmentType || "general-practitioner",
+                          },
+                        });
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        background: 'transparent',
+                        border: '1px solid #2196F3',
+                        color: '#2196F3',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        fontWeight: '500'
                       }}
                     >
-                      <Calendar size={16} />
-                      <span className="date-text">
-                        {new Date(slot.date + 'T00:00:00').toLocaleDateString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                      </span>
-                      <span className="slots-count">{slot.time_slots.length} slots</span>
+                      Change Date & Time
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Time Selection */}
-              {selectedDate && (
-                <div className="form-group">
-                  <label className="form-label">Select Time</label>
-                  <div className="time-options-grid">
-                    {getAvailableTimesForDate().map((time) => (
-                      <button
-                        key={time}
-                        className={`time-option ${selectedTime === time ? 'selected' : ''}`}
-                        onClick={() => setSelectedTime(time)}
-                      >
-                        <Clock size={16} />
-                        {formatTimeTo12Hour(time)}
-                      </button>
-                    ))}
                   </div>
-                </div>
+                </>
+              ) : (
+                <>
+                  <h3 className="form-section-title">
+                    <Calendar size={20} />
+                    Select Appointment Date & Time
+                  </h3>
+
+                  {/* Date Selection */}
+                  <div className="form-group">
+                    <label className="form-label">Select Date</label>
+                    <div className="date-options-grid">
+                      {availability.map((slot) => (
+                        <button
+                          key={slot.date}
+                          className={`date-option ${selectedDate === slot.date ? 'selected' : ''}`}
+                          onClick={() => {
+                            setSelectedDate(slot.date);
+                            setSelectedTime(""); // Reset time when date changes
+                          }}
+                        >
+                          <Calendar size={16} />
+                          <span className="date-text">
+                            {new Date(slot.date + 'T00:00:00').toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                          <span className="slots-count">{slot.time_slots.length} slots</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Time Selection */}
+                  {selectedDate && (
+                    <div className="form-group">
+                      <label className="form-label">Select Time</label>
+                      <div className="time-options-grid">
+                        {getAvailableTimesForDate().map((time) => (
+                          <button
+                            key={time}
+                            className={`time-option ${selectedTime === time ? 'selected' : ''}`}
+                            onClick={() => setSelectedTime(time)}
+                          >
+                            <Clock size={16} />
+                            {formatTimeTo12Hour(time)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Notes */}
@@ -361,8 +612,8 @@ const BookAppointmentForm = () => {
                 />
               </div>
 
-              {/* Selected Appointment Summary */}
-              {selectedDate && selectedTime && (
+              {/* Appointment Summary - Only show if date/time selected but not pre-selected (i.e., user selected in this form) */}
+              {selectedDate && selectedTime && !location.state?.selectedDate && !location.state?.selectedTime && (
                 <div className="appointment-summary">
                   <h4>Appointment Summary</h4>
                   <div className="summary-details">

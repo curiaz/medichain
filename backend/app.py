@@ -567,7 +567,13 @@ app = Flask(__name__)
 # Register authentication blueprint
 from auth.auth_routes import auth_bp
 from doctor_verification import doctor_verification_bp
-from notifications.notification_routes import notifications_bp
+try:
+    from notifications.notification_routes_supabase import notifications_bp
+    print("✅ Using Supabase notification routes")
+except ImportError:
+    # Fallback to SQLite version if Supabase version not available
+    from notifications.notification_routes import notifications_bp
+    print("⚠️  Using SQLite notification routes (fallback)")
 from appointment_routes import appointments_bp
 
 app.register_blueprint(auth_bp)
