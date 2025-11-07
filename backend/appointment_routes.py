@@ -425,6 +425,12 @@ def get_appointments():
                             last_name = (p.get("last_name") or "").strip() if p.get("last_name") else ""
                             email = (p.get("email") or "").strip() if p.get("email") else ""
                             
+                            # Check if all fields are empty - this indicates incomplete profile
+                            if not first_name and not last_name and not email:
+                                print(f"⚠️  Patient profile {p['firebase_uid']} exists but ALL fields are empty - will try Firebase Auth fallback")
+                                # Don't add to cache yet - we'll try Firebase Auth fallback during enrichment
+                                continue
+                            
                             uid_to_patient[p["firebase_uid"]] = {
                                 "first_name": first_name,
                                 "last_name": last_name,
@@ -442,6 +448,7 @@ def get_appointments():
                         for appt in response.data:
                             pfuid = appt.get("patient_firebase_uid")
                             if pfuid:
+                                # Check if patient is in cache (has valid data) or needs Firebase Auth fallback
                                 if pfuid in uid_to_patient:
                                     patient_info = uid_to_patient[pfuid]
                                     first_name = patient_info.get("first_name") or ""
@@ -449,164 +456,78 @@ def get_appointments():
                                     email = patient_info.get("email") or ""
                                     full_name = f"{first_name} {last_name}".strip()
                                     
-                                    # If profile exists but has no name/email, try Firebase Auth fallback
-                                    if not full_name and not email:
-                                        print(f"⚠️  WARNING: Patient profile exists but has no name or email for UID: {pfuid}")
-                                        print(f"   Attempting Firebase Auth fallback to fetch missing data...")
-                                        # Try Firebase Auth fallback to get the missing data
-                                        try:
-                                            from auth.firebase_auth import firebase_auth_service
-                                            firebase_result = firebase_auth_service.get_user_by_uid(pfuid)
-                                            if firebase_result.get("success") and firebase_result.get("user"):
-                                                firebase_user = firebase_result["user"]
-                                                firebase_email = firebase_user.get("email", "") or ""
-                                                firebase_display_name = firebase_user.get("display_name", "") or ""
-                                                
-                                                # Update patient info with Firebase data
-                                                if firebase_display_name:
-                                                    name_parts = firebase_display_name.split(" ", 1)
-                                                    first_name = name_parts[0]
-                                                    last_name = name_parts[1] if len(name_parts) > 1 else ""
-                                                elif firebase_email:
-                                                    first_name = firebase_email.split("@")[0]
-                                                    last_name = ""
-                                                
-                                                if firebase_email:
-                                                    email = firebase_email
-                                                
-                                                # Update the patient info
-                                                patient_info = {
-                                                    "first_name": first_name or "",
-                                                    "last_name": last_name or "",
-                                                    "email": email or ""
-                                                }
-                                                uid_to_patient[pfuid] = patient_info
-                                                full_name = f"{first_name} {last_name}".strip()
-                                                print(f"✅ Fetched patient data from Firebase Auth: Name='{full_name}' Email='{email}'")
-                                                
-                                                # Try to update the database profile
-                                                try:
-                                                    update_data = {
-                                                        "first_name": first_name or "",
-                                                        "last_name": last_name or "",
-                                                        "email": email or ""
-                                                    }
-                                                    supabase.service_client.table("user_profiles").update(update_data).eq("firebase_uid", pfuid).execute()
-                                                    print(f"✅ Updated patient profile in database with Firebase Auth data")
-                                                except Exception as update_error:
-                                                    print(f"⚠️  Could not update patient profile: {update_error}")
-                                            else:
-                                                error_msg = firebase_result.get("error", "Unknown error") if firebase_result else "No response"
-                                                print(f"❌ Firebase Auth lookup failed: {error_msg}")
-                                        except Exception as firebase_fallback_error:
-                                            print(f"❌ Error in Firebase Auth fallback: {firebase_fallback_error}")
-                                    
                                     appt["patient"] = patient_info
                                     if full_name or email:
                                         print(f"✅ Enriched appointment {appt.get('id')} with patient: Name='{full_name}' Email='{email}'")
+                                    else:
+                                        print(f"⚠️  Appointment {appt.get('id')}: Patient in cache but has no name/email - will try Firebase Auth")
+                                        # Fall through to Firebase Auth fallback below
                                 else:
-                                    print(f"⚠️  Appointment {appt.get('id')}: Patient UID {pfuid} NOT FOUND in batch lookup!")
-                                    print(f"   Searched for UIDs: {patient_uids}")
-                                    print(f"   Found profiles for UIDs: {list(uid_to_patient.keys())}")
-                                    # Try to fetch this specific patient profile directly as fallback
+                                    # Patient not in cache - either doesn't exist or was skipped due to empty fields
+                                    print(f"⚠️  Appointment {appt.get('id')}: Patient UID {pfuid} not in cache (missing or empty profile)")
+                                
+                                # If patient info is missing or empty, try Firebase Auth fallback
+                                if pfuid not in uid_to_patient or (not uid_to_patient.get(pfuid, {}).get("first_name") and not uid_to_patient.get(pfuid, {}).get("email")):
+                                    print(f"🔄 Attempting Firebase Auth fallback for patient UID: {pfuid}")
                                     try:
-                                        direct_profile = (
-                                            supabase.service_client
-                                            .table("user_profiles")
-                                            .select("firebase_uid, first_name, last_name, email")
-                                            .eq("firebase_uid", pfuid)
-                                            .execute()
-                                        )
-                                        if direct_profile.data and len(direct_profile.data) > 0:
-                                            p = direct_profile.data[0]
-                                            first_name = (p.get("first_name") or "").strip() if p.get("first_name") else ""
-                                            last_name = (p.get("last_name") or "").strip() if p.get("last_name") else ""
-                                            email = (p.get("email") or "").strip() if p.get("email") else ""
-                                            appt["patient"] = {
-                                                "first_name": first_name,
-                                                "last_name": last_name,
-                                                "email": email
+                                        from auth.firebase_auth import firebase_auth_service
+                                        firebase_result = firebase_auth_service.get_user_by_uid(pfuid)
+                                        if firebase_result.get("success") and firebase_result.get("user"):
+                                            firebase_user = firebase_result["user"]
+                                            firebase_email = firebase_user.get("email", "") or ""
+                                            firebase_display_name = firebase_user.get("display_name", "") or ""
+                                            
+                                            # Extract name from Firebase
+                                            if firebase_display_name:
+                                                name_parts = firebase_display_name.split(" ", 1)
+                                                first_name = name_parts[0]
+                                                last_name = name_parts[1] if len(name_parts) > 1 else ""
+                                            elif firebase_email:
+                                                first_name = firebase_email.split("@")[0]
+                                                last_name = ""
+                                            else:
+                                                first_name = ""
+                                                last_name = ""
+                                            
+                                            # Create patient info from Firebase data
+                                            patient_info = {
+                                                "first_name": first_name or "",
+                                                "last_name": last_name or "",
+                                                "email": firebase_email or ""
                                             }
+                                            
+                                            # Update cache
+                                            uid_to_patient[pfuid] = patient_info
+                                            appt["patient"] = patient_info
+                                            
                                             full_name = f"{first_name} {last_name}".strip()
-                                            print(f"✅ Found patient via direct lookup: Name='{full_name}' Email='{email}'")
-                                            # Add to uid_to_patient cache for future use
-                                            uid_to_patient[pfuid] = appt["patient"]
-                                        else:
-                                            print(f"❌ Direct lookup failed - patient profile does not exist for UID: {pfuid}")
-                                            # Try to fetch from Firebase Auth as last resort
+                                            print(f"✅ Fetched patient data from Firebase Auth: Name='{full_name}' Email='{firebase_email}'")
+                                            
+                                            # Update database profile for future requests
                                             try:
-                                                from auth.firebase_auth import firebase_auth_service
-                                                firebase_result = firebase_auth_service.get_user_by_uid(pfuid)
-                                                if firebase_result.get("success") and firebase_result.get("user"):
-                                                    firebase_user = firebase_result["user"]
-                                                    email = firebase_user.get("email", "") or ""
-                                                    display_name = firebase_user.get("display_name", "") or ""
-                                                    
-                                                    # Split display name if available
-                                                    if display_name:
-                                                        name_parts = display_name.split(" ", 1)
-                                                        first_name = name_parts[0]
-                                                        last_name = name_parts[1] if len(name_parts) > 1 else ""
-                                                    else:
-                                                        first_name = ""
-                                                        last_name = ""
-                                                        # Use email username as fallback
-                                                        if email:
-                                                            first_name = email.split("@")[0]
-                                                    
-                                                    appt["patient"] = {
-                                                        "first_name": first_name or "",
-                                                        "last_name": last_name or "",
-                                                        "email": email or ""
-                                                    }
-                                                    full_name = f"{first_name} {last_name}".strip()
-                                                    print(f"✅ Found patient via Firebase Auth: Name='{full_name}' Email='{email}'")
-                                                    
-                                                    # Try to create/update profile in database for future use
-                                                    try:
-                                                        profile_data = {
-                                                            "firebase_uid": pfuid,
-                                                            "email": email,
-                                                            "first_name": first_name or "",
-                                                            "last_name": last_name or "",
-                                                            "role": "patient"  # Assume patient if booking appointments
-                                                        }
-                                                        # Try to insert or update if it already exists
-                                                        # First check if profile exists
-                                                        existing = supabase.service_client.table("user_profiles").select("id").eq("firebase_uid", pfuid).execute()
-                                                        if existing.data:
-                                                            # Update existing profile
-                                                            supabase.service_client.table("user_profiles").update(profile_data).eq("firebase_uid", pfuid).execute()
-                                                            print(f"✅ Updated existing patient profile for UID: {pfuid}")
-                                                        else:
-                                                            # Insert new profile
-                                                            supabase.service_client.table("user_profiles").insert(profile_data).execute()
-                                                            print(f"✅ Created new patient profile for UID: {pfuid}")
-                                                    except Exception as upsert_error:
-                                                        print(f"⚠️  Could not create/update patient profile: {upsert_error}")
-                                                        import traceback
-                                                        traceback.print_exc()
-                                                else:
-                                                    error_msg = firebase_result.get("error", "Unknown error") if firebase_result else "No response"
-                                                    print(f"❌ Firebase Auth lookup failed for UID {pfuid}: {error_msg}")
-                                                    appt["patient"] = {
-                                                        "first_name": "",
-                                                        "last_name": "",
-                                                        "email": ""
-                                                    }
-                                            except Exception as firebase_error:
-                                                print(f"❌ Error fetching from Firebase Auth: {firebase_error}")
-                                                import traceback
-                                                traceback.print_exc()
-                                                appt["patient"] = {
-                                                    "first_name": "",
-                                                    "last_name": "",
-                                                    "email": ""
+                                                update_data = {
+                                                    "first_name": first_name or "",
+                                                    "last_name": last_name or "",
+                                                    "email": firebase_email or ""
                                                 }
-                                    except Exception as direct_error:
-                                        print(f"❌ Error in direct patient lookup: {direct_error}")
+                                                supabase.service_client.table("user_profiles").update(update_data).eq("firebase_uid", pfuid).execute()
+                                                print(f"✅ Updated patient profile in database with Firebase Auth data")
+                                            except Exception as update_error:
+                                                print(f"⚠️  Could not update patient profile: {update_error}")
+                                        else:
+                                            error_msg = firebase_result.get("error", "Unknown error") if firebase_result else "No response"
+                                            print(f"❌ Firebase Auth lookup failed for {pfuid}: {error_msg}")
+                                            # Set empty patient object as last resort
+                                            appt["patient"] = {
+                                                "first_name": "",
+                                                "last_name": "",
+                                                "email": ""
+                                            }
+                                    except Exception as firebase_fallback_error:
+                                        print(f"❌ Error in Firebase Auth fallback: {firebase_fallback_error}")
                                         import traceback
                                         traceback.print_exc()
+                                        # Set empty patient object as last resort
                                         appt["patient"] = {
                                             "first_name": "",
                                             "last_name": "",
