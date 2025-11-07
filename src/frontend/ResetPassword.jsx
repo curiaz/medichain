@@ -510,7 +510,7 @@ const ResetPassword = () => {
           <div className="info-section">
             <div className="info-content">
               <div className="info-icon">
-                <Plus size={48} />
+                <Lock size={48} />
               </div>
               <h3>Secure Password Recovery</h3>
               <p>
