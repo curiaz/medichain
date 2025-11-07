@@ -27,14 +27,16 @@ jest.mock('../pages/Header', () => {
   };
 });
 
+const mockUseAuth = jest.fn(() => ({
+  user: { role: 'doctor', email: 'doctor@test.com' },
+  isAuthenticated: true,
+  loading: false,
+  getFirebaseToken: jest.fn(() => Promise.resolve('mock-token')),
+}));
+
 jest.mock('../context/AuthContext', () => ({
   ...jest.requireActual('../context/AuthContext'),
-  useAuth: jest.fn(() => ({
-    user: { role: 'doctor', email: 'doctor@test.com' },
-    isAuthenticated: true,
-    loading: false,
-    getFirebaseToken: jest.fn(() => Promise.resolve('mock-token')),
-  })),
+  useAuth: () => mockUseAuth(),
   AuthProvider: ({ children }) => children,
 }));
 
@@ -87,13 +89,24 @@ describe('DoctorSchedule - Video Call Integration', () => {
     useNavigate.mockReturnValue(mockNavigate);
     mockGetIdToken.mockResolvedValue('mock-token');
 
-    // Mock axios get
-    mockAxios.get.mockResolvedValue({
+    // Reset useAuth mock
+    mockUseAuth.mockReturnValue({
+      user: { role: 'doctor', email: 'doctor@test.com' },
+      isAuthenticated: true,
+      loading: false,
+      getFirebaseToken: jest.fn(() => Promise.resolve('mock-token')),
+    });
+
+    // Mock axios get with default successful response
+    mockAxios.get = jest.fn().mockResolvedValue({
       data: {
         success: true,
         appointments: mockAppointments,
       },
     });
+
+    // Mock axios.create if used
+    mockAxios.create = jest.fn(() => mockAxios);
   });
 
   describe('Video Call Button Rendering', () => {
@@ -104,9 +117,14 @@ describe('DoctorSchedule - Video Call Integration', () => {
         </TestWrapper>
       );
 
+      // Wait for loading to complete and appointments to render
+      await waitFor(() => {
+        expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
+      }, { timeout: 3000 });
+
       await waitFor(() => {
         expect(screen.getByText('Join Video Consultation')).toBeInTheDocument();
-      });
+      }, { timeout: 3000 });
     });
 
     it('does not render video button when meeting URL is null', async () => {

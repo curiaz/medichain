@@ -20,14 +20,16 @@ jest.mock('../pages/Header', () => {
   };
 });
 
+const mockUseAuth = jest.fn(() => ({
+  user: { role: 'patient', email: 'patient@test.com' },
+  isAuthenticated: true,
+  loading: false,
+  getFirebaseToken: jest.fn(() => Promise.resolve('mock-token')),
+}));
+
 jest.mock('../context/AuthContext', () => ({
   ...jest.requireActual('../context/AuthContext'),
-  useAuth: jest.fn(() => ({
-    user: { role: 'patient', email: 'patient@test.com' },
-    isAuthenticated: true,
-    loading: false,
-    getFirebaseToken: jest.fn(() => Promise.resolve('mock-token')),
-  })),
+  useAuth: () => mockUseAuth(),
   AuthProvider: ({ children }) => children,
 }));
 
@@ -64,6 +66,14 @@ describe('PatientAppointments - Video Call Integration', () => {
     jest.clearAllMocks();
     useNavigate.mockReturnValue(mockNavigate);
     
+    // Reset useAuth mock
+    mockUseAuth.mockReturnValue({
+      user: { role: 'patient', email: 'patient@test.com' },
+      isAuthenticated: true,
+      loading: false,
+      getFirebaseToken: jest.fn(() => Promise.resolve('mock-token')),
+    });
+    
     // Mock localStorage
     const localStorageMock = {
       getItem: jest.fn(() => 'mock-token'),
@@ -76,12 +86,15 @@ describe('PatientAppointments - Video Call Integration', () => {
     });
 
     // Mock axios get
-    mockAxios.get.mockResolvedValue({
+    mockAxios.get = jest.fn().mockResolvedValue({
       data: {
         success: true,
         appointments: mockAppointments,
       },
     });
+
+    // Mock axios.create if used
+    mockAxios.create = jest.fn(() => mockAxios);
   });
 
   describe('Video Call Button Rendering', () => {
