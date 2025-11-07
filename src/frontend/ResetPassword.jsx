@@ -2,9 +2,9 @@ import { useState } from "react"
 import "./ResetPassword.css"
 import { useNavigate } from "react-router-dom"
 import { Eye, EyeOff, Lock, Mail, Plus, ChevronRight, Key } from "lucide-react"
-import MedichainLogo from "../components/MedichainLogo"
 import LoadingSpinner from "../components/LoadingSpinner"
 import { showToast } from "../components/CustomToast"
+import medichainLogo from "../assets/medichain_logo.png"
 import axios from 'axios'
 
 const API_URL = 'http://localhost:5000/api'
@@ -220,9 +220,9 @@ const ResetPassword = () => {
 
       {/* Header */}
       <div className="header">
-        <div className="logo-container" onClick={() => navigate('/')}>
+        <div className="logo-container" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
           <div className="logo-icon">
-            <MedichainLogo size={50} usePng={true} />
+            <img src={medichainLogo} alt="MediChain Logo" width={40} height={40} />
           </div>
           <h1>MEDICHAIN</h1>
         </div>
