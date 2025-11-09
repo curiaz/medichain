@@ -263,14 +263,14 @@ const DoctorSchedule = () => {
                             <span>{patientName}</span>
                             </div>
                           {(appt.meeting_url || appt.meeting_link) && (
-                              <div className="time-slot" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <div className="time-slot video-consultation">
                                 <Video size={16} />
                               <button
                                 onClick={() => handleJoinVideoCall(appt.meeting_url || appt.meeting_link)}
                                 style={{ 
                                   background: 'none', 
                                   border: 'none', 
-                                  color: '#3b82f6', 
+                                  color: '#1976D2', 
                                   textDecoration: 'none', 
                                   fontWeight: '500',
                                   cursor: 'pointer',

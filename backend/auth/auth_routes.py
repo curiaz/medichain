@@ -198,9 +198,34 @@ def register():
                     print(f"[DEBUG] ✅ Firebase user verified: {email} (UID: {uid})")
                     
                     # Check if user already exists by email OR firebase_uid
-                    existing = supabase.client.table("user_profiles").select("*").or_(f"firebase_uid.eq.{uid},email.eq.{email}").execute()
+                    # Query separately since Supabase Python client doesn't support .or_() directly
+                    existing_by_uid = None
+                    existing_by_email = None
                     
-                    if existing.data:
+                    try:
+                        # Check by firebase_uid first
+                        existing_by_uid = supabase.service_client.table("user_profiles").select("*").eq("firebase_uid", uid).execute() if supabase.service_client else supabase.client.table("user_profiles").select("*").eq("firebase_uid", uid).execute()
+                    except Exception as uid_check_error:
+                        print(f"[DEBUG] ⚠️  Error checking by UID: {uid_check_error}")
+                    
+                    try:
+                        # Check by email
+                        existing_by_email = supabase.service_client.table("user_profiles").select("*").eq("email", email).execute() if supabase.service_client else supabase.client.table("user_profiles").select("*").eq("email", email).execute()
+                    except Exception as email_check_error:
+                        print(f"[DEBUG] ⚠️  Error checking by email: {email_check_error}")
+                    
+                    # Combine results - user exists if found by either UID or email
+                    existing = None
+                    if existing_by_uid and existing_by_uid.data and len(existing_by_uid.data) > 0:
+                        existing = existing_by_uid
+                        print(f"[DEBUG] ✅ User found by UID: {uid}")
+                    elif existing_by_email and existing_by_email.data and len(existing_by_email.data) > 0:
+                        existing = existing_by_email
+                        print(f"[DEBUG] ✅ User found by email: {email}")
+                    else:
+                        print(f"[DEBUG] ℹ️  No existing user found for UID: {uid} or email: {email}")
+                    
+                    if existing and existing.data and len(existing.data) > 0:
                         print("[DEBUG] User already exists, returning existing profile")
                         user = existing.data[0]
                         full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
@@ -248,8 +273,22 @@ def register():
                     
                     try:
                         print(f"[DEBUG] Inserting user data: {user_data}")
-                        response = supabase.client.table("user_profiles").insert(user_data).execute()
-                        print(f"[DEBUG] ✅ Database insert response: {response}")
+                        
+                        # Try using service_client first (bypasses RLS)
+                        if supabase.service_client:
+                            print(f"[DEBUG] Using service_client to bypass RLS")
+                            try:
+                                response = supabase.service_client.table("user_profiles").insert(user_data).execute()
+                                print(f"[DEBUG] ✅ Database insert response (service_client): {response}")
+                            except Exception as service_error:
+                                print(f"[DEBUG] ⚠️  Service client insert failed, trying regular client: {service_error}")
+                                # Fallback to regular client
+                                response = supabase.client.table("user_profiles").insert(user_data).execute()
+                                print(f"[DEBUG] ✅ Database insert response (regular client): {response}")
+                        else:
+                            print(f"[DEBUG] Service client not available, using regular client")
+                            response = supabase.client.table("user_profiles").insert(user_data).execute()
+                            print(f"[DEBUG] ✅ Database insert response: {response}")
                     except Exception as db_error:
                         print(f"[DEBUG] ❌ Database error details: {type(db_error).__name__}: {db_error}")
                         import traceback
@@ -259,6 +298,30 @@ def register():
                         error_str = str(db_error)
                         if "23505" in error_str or "duplicate key" in error_str.lower():
                             if "email" in error_str.lower():
+                                # User already exists, try to return existing profile
+                                print(f"[DEBUG] User already exists by email, fetching existing profile...")
+                                try:
+                                    existing = supabase.service_client.table("user_profiles").select("*").eq("email", email).execute() if supabase.service_client else supabase.client.table("user_profiles").select("*").eq("email", email).execute()
+                                    if existing.data:
+                                        user = existing.data[0]
+                                        return jsonify({
+                                            "success": True,
+                                            "message": "User already registered",
+                                            "data": {
+                                                "user": {
+                                                    "id": user["id"],
+                                                    "uid": user.get("firebase_uid", uid),
+                                                    "email": user["email"],
+                                                    "first_name": user.get("first_name", ""),
+                                                    "last_name": user.get("last_name", ""),
+                                                    "role": user.get("role", role)
+                                                },
+                                                "token": id_token
+                                            }
+                                        }), 200
+                                except:
+                                    pass
+                                
                                 return jsonify({
                                     "success": False,
                                     "error": "This email is already registered. Please login instead or use a different email."
@@ -270,22 +333,31 @@ def register():
                                 }), 409
                         
                         # Try without password_hash if that's the issue
-                        if "password_hash" in user_data and "column" in error_str.lower():
+                        if "password_hash" in user_data and ("column" in error_str.lower() or "does not exist" in error_str.lower()):
                             print(f"[DEBUG] Retrying without password_hash column...")
-                            del user_data["password_hash"]
+                            retry_data = {k: v for k, v in user_data.items() if k != "password_hash"}
                             try:
-                                response = supabase.client.table("user_profiles").insert(user_data).execute()
+                                if supabase.service_client:
+                                    response = supabase.service_client.table("user_profiles").insert(retry_data).execute()
+                                else:
+                                    response = supabase.client.table("user_profiles").insert(retry_data).execute()
                                 print(f"[DEBUG] ✅ Insert succeeded without password_hash")
                             except Exception as retry_error:
                                 print(f"[DEBUG] ❌ Retry also failed: {retry_error}")
+                                import traceback
+                                traceback.print_exc()
                                 return jsonify({
                                     "success": False,
-                                    "error": f"Database error: {str(retry_error)}"
+                                    "error": f"Failed to create user profile: {str(retry_error)}",
+                                    "details": "Please check database schema and RLS policies"
                                 }), 500
                         else:
+                            # Return detailed error for debugging
                             return jsonify({
                                 "success": False,
-                                "error": f"Failed to create user profile: {str(db_error)}"
+                                "error": f"Failed to create user profile: {str(db_error)}",
+                                "error_type": type(db_error).__name__,
+                                "details": "Check backend logs for more information"
                             }), 500
                     
                     if response.data:
@@ -324,8 +396,14 @@ def register():
             except Exception as firebase_error:
                 print(f"[DEBUG] ❌ Firebase registration error: {firebase_error}")
                 import traceback
-                traceback.print_exc()
-                return jsonify({"success": False, "error": "Firebase registration failed"}), 500
+                error_trace = traceback.format_exc()
+                print(f"[DEBUG] Full traceback:\n{error_trace}")
+                return jsonify({
+                    "success": False, 
+                    "error": f"Firebase registration failed: {str(firebase_error)}",
+                    "error_type": type(firebase_error).__name__,
+                    "details": "Check backend logs for full error details"
+                }), 500
         else:
             # Redirect to signup for non-Firebase registration
             return signup()
@@ -1497,6 +1575,84 @@ def update_profile():
 def sync_firebase_user():
     """Sync Firebase user with Supabase user profile after password reset or login"""
     try:
+        from auth.firebase_auth import firebase_auth_service
+        
+        # Get Firebase token from request
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return jsonify({"error": "Authorization header required"}), 401
+            
+        try:
+            firebase_token = auth_header.split(" ")[1]  # Remove 'Bearer ' prefix
+        except IndexError:
+            return jsonify({"error": "Invalid authorization header format"}), 401
+        
+        # Verify Firebase token
+        verification_result = firebase_auth_service.verify_token(firebase_token)
+        
+        if not verification_result["success"]:
+            return jsonify({"error": "Invalid Firebase token"}), 401
+            
+        user_info = verification_result["user"]
+        email = user_info.get("email")
+        firebase_uid = user_info.get("uid")
+        name = user_info.get("name", "")
+        
+        if not email or not firebase_uid:
+            return jsonify({"error": "Invalid user information"}), 400
+        
+        # Check if user profile exists in Supabase
+        try:
+            profile_response = supabase.client.table("user_profiles").select("*").eq("firebase_uid", firebase_uid).execute()
+            
+            if profile_response.data:
+                # User exists, update profile
+                profile = profile_response.data[0]
+                
+                # Update with latest information
+                update_data = {
+                    "email": email,
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+                
+                if name and not profile.get("full_name"):
+                    update_data["full_name"] = name
+                    
+                supabase.client.table("user_profiles").update(update_data).eq("firebase_uid", firebase_uid).execute()
+                
+                return jsonify({
+                    "success": True,
+                    "message": "User profile synchronized",
+                    "user": profile
+                }), 200
+                
+            else:
+                # User doesn't exist, create new profile
+                new_profile = {
+                    "firebase_uid": firebase_uid,
+                    "email": email,
+                    "full_name": name or email.split("@")[0],
+                    "role": "patient",  # Default role
+                    "created_at": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+                
+                insert_response = supabase.client.table("user_profiles").insert(new_profile).execute()
+                
+                return jsonify({
+                    "success": True,
+                    "message": "User profile created",
+                    "user": insert_response.data[0] if insert_response.data else new_profile
+                }), 201
+                
+        except Exception as db_error:
+            print(f"Database sync error: {db_error}")
+            return jsonify({"error": "Failed to sync user profile"}), 500
+        
+    except Exception as e:
+        print(f"User sync error: {str(e)}")
+        return jsonify({"error": "An error occurred during user synchronization"}), 500
+
         from auth.firebase_auth import firebase_auth_service
         
         # Get Firebase token from request

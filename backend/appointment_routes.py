@@ -3,7 +3,7 @@ Appointments API Routes
 Handles appointment scheduling and management
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, make_response
 from functools import wraps
 from datetime import datetime, timedelta
 try:
@@ -210,6 +210,183 @@ def test_route():
     return jsonify({"success": True, "message": "Appointments API is working"}), 200
 
 
+# Diagnostic route to help debug appointment fetching issues
+# Placed BEFORE the main "" route to avoid route conflicts
+@appointments_bp.route("/my-uid", methods=["GET"])
+@auth_required
+def get_my_uid():
+    """Get the current logged-in user's Firebase UID"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user["uid"]
+        return jsonify({
+            "success": True,
+            "uid": uid,
+            "email": firebase_user.get("email", "N/A"),
+            "message": "This is your current Firebase UID. Use this to update appointments in the database."
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@appointments_bp.route("/diagnostic", methods=["GET", "OPTIONS"])
+def diagnostic():
+    """Diagnostic endpoint to help debug appointment fetching issues"""
+    try:
+        # Handle CORS preflight
+        if request.method == "OPTIONS":
+            response = make_response()
+            response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
+            response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+            response.headers.add("Access-Control-Allow-Methods", "GET,OPTIONS")
+            return response
+        
+        # Check auth but don't fail if missing - try to extract UID manually
+        uid = None
+        auth_header = request.headers.get("Authorization")
+        if auth_header:
+            try:
+                token = auth_header.split(" ")[1] if " " in auth_header else auth_header
+                # Try Firebase token verification
+                try:
+                    from auth.firebase_auth import firebase_auth_service
+                    result = firebase_auth_service.verify_token(token)
+                    if result.get("success"):
+                        uid = result.get("uid")
+                        print(f"🔍 Diagnostic: Extracted UID from token: {uid}")
+                except Exception as firebase_error:
+                    print(f"⚠️  Diagnostic: Could not verify Firebase token: {firebase_error}")
+                    # Try JWT decode as fallback
+                    try:
+                        import jwt
+                        decoded = jwt.decode(token, options={"verify_signature": False})
+                        uid = decoded.get('uid') or decoded.get('sub') or decoded.get('user_id')
+                        if uid:
+                            print(f"🔍 Diagnostic: Extracted UID from JWT: {uid}")
+                    except:
+                        pass
+            except Exception as token_error:
+                print(f"⚠️  Diagnostic: Error parsing token: {token_error}")
+        
+        if not supabase or not supabase.service_client:
+            return jsonify({
+                "success": False,
+                "error": "Supabase service_client not initialized",
+                "check": "Verify SUPABASE_SERVICE_KEY environment variable",
+                "supabase_available": supabase is not None,
+                "service_client_available": supabase.service_client is not None if supabase else False
+            }), 500
+        
+        diagnostic_info = {
+            "user_uid": uid or "Not authenticated (no valid token provided)",
+            "supabase_client_available": supabase.client is not None,
+            "service_client_available": supabase.service_client is not None,
+            "has_auth_header": auth_header is not None,
+        }
+        
+        # Test 1: Check user profile (if UID provided)
+        if uid:
+            try:
+                user_profile = supabase.service_client.table("user_profiles").select("*").eq("firebase_uid", uid).execute()
+                diagnostic_info["user_profile"] = {
+                    "exists": len(user_profile.data) > 0 if user_profile.data else False,
+                    "data": user_profile.data[0] if user_profile.data else None,
+                    "role": user_profile.data[0].get("role") if user_profile.data else None
+                }
+            except Exception as e:
+                diagnostic_info["user_profile"] = {"error": str(e)}
+                import traceback
+                diagnostic_info["user_profile"]["traceback"] = traceback.format_exc()
+        else:
+            diagnostic_info["user_profile"] = {"message": "No UID extracted - provide Authorization header with Bearer token"}
+        
+        # Test 2: Check total appointments in table (always do this - most important test)
+        try:
+            print("🔍 Diagnostic: Querying all appointments from database...")
+            all_appointments = supabase.service_client.table("appointments").select("id, doctor_firebase_uid, patient_firebase_uid, appointment_date, appointment_time, status").execute()
+            print(f"🔍 Diagnostic: Query executed, response: {all_appointments}")
+            
+            diagnostic_info["appointments_table"] = {
+                "total_count": len(all_appointments.data) if all_appointments.data else 0,
+                "sample_data": all_appointments.data[:5] if all_appointments.data else [],
+                "query_successful": True
+            }
+            
+            # Check unique doctor UIDs
+            if all_appointments.data:
+                unique_doctors = set(a.get("doctor_firebase_uid") for a in all_appointments.data if a.get("doctor_firebase_uid"))
+                unique_patients = set(a.get("patient_firebase_uid") for a in all_appointments.data if a.get("patient_firebase_uid"))
+                diagnostic_info["appointments_table"]["unique_doctor_uids"] = list(unique_doctors)
+                diagnostic_info["appointments_table"]["unique_patient_uids"] = list(unique_patients)
+                diagnostic_info["appointments_table"]["unique_doctor_count"] = len(unique_doctors)
+                diagnostic_info["appointments_table"]["unique_patient_count"] = len(unique_patients)
+                
+                if uid:
+                    diagnostic_info["appointments_table"]["user_uid_in_doctors"] = uid in unique_doctors
+                    diagnostic_info["appointments_table"]["user_uid_in_patients"] = uid in unique_patients
+                    diagnostic_info["appointments_table"]["uid_match_found"] = uid in unique_doctors or uid in unique_patients
+                    
+                    if uid not in unique_doctors and uid not in unique_patients:
+                        diagnostic_info["appointments_table"]["mismatch_warning"] = f"Your UID ({uid}) does not match any appointments. Available doctor UIDs: {list(unique_doctors)[:3]}..."
+        except Exception as e:
+            diagnostic_info["appointments_table"] = {
+                "error": str(e),
+                "query_successful": False
+            }
+            import traceback
+            diagnostic_info["appointments_table"]["traceback"] = traceback.format_exc()
+            print(f"❌ Diagnostic: Error querying appointments: {e}")
+        
+        # Test 3: Try to query appointments for this user as doctor (if UID provided)
+        if uid:
+            try:
+                doctor_appointments = supabase.service_client.table("appointments").select("*").eq("doctor_firebase_uid", uid).execute()
+                diagnostic_info["doctor_appointments_query"] = {
+                    "count": len(doctor_appointments.data) if doctor_appointments.data else 0,
+                    "data": doctor_appointments.data[:3] if doctor_appointments.data else [],
+                    "query_successful": True
+                }
+            except Exception as e:
+                diagnostic_info["doctor_appointments_query"] = {
+                    "error": str(e),
+                    "query_successful": False
+                }
+        
+        # Test 4: Try to query appointments for this user as patient (if UID provided)
+        if uid:
+            try:
+                patient_appointments = supabase.service_client.table("appointments").select("*").eq("patient_firebase_uid", uid).execute()
+                diagnostic_info["patient_appointments_query"] = {
+                    "count": len(patient_appointments.data) if patient_appointments.data else 0,
+                    "data": patient_appointments.data[:3] if patient_appointments.data else [],
+                    "query_successful": True
+                }
+            except Exception as e:
+                diagnostic_info["patient_appointments_query"] = {
+                    "error": str(e),
+                    "query_successful": False
+                }
+        
+        return jsonify({
+            "success": True,
+            "diagnostic": diagnostic_info,
+            "message": "Diagnostic information retrieved successfully"
+        }), 200
+        
+    except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"❌ Diagnostic endpoint error: {e}")
+        print(error_traceback)
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": error_traceback
+        }), 500
+
+
 @appointments_bp.route("/doctors/approved", methods=["GET"])
 @auth_required
 def get_approved_doctors():
@@ -364,21 +541,84 @@ def get_approved_doctors():
 def get_appointments():
     """Get user's appointments"""
     try:
+        # Verify Supabase client is available
+        if not supabase or not supabase.service_client:
+            print("❌ ERROR: Supabase service_client is not available")
+            return jsonify({
+                "success": False, 
+                "error": "Database connection failed. Please check server configuration.",
+                "details": "Supabase service_client not initialized"
+            }), 500
+        
         firebase_user = request.firebase_user
         uid = firebase_user["uid"]
+        
+        print(f"🔍 GET /api/appointments: Request from user UID: {uid}")
+        print(f"🔍 Firebase user data: {firebase_user}")
 
         # Get user profile to determine role - use service_client to bypass RLS
-        user_response = supabase.service_client.table("user_profiles").select("role").eq("firebase_uid", uid).execute()
-        if not user_response.data:
-            return jsonify({"success": False, "error": "User profile not found"}), 404
+        try:
+            print(f"🔍 Querying user_profiles for firebase_uid: {uid}")
+            user_response = supabase.service_client.table("user_profiles").select("role").eq("firebase_uid", uid).execute()
+            print(f"🔍 User profile query response: {user_response}")
+            print(f"🔍 User profile data: {user_response.data if user_response else 'None'}")
+            
+            if not user_response.data:
+                print(f"❌ User profile not found for firebase_uid: {uid}")
+                # Try to check if any user profiles exist at all
+                try:
+                    test_response = supabase.service_client.table("user_profiles").select("firebase_uid, role").limit(5).execute()
+                    print(f"🔍 Test query - Sample user_profiles: {test_response.data if test_response else 'None'}")
+                except Exception as test_error:
+                    print(f"⚠️  Could not query user_profiles table: {test_error}")
+                
+                return jsonify({
+                    "success": False, 
+                    "error": f"User profile not found for UID: {uid}",
+                    "hint": "Please ensure your user profile exists in the database"
+                }), 404
+            
+            user_role = user_response.data[0]["role"]
+        except Exception as user_query_error:
+            print(f"❌ Error querying user profile: {user_query_error}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                "success": False,
+                "error": "Failed to query user profile",
+                "details": str(user_query_error)
+            }), 500
 
-        user_role = user_response.data[0]["role"]
+        print(f"✅ User role determined: {user_role}")
+
+        # Initialize response variable
+        response = None
 
         if user_role == "patient":
             # Patients see their own appointments - use service_client to bypass RLS
-            response = supabase.service_client.table("appointments").select("*").eq("patient_firebase_uid", uid).execute()
+            try:
+                print(f"🔍 Querying appointments for patient_firebase_uid: {uid}")
+                response = supabase.service_client.table("appointments").select("*").eq("patient_firebase_uid", uid).execute()
+                print(f"🔍 Appointments query response: {response}")
+                print(f"🔍 Appointments found: {len(response.data) if response and response.data else 0}")
+                
+                if response and response.data:
+                    print(f"✅ Found {len(response.data)} appointments for patient {uid}")
+                else:
+                    print(f"ℹ️  No appointments found for patient {uid}")
+                    response = type('obj', (object,), {'data': []})()  # Create empty response object
+            except Exception as appointment_query_error:
+                print(f"❌ Error querying appointments: {appointment_query_error}")
+                import traceback
+                traceback.print_exc()
+                return jsonify({
+                    "success": False,
+                    "error": "Failed to query appointments",
+                    "details": str(appointment_query_error)
+                }), 500
+            
             # Enrich with doctor info for patients
-            if response.data:
+            if response and response.data:
                 try:
                     doctor_uids = sorted({appt.get("doctor_firebase_uid") for appt in response.data if appt.get("doctor_firebase_uid")})
                     if doctor_uids:
@@ -403,9 +643,65 @@ def get_appointments():
                     pass
         elif user_role == "doctor":
             # Doctors see their appointments - use service_client to bypass RLS
-            response = supabase.service_client.table("appointments").select("*").eq("doctor_firebase_uid", uid).execute()
+            try:
+                print(f"🔍 Querying appointments for doctor_firebase_uid: {uid}")
+                # First, let's verify we can query the appointments table at all
+                try:
+                    test_appointments = supabase.service_client.table("appointments").select("id, doctor_firebase_uid, patient_firebase_uid").limit(10).execute()
+                    print(f"🔍 Test query - Total appointments in table: {len(test_appointments.data) if test_appointments and test_appointments.data else 0}")
+                    if test_appointments and test_appointments.data:
+                        print(f"🔍 Sample appointments: {test_appointments.data[:3]}")
+                        # Check if any appointments match this doctor's UID
+                        matching = [a for a in test_appointments.data if a.get("doctor_firebase_uid") == uid]
+                        print(f"🔍 Appointments matching doctor UID {uid}: {len(matching)}")
+                except Exception as test_error:
+                    print(f"⚠️  Could not query appointments table: {test_error}")
+                    import traceback
+                    traceback.print_exc()
+                
+                # Now query for this specific doctor's appointments
+                response = supabase.service_client.table("appointments").select("*").eq("doctor_firebase_uid", uid).execute()
+                print(f"🔍 Appointments query response: {response}")
+                print(f"🔍 Appointments found: {len(response.data) if response and response.data else 0}")
+                
+                if response and response.data:
+                    print(f"✅ Found {len(response.data)} appointments for doctor {uid}")
+                else:
+                    print(f"⚠️  No appointments found for doctor {uid}")
+                    # Check if there are any appointments with this doctor UID at all
+                    try:
+                        all_appointments = supabase.service_client.table("appointments").select("id, doctor_firebase_uid").execute()
+                        if all_appointments and all_appointments.data:
+                            unique_doctors = set(a.get("doctor_firebase_uid") for a in all_appointments.data if a.get("doctor_firebase_uid"))
+                            print(f"🔍 Available doctor UIDs in appointments: {unique_doctors}")
+                            print(f"🔍 Requested doctor UID: {uid}")
+                            if uid not in unique_doctors:
+                                print(f"⚠️  Doctor UID {uid} does not match any appointments in database")
+                                print(f"💡 HINT: The logged-in doctor's UID doesn't match the doctor_firebase_uid in the appointments table")
+                                print(f"💡 This could mean:")
+                                print(f"   1. The doctor logged in with a different Firebase account")
+                                print(f"   2. The appointments were created with a different doctor UID")
+                                print(f"   3. There's a UID mismatch in the database")
+                    except Exception as check_error:
+                        print(f"⚠️  Could not check all appointments: {check_error}")
+                    
+                    # Create empty response object
+                    if not response:
+                        response = type('obj', (object,), {'data': []})()
+                    elif not response.data:
+                        response.data = []
+            except Exception as appointment_query_error:
+                print(f"❌ Error querying appointments: {appointment_query_error}")
+                import traceback
+                traceback.print_exc()
+                return jsonify({
+                    "success": False,
+                    "error": "Failed to query appointments",
+                    "details": str(appointment_query_error)
+                }), 500
+            
             # Enrich with basic patient info for schedule views
-            if response.data:
+            if response and response.data:
                 try:
                     patient_uids = sorted({appt.get("patient_firebase_uid") for appt in response.data if appt.get("patient_firebase_uid")})
                     print(f"🔍 Doctor appointments: Found {len(patient_uids)} unique patient UIDs: {patient_uids}")
@@ -419,151 +715,150 @@ def get_appointments():
                         )
                         print(f"🔍 Doctor appointments: Fetched {len(profiles_resp.data or [])} patient profiles")
                         uid_to_patient = {}
+                        # First, add all patient profiles to cache (even if empty)
+                        # This ensures we can identify which patients need Firebase fallback
                         for p in (profiles_resp.data or []):
+                            firebase_uid = p.get("firebase_uid")
+                            if not firebase_uid:
+                                continue
+                                
                             # Get values, handling None, empty strings, and whitespace
                             first_name = (p.get("first_name") or "").strip() if p.get("first_name") else ""
                             last_name = (p.get("last_name") or "").strip() if p.get("last_name") else ""
                             email = (p.get("email") or "").strip() if p.get("email") else ""
                             
-                            # Check if all fields are empty - this indicates incomplete profile
-                            if not first_name and not last_name and not email:
-                                print(f"⚠️  Patient profile {p['firebase_uid']} exists but ALL fields are empty - will try Firebase Auth fallback")
-                                # Don't add to cache yet - we'll try Firebase Auth fallback during enrichment
-                                continue
-                            
-                            uid_to_patient[p["firebase_uid"]] = {
+                            # Always add to cache, even if empty (we'll check later if we need Firebase fallback)
+                            uid_to_patient[firebase_uid] = {
                                 "first_name": first_name,
                                 "last_name": last_name,
-                                "email": email
+                                "email": email,
+                                "from_db": True  # Flag to indicate this came from database
                             }
                             
                             full_name = f"{first_name} {last_name}".strip()
-                            print(f"✅ Patient profile: {p['firebase_uid']} -> Name: '{full_name}' Email: '{email}'")
-                            if not full_name and email:
-                                print(f"   ⚠️  Profile has email but no name - will use email for display")
-                            elif not full_name and not email:
-                                print(f"   ❌ Profile exists but has NO name and NO email!")
+                            if full_name or email:
+                                print(f"✅ Patient profile: {firebase_uid} -> Name: '{full_name}' Email: '{email}'")
+                            else:
+                                print(f"⚠️  Patient profile {firebase_uid} exists but ALL fields are empty - will try Firebase Auth fallback")
                         
-                        # Enrich each appointment with patient info
+                        # Now enrich each appointment with patient info
                         for appt in response.data:
                             pfuid = appt.get("patient_firebase_uid")
-                            if pfuid:
-                                # Check if patient is in cache (has valid data) or needs Firebase Auth fallback
-                                if pfuid in uid_to_patient:
-                                    patient_info = uid_to_patient[pfuid]
-                                    first_name = patient_info.get("first_name") or ""
-                                    last_name = patient_info.get("last_name") or ""
-                                    email = patient_info.get("email") or ""
-                                    full_name = f"{first_name} {last_name}".strip()
-                                    
-                                    appt["patient"] = patient_info
-                                    if full_name or email:
-                                        print(f"✅ Enriched appointment {appt.get('id')} with patient: Name='{full_name}' Email='{email}'")
-                                    else:
-                                        print(f"⚠️  Appointment {appt.get('id')}: Patient in cache but has no name/email - will try Firebase Auth")
-                                        # Fall through to Firebase Auth fallback below
-                                else:
-                                    # Patient not in cache - either doesn't exist or was skipped due to empty fields
-                                    print(f"⚠️  Appointment {appt.get('id')}: Patient UID {pfuid} not in cache (missing or empty profile)")
-                                
-                                # Check if we need Firebase Auth fallback
-                                needs_fallback = False
-                                if pfuid not in uid_to_patient:
-                                    needs_fallback = True
-                                    print(f"🔄 Patient UID {pfuid} not in cache - needs Firebase Auth fallback")
-                                else:
-                                    cached_patient = uid_to_patient.get(pfuid, {})
-                                    cached_fname = cached_patient.get("first_name", "") or ""
-                                    cached_email = cached_patient.get("email", "") or ""
-                                    if not cached_fname.strip() and not cached_email.strip():
-                                        needs_fallback = True
-                                        print(f"🔄 Patient UID {pfuid} in cache but has empty data - needs Firebase Auth fallback")
-                                
-                                # If patient info is missing or empty, try Firebase Auth fallback
-                                if needs_fallback:
-                                    print(f"🔄 Attempting Firebase Auth fallback for patient UID: {pfuid}")
-                                    try:
-                                        from auth.firebase_auth import firebase_auth_service
-                                        print(f"🔍 Calling Firebase Auth service for UID: {pfuid}")
-                                        firebase_result = firebase_auth_service.get_user_by_uid(pfuid)
-                                        print(f"🔍 Firebase Auth result: success={firebase_result.get('success')}, has_user={bool(firebase_result.get('user'))}")
-                                        
-                                        if firebase_result.get("success") and firebase_result.get("user"):
-                                            firebase_user = firebase_result["user"]
-                                            firebase_email = firebase_user.get("email", "") or ""
-                                            firebase_display_name = firebase_user.get("display_name", "") or ""
-                                            
-                                            print(f"🔍 Firebase user data: email='{firebase_email}', display_name='{firebase_display_name}'")
-                                            
-                                            # Extract name from Firebase
-                                            if firebase_display_name:
-                                                name_parts = firebase_display_name.split(" ", 1)
-                                                first_name = name_parts[0]
-                                                last_name = name_parts[1] if len(name_parts) > 1 else ""
-                                            elif firebase_email:
-                                                first_name = firebase_email.split("@")[0]
-                                                last_name = ""
-                                            else:
-                                                first_name = ""
-                                                last_name = ""
-                                            
-                                            # Create patient info from Firebase data
-                                            patient_info = {
-                                                "first_name": first_name or "",
-                                                "last_name": last_name or "",
-                                                "email": firebase_email or ""
-                                            }
-                                            
-                                            # Update cache
-                                            uid_to_patient[pfuid] = patient_info
-                                            appt["patient"] = patient_info
-                                            
-                                            full_name = f"{first_name} {last_name}".strip()
-                                            print(f"✅ Fetched patient data from Firebase Auth: Name='{full_name}' Email='{firebase_email}'")
-                                            
-                                            # Update database profile for future requests
-                                            try:
-                                                update_data = {
-                                                    "first_name": first_name or "",
-                                                    "last_name": last_name or "",
-                                                    "email": firebase_email or ""
-                                                }
-                                                supabase.service_client.table("user_profiles").update(update_data).eq("firebase_uid", pfuid).execute()
-                                                print(f"✅ Updated patient profile in database with Firebase Auth data")
-                                            except Exception as update_error:
-                                                print(f"⚠️  Could not update patient profile: {update_error}")
-                                                import traceback
-                                                traceback.print_exc()
-                                        else:
-                                            error_msg = firebase_result.get("error", "Unknown error") if firebase_result else "No response"
-                                            print(f"❌ Firebase Auth lookup failed for {pfuid}: {error_msg}")
-                                            print(f"   Full Firebase result: {firebase_result}")
-                                            # Set empty patient object as last resort
-                                            if "patient" not in appt:
-                                                appt["patient"] = {
-                                                    "first_name": "",
-                                                    "last_name": "",
-                                                    "email": ""
-                                                }
-                                    except Exception as firebase_fallback_error:
-                                        print(f"❌ Error in Firebase Auth fallback: {firebase_fallback_error}")
-                                        import traceback
-                                        traceback.print_exc()
-                                        # Set empty patient object as last resort
-                                        if "patient" not in appt:
-                                            appt["patient"] = {
-                                                "first_name": "",
-                                                "last_name": "",
-                                                "email": ""
-                                            }
-                            else:
+                            if not pfuid:
                                 print(f"⚠️  Appointment {appt.get('id')}: No patient_firebase_uid found in appointment record")
-                                # Add empty patient object
                                 appt["patient"] = {
                                     "first_name": "",
                                     "last_name": "",
                                     "email": ""
                                 }
+                                continue
+                            
+                            # Get patient info from cache (if exists)
+                            cached_patient = uid_to_patient.get(pfuid, {})
+                            cached_fname = (cached_patient.get("first_name") or "").strip()
+                            cached_lname = (cached_patient.get("last_name") or "").strip()
+                            cached_email = (cached_patient.get("email") or "").strip()
+                            cached_full_name = f"{cached_fname} {cached_lname}".strip()
+                            
+                            # Determine if we need Firebase Auth fallback
+                            needs_fallback = False
+                            
+                            if pfuid not in uid_to_patient:
+                                # Patient profile doesn't exist in database at all
+                                needs_fallback = True
+                                print(f"🔄 Appointment {appt.get('id')}: Patient UID {pfuid} not in database - trying Firebase Auth fallback")
+                            elif not cached_full_name and not cached_email:
+                                # Patient profile exists but is completely empty
+                                needs_fallback = True
+                                print(f"🔄 Appointment {appt.get('id')}: Patient UID {pfuid} has empty profile - trying Firebase Auth fallback")
+                                
+                            # Try Firebase Auth fallback if needed
+                            if needs_fallback:
+                                print(f"🔄 Attempting Firebase Auth fallback for patient UID: {pfuid}")
+                                try:
+                                    from auth.firebase_auth import firebase_auth_service
+                                    firebase_result = firebase_auth_service.get_user_by_uid(pfuid)
+                                    
+                                    if firebase_result.get("success") and firebase_result.get("user"):
+                                        firebase_user = firebase_result["user"]
+                                        firebase_email = (firebase_user.get("email") or "").strip()
+                                        firebase_display_name = (firebase_user.get("display_name") or "").strip()
+                                        
+                                        # Extract name from Firebase
+                                        if firebase_display_name:
+                                            name_parts = firebase_display_name.split(" ", 1)
+                                            first_name = name_parts[0].strip()
+                                            last_name = name_parts[1].strip() if len(name_parts) > 1 else ""
+                                        elif firebase_email:
+                                            # Use email username as first name
+                                            first_name = firebase_email.split("@")[0].strip()
+                                            last_name = ""
+                                        else:
+                                            first_name = ""
+                                            last_name = ""
+                                        
+                                        # Create patient info from Firebase data
+                                        patient_info = {
+                                            "first_name": first_name,
+                                            "last_name": last_name,
+                                            "email": firebase_email,
+                                            "from_firebase": True  # Flag to indicate this came from Firebase
+                                        }
+                                        
+                                        # Update cache
+                                        uid_to_patient[pfuid] = patient_info
+                                        appt["patient"] = patient_info
+                                        
+                                        full_name = f"{first_name} {last_name}".strip()
+                                        print(f"✅ Fetched patient data from Firebase Auth: Name='{full_name}' Email='{firebase_email}' for appointment {appt.get('id')}")
+                                        
+                                        # Update database profile for future requests (async - don't block response)
+                                        try:
+                                            update_data = {
+                                                "first_name": first_name,
+                                                "last_name": last_name,
+                                                "email": firebase_email
+                                            }
+                                            # Only update if we got data from Firebase
+                                            if first_name or last_name or firebase_email:
+                                                supabase.service_client.table("user_profiles").update(update_data).eq("firebase_uid", pfuid).execute()
+                                                print(f"✅ Updated patient profile in database with Firebase Auth data for {pfuid}")
+                                        except Exception as update_error:
+                                            print(f"⚠️  Could not update patient profile for {pfuid}: {update_error}")
+                                            # Don't fail the request if update fails
+                                except Exception as firebase_fallback_error:
+                                    print(f"❌ Error in Firebase Auth fallback for {pfuid}: {firebase_fallback_error}")
+                                    import traceback
+                                    traceback.print_exc()
+                                    # Use cached data (even if empty) or set empty patient object
+                                    if cached_patient:
+                                        appt["patient"] = {
+                                            "first_name": cached_fname,
+                                            "last_name": cached_lname,
+                                            "email": cached_email
+                                        }
+                                    else:
+                                        appt["patient"] = {
+                                            "first_name": "",
+                                            "last_name": "",
+                                            "email": ""
+                                        }
+                            else:
+                                # No fallback needed, use cached data
+                                if cached_patient:
+                                    appt["patient"] = {
+                                        "first_name": cached_fname,
+                                        "last_name": cached_lname,
+                                        "email": cached_email
+                                    }
+                                else:
+                                    appt["patient"] = {
+                                        "first_name": "",
+                                        "last_name": "",
+                                        "email": ""
+                                    }
+                                if cached_full_name or cached_email:
+                                    print(f"✅ Enriched appointment {appt.get('id')} with patient: Name='{cached_full_name}' Email='{cached_email}'")
                 except Exception as _e:
                     # If enrichment fails, continue with base data
                     print(f"⚠️  Error enriching patient info: {_e}")
@@ -581,10 +876,30 @@ def get_appointments():
         else:
             return jsonify({"success": False, "error": "Unauthorized role"}), 403
 
+        # Ensure response exists and has data attribute
+        if not response:
+            print("⚠️  No response object - creating empty response")
+            response = type('obj', (object,), {'data': []})()
+        elif not hasattr(response, 'data'):
+            print("⚠️  Response has no data attribute - initializing")
+            response.data = []
+        elif response.data is None:
+            print("⚠️  Response.data is None - initializing empty list")
+            response.data = []
+
         # Enrich appointments with meeting_url from meeting_link column or notes fallback
+        # Also ensure every appointment has a patient object
         enriched = []
         for appt in (response.data or []):
             try:
+                # Ensure patient object exists (safeguard)
+                if "patient" not in appt or not isinstance(appt.get("patient"), dict):
+                    appt["patient"] = {
+                        "first_name": "",
+                        "last_name": "",
+                        "email": ""
+                    }
+                
                 # First try meeting_link column (preferred)
                 meeting_url = appt.get("meeting_link")
                 
@@ -601,26 +916,110 @@ def get_appointments():
                 
                 # Final verification: Log patient data being sent to frontend
                 patient = appt.get("patient", {})
-                patient_fname = patient.get("first_name", "")
-                patient_lname = patient.get("last_name", "")
-                patient_email = patient.get("email", "")
+                patient_fname = (patient.get("first_name") or "").strip()
+                patient_lname = (patient.get("last_name") or "").strip()
+                patient_email = (patient.get("email") or "").strip()
                 patient_full = f"{patient_fname} {patient_lname}".strip()
                 
                 if patient_full or patient_email:
                     print(f"📤 Sending appointment {appt.get('id')} with patient: Name='{patient_full}' Email='{patient_email}'")
                 else:
-                    print(f"⚠️  WARNING: Sending appointment {appt.get('id')} with EMPTY patient data! UID: {appt.get('patient_firebase_uid')}")
+                    pfuid = appt.get('patient_firebase_uid')
+                    print(f"⚠️  WARNING: Sending appointment {appt.get('id')} with EMPTY patient data! UID: {pfuid}")
                     print(f"   Patient object: {patient}")
+                    # Last attempt: Try to get patient info one more time if we have UID
+                    if pfuid and user_role == "doctor":
+                        try:
+                            from auth.firebase_auth import firebase_auth_service
+                            firebase_result = firebase_auth_service.get_user_by_uid(pfuid)
+                            if firebase_result.get("success") and firebase_result.get("user"):
+                                firebase_user = firebase_result["user"]
+                                firebase_email = (firebase_user.get("email") or "").strip()
+                                firebase_display_name = (firebase_user.get("display_name") or "").strip()
+                                
+                                if firebase_display_name:
+                                    name_parts = firebase_display_name.split(" ", 1)
+                                    appt["patient"]["first_name"] = name_parts[0].strip()
+                                    appt["patient"]["last_name"] = name_parts[1].strip() if len(name_parts) > 1 else ""
+                                elif firebase_email:
+                                    appt["patient"]["first_name"] = firebase_email.split("@")[0].strip()
+                                    appt["patient"]["last_name"] = ""
+                                
+                                appt["patient"]["email"] = firebase_email
+                                print(f"✅ Last-minute Firebase fetch succeeded for appointment {appt.get('id')}")
+                        except Exception as last_attempt_error:
+                            print(f"⚠️  Last-minute Firebase fetch failed: {last_attempt_error}")
             except Exception as enrich_error:
                 print(f"❌ Error enriching appointment {appt.get('id')}: {enrich_error}")
                 import traceback
                 traceback.print_exc()
+                # Ensure patient object exists even if enrichment fails
+                if "patient" not in appt:
+                    appt["patient"] = {
+                        "first_name": "",
+                        "last_name": "",
+                        "email": ""
+                    }
             enriched.append(appt)
 
-        return jsonify({"success": True, "appointments": enriched}), 200
+        # Ensure we return appointments even if enrichment had issues
+        if not enriched:
+            if response and hasattr(response, 'data') and response.data:
+                # If enrichment failed but we have data, return it anyway
+                print("⚠️  Enrichment had issues but returning raw appointment data")
+                enriched = response.data
+            else:
+                # No data found - return empty array with helpful message
+                print("ℹ️  No appointments found for user")
+                enriched = []
+                
+                # If we're a doctor and found no appointments, check for UID mismatch
+                if user_role == "doctor" and response:
+                    try:
+                        # Check what UIDs are actually in the database
+                        all_appts_check = supabase.service_client.table("appointments").select("doctor_firebase_uid").limit(100).execute()
+                        if all_appts_check and all_appts_check.data:
+                            db_doctor_uids = set(a.get("doctor_firebase_uid") for a in all_appts_check.data if a.get("doctor_firebase_uid"))
+                            if uid not in db_doctor_uids and db_doctor_uids:
+                                print(f"💡 HINT: Your UID ({uid}) doesn't match any appointments in database")
+                                print(f"💡 Available doctor UIDs in database: {list(db_doctor_uids)[:3]}...")
+                                print(f"💡 This is likely a UID mismatch issue")
+                    except Exception as check_error:
+                        print(f"⚠️  Could not check UID mismatch: {check_error}")
+        
+        # Ensure enriched is a list
+        if not isinstance(enriched, list):
+            print("⚠️  Enriched is not a list, converting...")
+            enriched = list(enriched) if enriched else []
+        
+        print(f"📤 Returning {len(enriched)} appointments to frontend")
+        
+        # Build response with helpful messages
+        response_data = {
+            "success": True, 
+            "appointments": enriched,
+            "count": len(enriched)
+        }
+        
+        # Add helpful message if no appointments found
+        if len(enriched) == 0:
+            if user_role == "doctor":
+                response_data["message"] = "No appointments found for this doctor."
+                response_data["hint"] = "This might be due to a UID mismatch. Check /api/appointments/diagnostic for details."
+            elif user_role == "patient":
+                response_data["message"] = "No appointments found for this patient."
+        
+        return jsonify(response_data), 200
 
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        print(f"❌ CRITICAL ERROR in get_appointments: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False, 
+            "error": str(e),
+            "message": "An error occurred while fetching appointments. Check server logs for details."
+        }), 500
 
 
 @appointments_bp.route("", methods=["POST"])
@@ -833,61 +1232,103 @@ def create_appointment():
             }).eq("firebase_uid", data["doctor_firebase_uid"]).execute()
 
         # Create notifications for both patient and doctor
+        print(f"🔔 Starting notification creation for appointment {appointment_id}")
+        print(f"   Patient UID: {uid}")
+        print(f"   Doctor UID: {data['doctor_firebase_uid']}")
+        print(f"   Patient Name: {patient_name}")
+        print(f"   Doctor Name: {doctor_name}")
+        
         try:
             from services.notification_service import notification_service
             
-            # Extract room name from meeting URL for frontend routing
-            room_name = room_name  # Already defined above
+            # Check if notification service is available
+            if not notification_service or not notification_service.supabase:
+                print("❌ NotificationService not available or not initialized")
+                raise Exception("NotificationService not available")
             
-            # Create appointment notifications with video call info
-            # Patient notification
-            notification_service.create_appointment_notification(
+            print("✅ NotificationService is available")
+            
+            # Format date and time for display
+            try:
+                date_obj = datetime.strptime(appointment_date, "%Y-%m-%d")
+                formatted_date = date_obj.strftime("%B %d, %Y")
+            except Exception as date_err:
+                print(f"⚠️  Date formatting error: {date_err}")
+                formatted_date = appointment_date
+            
+            try:
+                time_obj = datetime.strptime(appointment_time, "%H:%M")
+                formatted_time = time_obj.strftime("%I:%M %p")
+            except Exception as time_err:
+                print(f"⚠️  Time formatting error: {time_err}")
+                formatted_time = appointment_time
+            
+            print(f"   Formatted Date: {formatted_date}")
+            print(f"   Formatted Time: {formatted_time}")
+            print(f"   Meeting URL: {meeting_url}")
+            
+            # Patient notification - Appointment created
+            print(f"📤 Creating patient notification...")
+            patient_notification_result = notification_service.create_appointment_notification(
                 user_id=uid,
                 appointment_id=appointment_id,
-                appointment_date=appointment_date,
-                appointment_time=appointment_time,
+                appointment_date=formatted_date,
+                appointment_time=formatted_time,
                 doctor_name=doctor_name,
                 notification_type='appointment_created',
                 meeting_url=meeting_url
             )
+            print(f"   Patient notification result: {patient_notification_result}")
             
-            # Also send video call ready notification for patient
-            notification_service.create_video_call_notification(
-                user_id=uid,
-                appointment_id=appointment_id,
-                appointment_date=appointment_date,
-                appointment_time=appointment_time,
-                doctor_name=doctor_name,
-                meeting_url=meeting_url,
-                notification_type='video_call_ready'
-            )
-            
-            # Doctor notification
-            notification_service.create_appointment_notification(
+            # Doctor notification - New appointment request
+            print(f"📤 Creating doctor notification...")
+            doctor_notification_result = notification_service.create_appointment_notification(
                 user_id=data["doctor_firebase_uid"],
                 appointment_id=appointment_id,
-                appointment_date=appointment_date,
-                appointment_time=appointment_time,
+                appointment_date=formatted_date,
+                appointment_time=formatted_time,
                 patient_name=patient_name,
                 notification_type='appointment_created',
                 meeting_url=meeting_url
             )
+            print(f"   Doctor notification result: {doctor_notification_result}")
             
-            # Also send video call ready notification for doctor
-            notification_service.create_video_call_notification(
-                user_id=data["doctor_firebase_uid"],
+            # Schedule "Video Consultation Ready" notification for the appointment time
+            if meeting_url:
+                try:
+                    from services.notification_scheduler import schedule_video_consultation_notification
+                    print(f"📅 Scheduling Video Consultation Ready notification for appointment time...")
+                    schedule_video_consultation_notification(
                 appointment_id=appointment_id,
                 appointment_date=appointment_date,
                 appointment_time=appointment_time,
+                        patient_uid=uid,
+                        doctor_uid=data["doctor_firebase_uid"],
+                        doctor_name=doctor_name,
                 patient_name=patient_name,
                 meeting_url=meeting_url,
-                notification_type='video_call_ready'
-            )
+                        send_before_minutes=0  # Send at the exact appointment time
+                    )
+                except Exception as scheduler_error:
+                    print(f"⚠️  Error scheduling video consultation notification: {scheduler_error}")
+                    import traceback
+                    traceback.print_exc()
+                    # Don't fail appointment creation if scheduling fails
             
-            print(f"🔔 Notifications created for appointment {appointment_id}. Meeting URL: {meeting_url}")
-            print(f"📹 Video call notifications sent to both patient and doctor")
+            # Verify notifications were created
+            if patient_notification_result.get("success"):
+                print(f"✅ Patient notification created successfully")
+            else:
+                print(f"❌ Patient notification failed: {patient_notification_result.get('error', 'Unknown error')}")
+            
+            if doctor_notification_result.get("success"):
+                print(f"✅ Doctor notification created successfully")
+            else:
+                print(f"❌ Doctor notification failed: {doctor_notification_result.get('error', 'Unknown error')}")
+            
+            print(f"🔔 Notification creation completed for appointment {appointment_id}")
         except Exception as e:
-            print(f"⚠️  Error creating notifications: {e}")
+            print(f"❌ CRITICAL ERROR creating notifications: {e}")
             import traceback
             traceback.print_exc()
             # Don't fail the appointment creation if notifications fail
@@ -912,27 +1353,413 @@ def create_appointment():
 @appointments_bp.route("/<appointment_id>", methods=["PUT"])
 @firebase_auth_required
 def update_appointment(appointment_id):
-    """Update an appointment"""
+    """Update an appointment and send notifications to both parties"""
     try:
         firebase_user = request.firebase_user
         uid = firebase_user["uid"]
         data = request.get_json()
 
-        # Update appointment (RLS ensures users can only update their own appointments)
-        response = (
-            supabase.client.table("appointments")
-            .update(data)
+        # First, get the current appointment to compare changes - use service_client to bypass RLS
+        current_appointment = (
+            supabase.service_client.table("appointments")
+            .select("*")
             .eq("id", appointment_id)
-            .or_(f"patient_firebase_uid.eq.{uid},doctor_firebase_uid.eq.{uid}")
             .execute()
         )
 
-        if response.data:
-            return jsonify({"success": True, "appointment": response.data[0]}), 200
-        else:
-            return jsonify({"success": False, "error": "Appointment not found or unauthorized"}), 404
+        if not current_appointment.data:
+            return jsonify({"success": False, "error": "Appointment not found"}), 404
+
+        current_appt = current_appointment.data[0]
+        patient_uid = current_appt.get("patient_firebase_uid")
+        doctor_uid = current_appt.get("doctor_firebase_uid")
+
+        # Verify user has permission (must be patient or doctor for this appointment)
+        if uid not in [patient_uid, doctor_uid]:
+            return jsonify({"success": False, "error": "Unauthorized"}), 403
+
+        # Update appointment - use service_client to bypass RLS
+        response = (
+            supabase.service_client.table("appointments")
+            .update(data)
+            .eq("id", appointment_id)
+            .execute()
+        )
+
+        if not response.data:
+            return jsonify({"success": False, "error": "Failed to update appointment"}), 500
+
+        updated_appt = response.data[0]
+
+        # Create notifications for both patient and doctor based on what changed
+        try:
+            from services.notification_service import notification_service
+            
+            # Get user names for notifications
+            patient_profile = (
+                supabase.service_client.table("user_profiles")
+                .select("first_name, last_name, email")
+                .eq("firebase_uid", patient_uid)
+                .execute()
+            )
+            patient_name = "Patient"
+            if patient_profile.data:
+                p = patient_profile.data[0]
+                patient_name = f"{p.get('first_name', '')} {p.get('last_name', '')}".strip()
+                if not patient_name:
+                    patient_name = p.get('email', 'Patient').split('@')[0]
+
+            doctor_profile = (
+                supabase.service_client.table("user_profiles")
+                .select("first_name, last_name")
+                .eq("firebase_uid", doctor_uid)
+                .execute()
+            )
+            doctor_name = "Doctor"
+            if doctor_profile.data:
+                d = doctor_profile.data[0]
+                doctor_name = f"Dr. {d.get('first_name', '')} {d.get('last_name', '')}".strip()
+
+            # Format dates and times
+            appointment_date = updated_appt.get("appointment_date", current_appt.get("appointment_date", ""))
+            appointment_time = updated_appt.get("appointment_time", current_appt.get("appointment_time", ""))
+            
+            try:
+                date_obj = datetime.strptime(appointment_date, "%Y-%m-%d")
+                formatted_date = date_obj.strftime("%B %d, %Y")
+            except:
+                formatted_date = appointment_date
+            
+            try:
+                time_obj = datetime.strptime(appointment_time, "%H:%M")
+                formatted_time = time_obj.strftime("%I:%M %p")
+            except:
+                formatted_time = appointment_time
+
+            meeting_url = updated_appt.get("meeting_link") or updated_appt.get("meeting_url")
+
+            # Check what changed and create appropriate notifications
+            status_changed = data.get("status") and data.get("status") != current_appt.get("status")
+            date_changed = data.get("appointment_date") and data.get("appointment_date") != current_appt.get("appointment_date")
+            time_changed = data.get("appointment_time") and data.get("appointment_time") != current_appt.get("appointment_time")
+            notes_changed = "notes" in data and data.get("notes") != current_appt.get("notes")
+
+            # Status change notifications
+            if status_changed:
+                new_status = data.get("status")
+                old_status = current_appt.get("status")
+                
+                if new_status == "cancelled":
+                    # Cancellation notification
+                    if uid == patient_uid:
+                        # Patient cancelled - notify doctor
+                        notification_service.create_notification(
+                            user_id=doctor_uid,
+                            title="Appointment Cancelled",
+                            message=f"Patient {patient_name} has cancelled the appointment scheduled for {formatted_date} at {formatted_time}.",
+                            notification_type='warning',
+                            category='appointment',
+                            priority='high',
+                            action_url=f"/appointments",
+                            action_label="View Appointments",
+                            metadata={"appointment_id": str(appointment_id), "old_status": old_status, "new_status": new_status}
+                        )
+                        # Also notify patient
+                        notification_service.create_notification(
+                            user_id=patient_uid,
+                            title="Appointment Cancelled",
+                            message=f"Your appointment with {doctor_name} on {formatted_date} at {formatted_time} has been cancelled.",
+                            notification_type='info',
+                            category='appointment',
+                            priority='normal',
+                            action_url=f"/appointments",
+                            action_label="View Appointments",
+                            metadata={"appointment_id": str(appointment_id), "old_status": old_status, "new_status": new_status}
+                        )
+                elif uid == doctor_uid:
+                    # Doctor cancelled - notify patient
+                    notification_service.create_notification(
+                        user_id=patient_uid,
+                        title="Appointment Cancelled",
+                        message=f"Dr. {doctor_name} has cancelled your appointment scheduled for {formatted_date} at {formatted_time}.",
+                        notification_type='warning',
+                        category='appointment',
+                        priority='high',
+                        action_url=f"/appointments",
+                        action_label="View Appointments",
+                        metadata={"appointment_id": str(appointment_id), "old_status": old_status, "new_status": new_status}
+                    )
+                    # Also notify doctor
+                    notification_service.create_notification(
+                        user_id=doctor_uid,
+                        title="Appointment Cancelled",
+                        message=f"You have cancelled the appointment with {patient_name} on {formatted_date} at {formatted_time}.",
+                        notification_type='info',
+                        category='appointment',
+                        priority='normal',
+                        action_url=f"/appointments",
+                        action_label="View Appointments",
+                        metadata={"appointment_id": str(appointment_id), "old_status": old_status, "new_status": new_status}
+                    )
+                elif new_status == "confirmed":
+                    # Confirmation notification
+                    # Check if appointment is ready for video consultation (within 24 hours or on the appointment date)
+                    try:
+                        # Get raw appointment date and time from the updated appointment
+                        raw_appointment_date = updated_appt.get("appointment_date", "")
+                        raw_appointment_time = updated_appt.get("appointment_time", "")
+                        
+                        if raw_appointment_date and raw_appointment_time:
+                            # Always schedule "Video Consultation Ready" notification for the EXACT appointment time
+                            # The scheduler will handle scheduling it for the future appointment time
+                            if meeting_url:
+                                try:
+                                    from services.notification_scheduler import schedule_video_consultation_notification
+                                    print(f"📅 Scheduling Video Consultation Ready notification for exact appointment time: {raw_appointment_date} {raw_appointment_time}")
+                                    schedule_video_consultation_notification(
+                                        appointment_id=appointment_id,
+                                        appointment_date=raw_appointment_date,
+                                        appointment_time=raw_appointment_time,
+                                        patient_uid=patient_uid,
+                                        doctor_uid=doctor_uid,
+                                        doctor_name=doctor_name,
+                                        patient_name=patient_name,
+                                        meeting_url=meeting_url,
+                                        send_before_minutes=0  # Send at the exact appointment time
+                                    )
+                                except Exception as scheduler_error:
+                                    print(f"⚠️  Error scheduling video consultation notification: {scheduler_error}")
+                                    import traceback
+                                    traceback.print_exc()
+                            
+                            # Send regular confirmation notification
+                            print(f"📅 Sending Appointment Confirmed notifications")
+                            notification_service.create_notification(
+                                user_id=patient_uid,
+                                title="Appointment Confirmed",
+                                message=f"Your appointment with {doctor_name} on {formatted_date} at {formatted_time} has been confirmed.",
+                                notification_type='success',
+                                category='appointment',
+                                priority='high',
+                                action_url=f"/appointments",
+                                action_label="View Appointment",
+                                metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                            )
+                            notification_service.create_notification(
+                                user_id=doctor_uid,
+                                title="Appointment Confirmed",
+                                message=f"Appointment with {patient_name} on {formatted_date} at {formatted_time} has been confirmed.",
+                                notification_type='success',
+                                category='appointment',
+                                priority='high',
+                                action_url=f"/appointments",
+                                action_label="View Appointment",
+                                metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                            )
+                        else:
+                            # No date/time info, send regular confirmation
+                            print(f"⚠️  No appointment date/time found, sending regular confirmation")
+                            notification_service.create_notification(
+                                user_id=patient_uid,
+                                title="Appointment Confirmed",
+                                message=f"Your appointment with {doctor_name} has been confirmed.",
+                                notification_type='success',
+                                category='appointment',
+                                priority='high',
+                                action_url=f"/appointments",
+                                action_label="View Appointment",
+                                metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                            )
+                            notification_service.create_notification(
+                                user_id=doctor_uid,
+                                title="Appointment Confirmed",
+                                message=f"Appointment with {patient_name} has been confirmed.",
+                                notification_type='success',
+                                category='appointment',
+                                priority='high',
+                                action_url=f"/appointments",
+                                action_label="View Appointment",
+                                metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                            )
+                    except Exception as datetime_error:
+                        print(f"⚠️  Error calculating appointment readiness: {datetime_error}")
+                        import traceback
+                        traceback.print_exc()
+                        # Fallback to regular confirmation notification
+                        notification_service.create_notification(
+                            user_id=patient_uid,
+                            title="Appointment Confirmed",
+                            message=f"Your appointment with {doctor_name} on {formatted_date} at {formatted_time} has been confirmed.",
+                            notification_type='success',
+                            category='appointment',
+                            priority='high',
+                            action_url=meeting_url or f"/appointments",
+                            action_label="View Appointment",
+                            metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                        )
+                        notification_service.create_notification(
+                            user_id=doctor_uid,
+                            title="Appointment Confirmed",
+                            message=f"Appointment with {patient_name} on {formatted_date} at {formatted_time} has been confirmed.",
+                            notification_type='success',
+                            category='appointment',
+                            priority='high',
+                            action_url=meeting_url or f"/appointments",
+                            action_label="View Appointment",
+                            metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                        )
+                elif new_status == "completed":
+                    # Cancel any scheduled notifications for this appointment (e.g., video consultation ready)
+                    try:
+                        from services.notification_scheduler import cancel_scheduled_notification
+                        cancel_scheduled_notification(appointment_id)
+                        print(f"✅ Cancelled scheduled notifications for completed appointment {appointment_id}")
+                    except Exception as cancel_error:
+                        print(f"⚠️  Error cancelling scheduled notifications (may not exist): {cancel_error}")
+                    
+                    # Completion notification
+                    notification_service.create_notification(
+                        user_id=patient_uid,
+                        title="Appointment Completed",
+                        message=f"Your video consultation with {doctor_name} has been completed successfully. Thank you!",
+                        notification_type='success',
+                        category='appointment',
+                        priority='high',
+                        action_url=f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+                    notification_service.create_notification(
+                        user_id=doctor_uid,
+                        title="Appointment Completed",
+                        message=f"Your video consultation with {patient_name} has been completed successfully.",
+                        notification_type='success',
+                        category='appointment',
+                        priority='high',
+                        action_url=f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+                    print(f"✅ Completion notifications sent to patient and doctor for appointment {appointment_id}")
+
+            # Date/Time change notifications
+            if date_changed or time_changed:
+                old_date = current_appt.get("appointment_date", "")
+                old_time = current_appt.get("appointment_time", "")
+                
+                try:
+                    old_date_obj = datetime.strptime(old_date, "%Y-%m-%d")
+                    old_formatted_date = old_date_obj.strftime("%B %d, %Y")
+                except:
+                    old_formatted_date = old_date
+                
+                try:
+                    old_time_obj = datetime.strptime(old_time, "%H:%M")
+                    old_formatted_time = old_time_obj.strftime("%I:%M %p")
+                except:
+                    old_formatted_time = old_time
+
+                change_message = ""
+                if date_changed and time_changed:
+                    change_message = f"from {old_formatted_date} at {old_formatted_time} to {formatted_date} at {formatted_time}"
+                elif date_changed:
+                    change_message = f"from {old_formatted_date} to {formatted_date} (time remains {formatted_time})"
+                elif time_changed:
+                    change_message = f"from {old_formatted_time} to {formatted_time} on {formatted_date}"
+
+                if uid == patient_uid:
+                    # Patient rescheduled - notify doctor
+                    notification_service.create_notification(
+                        user_id=doctor_uid,
+                        title="Appointment Rescheduled",
+                        message=f"Patient {patient_name} has rescheduled the appointment {change_message}.",
+                        notification_type='info',
+                        category='appointment',
+                        priority='high',
+                        action_url=meeting_url or f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+                    # Also notify patient
+                    notification_service.create_notification(
+                        user_id=patient_uid,
+                        title="Appointment Rescheduled",
+                        message=f"Your appointment with {doctor_name} has been rescheduled {change_message}.",
+                        notification_type='info',
+                        category='appointment',
+                        priority='high',
+                        action_url=meeting_url or f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+                else:
+                    # Doctor rescheduled - notify patient
+                    notification_service.create_notification(
+                        user_id=patient_uid,
+                        title="Appointment Rescheduled",
+                        message=f"Dr. {doctor_name} has rescheduled your appointment {change_message}.",
+                        notification_type='warning',
+                        category='appointment',
+                        priority='high',
+                        action_url=meeting_url or f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+                    # Also notify doctor
+                    notification_service.create_notification(
+                        user_id=doctor_uid,
+                        title="Appointment Rescheduled",
+                        message=f"You have rescheduled the appointment with {patient_name} {change_message}.",
+                        notification_type='info',
+                        category='appointment',
+                        priority='high',
+                        action_url=meeting_url or f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+
+            # General update notification (if no specific change detected but appointment was updated)
+            if not status_changed and not date_changed and not time_changed:
+                if uid == patient_uid:
+                    notification_service.create_notification(
+                        user_id=doctor_uid,
+                        title="Appointment Updated",
+                        message=f"Patient {patient_name} has updated the appointment scheduled for {formatted_date} at {formatted_time}.",
+                        notification_type='info',
+                        category='appointment',
+                        priority='normal',
+                        action_url=meeting_url or f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+                else:
+                    notification_service.create_notification(
+                        user_id=patient_uid,
+                        title="Appointment Updated",
+                        message=f"Dr. {doctor_name} has updated your appointment scheduled for {formatted_date} at {formatted_time}.",
+                        notification_type='info',
+                        category='appointment',
+                        priority='normal',
+                        action_url=meeting_url or f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+
+            print(f"🔔 Notifications created for appointment update {appointment_id}")
+            print(f"   ✅ Patient notification sent to: {patient_uid}")
+            print(f"   ✅ Doctor notification sent to: {doctor_uid}")
+        except Exception as e:
+            print(f"⚠️  Error creating update notifications: {e}")
+            import traceback
+            traceback.print_exc()
+            # Don't fail the appointment update if notifications fail
+
+        return jsonify({"success": True, "appointment": updated_appt}), 200
 
     except Exception as e:
+        print(f"❌ Error updating appointment: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 

@@ -21,6 +21,9 @@ const JitsiVideoConference = () => {
   const [countdown, setCountdown] = useState(null);
   const [canJoin, setCanJoin] = useState(false);
   const [timeUntilAppointment, setTimeUntilAppointment] = useState(null);
+  const [participants, setParticipants] = useState(new Set());
+  const [hasMarkedCompleted, setHasMarkedCompleted] = useState(false);
+  const [isDoctor, setIsDoctor] = useState(false);
 
   // Fetch appointment information based on room name
   useEffect(() => {
@@ -72,6 +75,11 @@ const JitsiVideoConference = () => {
 
           if (appointment) {
             setAppointmentInfo(appointment);
+            
+            // Check if current user is the doctor
+            const currentUserUid = user?.uid || user?.firebase_uid;
+            const doctorUid = appointment.doctor_firebase_uid || appointment.doctor_id;
+            setIsDoctor(currentUserUid === doctorUid);
             
             // Parse appointment date and time
             let appointmentDate = appointment.appointment_date;
@@ -306,21 +314,29 @@ const JitsiVideoConference = () => {
         apiRef.current.addEventListeners({
           readyToClose: () => {
             console.log('Jitsi: Ready to close');
-            handleClose();
+            handleMeetingEnd();
           },
           participantLeft: (participant) => {
             console.log('Jitsi: Participant left:', participant);
+            handleParticipantLeft(participant);
           },
           participantJoined: (participant) => {
             console.log('Jitsi: Participant joined:', participant);
+            if (participant && participant.id) {
+              setParticipants(prev => new Set([...prev, participant.id]));
+            }
           },
           videoConferenceJoined: (data) => {
             console.log('Jitsi: Video conference joined', data);
             setLoading(false);
+            // Add current user to participants
+            if (data && data.localParticipant) {
+              setParticipants(prev => new Set([...prev, data.localParticipant.id]));
+            }
           },
           videoConferenceLeft: () => {
             console.log('Jitsi: Video conference left');
-            handleClose();
+            handleMeetingEnd();
           },
           audioMuteStatusChanged: (data) => {
             console.log('Jitsi: Audio mute status changed', data);
@@ -360,7 +376,33 @@ const JitsiVideoConference = () => {
     };
   }, [canJoin, roomName, user]);
 
-  const handleClose = () => {
+  // Handle participant leaving
+  const handleParticipantLeft = async (participant) => {
+    console.log('Participant left:', participant);
+    
+    // Remove participant from set
+    if (participant && participant.id) {
+      setParticipants(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(participant.id);
+        return newSet;
+      });
+    }
+    
+    // If doctor left and we haven't marked as completed yet, mark appointment as completed
+    if (isDoctor && !hasMarkedCompleted && appointmentInfo) {
+      await markAppointmentAsCompleted();
+    }
+  };
+
+  // Handle meeting end (when user leaves)
+  const handleMeetingEnd = async () => {
+    // If doctor is leaving and appointment hasn't been marked as completed, mark it now
+    if (isDoctor && !hasMarkedCompleted && appointmentInfo) {
+      await markAppointmentAsCompleted();
+    }
+    
+    // Close Jitsi and navigate
     if (apiRef.current) {
       try {
         apiRef.current.dispose();
@@ -368,7 +410,77 @@ const JitsiVideoConference = () => {
         console.error('Error disposing Jitsi:', error);
       }
     }
-    navigate('/my-appointments');
+    
+    // Small delay to allow API call to complete
+    setTimeout(() => {
+      navigate('/my-appointments');
+    }, 500);
+  };
+
+  // Mark appointment as completed
+  const markAppointmentAsCompleted = async () => {
+    if (hasMarkedCompleted || !appointmentInfo || !appointmentInfo.id) {
+      return;
+    }
+
+    try {
+      setHasMarkedCompleted(true);
+      console.log('📋 Marking appointment as completed:', appointmentInfo.id);
+
+      // Get token for authentication
+      let token = null;
+      try {
+        if (getFirebaseToken) {
+          token = await getFirebaseToken();
+        }
+      } catch (authError) {
+        console.warn("Could not get Firebase token via AuthContext:", authError);
+      }
+
+      if (!token) {
+        const storedFirebaseToken = sessionStorage.getItem('firebase_id_token') || 
+                                    localStorage.getItem('firebase_id_token');
+        token = storedFirebaseToken;
+      }
+
+      if (!token) {
+        token = localStorage.getItem('medichain_token');
+      }
+
+      if (!token) {
+        console.error('❌ No token available to mark appointment as completed');
+        return;
+      }
+
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      
+      // Update appointment status to completed
+      const response = await axios.put(
+        `${API_BASE_URL}/api/appointments/${appointmentInfo.id}`,
+        { status: 'completed' },
+        {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data?.success) {
+        console.log('✅ Appointment marked as completed successfully');
+        console.log('📧 Notifications should be sent automatically by backend');
+      } else {
+        console.error('❌ Failed to mark appointment as completed:', response.data?.error);
+      }
+    } catch (error) {
+      console.error('❌ Error marking appointment as completed:', error);
+      // Reset flag so it can be retried
+      setHasMarkedCompleted(false);
+    }
+  };
+
+  const handleClose = () => {
+    handleMeetingEnd();
   };
 
   if (error) {

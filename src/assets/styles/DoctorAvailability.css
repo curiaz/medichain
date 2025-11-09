@@ -28,6 +28,16 @@
   margin-bottom: 20px;
 }
 
+/* Optimized time range card */
+.time-range-card {
+  transition: all 0.3s ease;
+}
+
+.time-range-card:hover {
+  border-color: #BBDEFB;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.1);
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -66,7 +76,7 @@
 
 .add-time-button {
   padding: 12px 20px;
-  background: linear-gradient(135deg, #4CAF50, #8BC34A);
+  background: linear-gradient(135deg, #2196F3, #00BCD4);
   color: white;
   border: none;
   border-radius: 12px;
@@ -81,7 +91,7 @@
 
 .add-time-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);
+  box-shadow: 0 6px 20px rgba(33, 150, 243, 0.3);
 }
 
 .selected-times {
@@ -225,6 +235,42 @@
   border-bottom: 2px solid #f0f0f0;
 }
 
+.view-all-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+  color: #1976D2;
+  border: 2px solid #2196F3;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+}
+
+.view-all-btn:hover {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.view-all-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.2);
+}
+
+.view-all-btn svg {
+  transition: transform 0.3s ease;
+}
+
+.view-all-btn:hover svg {
+  transform: rotate(180deg);
+}
+
 .date-info {
   display: flex;
   align-items: center;
@@ -268,30 +314,44 @@
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+  background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
   border-radius: 10px;
-  color: #2E7D32;
+  color: #1976D2;
   font-weight: 600;
   transition: all 0.2s ease;
 }
 
 .time-slot:hover {
   transform: translateX(4px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.2);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
 }
 
 .time-slot svg {
   flex-shrink: 0;
+  color: #1976D2;
 }
 
 .time-slot span {
   flex: 1;
 }
 
+/* Video consultation button - icon on left, text centered */
+.time-slot.video-consultation {
+  justify-content: flex-start;
+}
+
+.time-slot.video-consultation button {
+  flex: 1;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .remove-time {
   background: none;
   border: none;
-  color: #2E7D32;
+  color: #1976D2;
   font-size: 1.4rem;
   cursor: pointer;
   padding: 0 8px;
@@ -314,29 +374,43 @@
 }
 
 .save-button {
-  padding: 16px 48px;
-  background: linear-gradient(135deg, #4CAF50, #8BC34A);
+  padding: 12px 32px;
+  background: linear-gradient(135deg, #2196F3, #1976D2);
   color: white;
   border: none;
-  border-radius: 30px;
-  font-weight: 700;
-  font-size: 1.1rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 1rem;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 12px;
-  transition: all 0.3s ease;
-  box-shadow: 0 6px 24px rgba(76, 175, 80, 0.3);
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.25);
+  min-width: 160px;
 }
 
 .save-button:hover:not(:disabled) {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 36px rgba(76, 175, 80, 0.4);
+  background: linear-gradient(135deg, #1976D2, #1565C0);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.35);
+}
+
+.save-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
 }
 
 .save-button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.15);
+}
+
+.save-button svg {
+  flex-shrink: 0;
 }
 
 /* Alert Messages */
@@ -363,9 +437,9 @@
 }
 
 .alert-success {
-  background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
-  color: #2E7D32;
-  border: 2px solid #4CAF50;
+  background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+  color: #1976D2;
+  border: 2px solid #2196F3;
 }
 
 .alert-error {
@@ -433,8 +507,10 @@
 
 .embedded-availability-content .save-button {
   padding: 12px 24px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   width: 100%;
+  min-width: auto;
+  border-radius: 8px;
 }
 
 .embedded-availability-content .alert {
