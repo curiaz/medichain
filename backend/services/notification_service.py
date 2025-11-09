@@ -59,23 +59,43 @@ class NotificationService:
             if action_label:
                 notification_data["action_label"] = action_label
             if metadata:
-                notification_data["metadata"] = json.dumps(metadata) if isinstance(metadata, dict) else metadata
+                # Supabase JSONB columns accept Python dicts directly - no need to convert to JSON string
+                notification_data["metadata"] = metadata if isinstance(metadata, dict) else json.loads(metadata) if isinstance(metadata, str) else {}
             if expires_at:
                 notification_data["expires_at"] = expires_at.isoformat() if hasattr(expires_at, 'isoformat') else expires_at
             
             # Use service_client to bypass RLS for system notifications
+            print(f"📝 Inserting notification into database:")
+            print(f"   User ID: {user_id}")
+            print(f"   Title: {title}")
+            print(f"   Category: {category}")
+            print(f"   Type: {notification_type}")
+            print(f"   Metadata: {metadata}")
+            
             response = self.supabase.service_client.table("notifications").insert(notification_data).execute()
             
-            if response.data:
-                print(f"✅ Notification created for user {user_id}: {title}")
-                return {"success": True, "notification": response.data[0]}
+            print(f"📥 Database response: {response}")
+            print(f"   Response data: {response.data if hasattr(response, 'data') else 'No data attribute'}")
+            
+            if response.data and len(response.data) > 0:
+                notification_id = response.data[0].get('id', 'unknown')
+                print(f"✅ Notification created successfully for user {user_id}")
+                print(f"   Notification ID: {notification_id}")
+                print(f"   Title: {title}")
+                return {"success": True, "notification": response.data[0], "notification_id": notification_id}
             else:
-                print(f"❌ Failed to create notification for user {user_id}")
-                return {"success": False, "error": "Failed to create notification"}
+                error_msg = "Failed to create notification - no data returned from database"
+                print(f"❌ {error_msg} for user {user_id}")
+                if hasattr(response, 'error'):
+                    print(f"   Database error: {response.error}")
+                return {"success": False, "error": error_msg}
                 
         except Exception as e:
-            print(f"❌ Error creating notification: {e}")
-            return {"success": False, "error": str(e)}
+            error_msg = str(e)
+            print(f"❌ EXCEPTION creating notification for user {user_id}: {error_msg}")
+            import traceback
+            print(f"   Traceback: {traceback.format_exc()}")
+            return {"success": False, "error": error_msg}
     
     def create_appointment_notification(self, user_id, appointment_id, appointment_date, 
                                        appointment_time, doctor_name=None, patient_name=None,
@@ -93,6 +113,16 @@ class NotificationService:
             notification_type: Type of notification (appointment_created, appointment_reminder, etc.)
             meeting_url: Jitsi meeting URL
         """
+        print(f"🔔 create_appointment_notification called:")
+        print(f"   User ID: {user_id}")
+        print(f"   Appointment ID: {appointment_id}")
+        print(f"   Date: {appointment_date}")
+        print(f"   Time: {appointment_time}")
+        print(f"   Doctor Name: {doctor_name}")
+        print(f"   Patient Name: {patient_name}")
+        print(f"   Notification Type: {notification_type}")
+        print(f"   Meeting URL: {meeting_url}")
+        
         if notification_type == 'appointment_created':
             if doctor_name:
                 # Patient notification
@@ -102,6 +132,9 @@ class NotificationService:
                 # Doctor notification
                 title = "New Appointment Request"
                 message = f"You have a new appointment with {patient_name} on {appointment_date} at {appointment_time}"
+            
+            print(f"   Generated Title: {title}")
+            print(f"   Generated Message: {message}")
             
             metadata = {
                 "appointment_id": str(appointment_id),
@@ -113,7 +146,13 @@ class NotificationService:
             action_url = f"/appointments/{appointment_id}" if appointment_id else "/appointments"
             action_label = "View Appointment"
             
-            return self.create_notification(
+            print(f"   Calling create_notification with:")
+            print(f"      user_id: {user_id}")
+            print(f"      title: {title}")
+            print(f"      category: appointment")
+            print(f"      priority: high")
+            
+            result = self.create_notification(
                 user_id=user_id,
                 title=title,
                 message=message,
@@ -124,6 +163,9 @@ class NotificationService:
                 action_label=action_label,
                 metadata=metadata
             )
+            
+            print(f"   create_notification returned: {result}")
+            return result
         
         elif notification_type == 'appointment_reminder':
             if doctor_name:
@@ -198,6 +240,11 @@ class NotificationService:
             notification_type: Type of notification (video_call_ready, video_call_starting, etc.)
         """
         if notification_type == 'video_call_ready':
+            # Only create video consultation ready notification if meeting_url is provided
+            if not meeting_url:
+                print(f"⚠️  Cannot create video_call_ready notification: no meeting_url provided")
+                return {"success": False, "error": "Meeting URL is required for video consultation ready notification"}
+            
             if doctor_name:
                 # Patient notification
                 title = "Video Consultation Ready"
@@ -214,6 +261,11 @@ class NotificationService:
                 "meeting_url": meeting_url,
                 "notification_type": "video_call"
             }
+            
+            print(f"📹 Creating Video Consultation Ready notification:")
+            print(f"   User ID: {user_id}")
+            print(f"   Title: {title}")
+            print(f"   Meeting URL: {meeting_url}")
             
             return self.create_notification(
                 user_id=user_id,
@@ -287,4 +339,3 @@ class NotificationService:
 
 # Global instance
 notification_service = NotificationService()
-

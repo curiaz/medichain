@@ -483,7 +483,7 @@ const DoctorAvailability = ({ embedded = false }) => {
                     border: 'none',
                     cursor: 'pointer',
                     position: 'relative',
-                    backgroundColor: isAcceptingAppointments ? '#4CAF50' : '#ccc',
+                    backgroundColor: isAcceptingAppointments ? '#2196F3' : '#ccc',
                     transition: 'background-color 0.3s',
                     padding: '0',
                     display: 'flex',
@@ -507,68 +507,84 @@ const DoctorAvailability = ({ embedded = false }) => {
                       
                       {availability.time_ranges.map((range, index) => (
                         <div key={index} className="time-range-card" style={{ 
-                          marginBottom: '24px', 
-                          padding: '20px', 
-                          border: '2px solid #e0e0e0', 
+                          marginBottom: '16px', 
+                          padding: '16px', 
+                          border: '2px solid #E3F2FD', 
                           borderRadius: '12px',
-                          backgroundColor: '#f9f9f9'
+                          backgroundColor: 'rgba(227, 242, 253, 0.3)',
+                          transition: 'all 0.3s ease'
                         }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <h4 style={{ margin: 0, color: '#2196F3', fontSize: '1.1rem' }}>
-                              Time Range {index + 1}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <h4 style={{ margin: 0, color: '#1976D2', fontSize: '1rem', fontWeight: '600' }}>
+                              Range {index + 1}
                             </h4>
                             {availability.time_ranges.length > 1 && (
                               <button
                                 onClick={() => removeTimeRange(index)}
+                                className="delete-range-btn"
                                 style={{
-                                  padding: '6px 12px',
-                                  background: '#e74c3c',
-                                  color: 'white',
-                                  border: 'none',
+                                  padding: '6px 10px',
+                                  background: 'transparent',
+                                  color: '#1976D2',
+                                  border: '1px solid #BBDEFB',
                                   borderRadius: '6px',
                                   cursor: 'pointer',
-                                  fontSize: '0.9rem',
+                                  fontSize: '0.85rem',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '6px'
+                                  gap: '4px',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = '#E3F2FD';
+                                  e.currentTarget.style.borderColor = '#1976D2';
+                                  e.currentTarget.style.color = '#0D47A1';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = 'transparent';
+                                  e.currentTarget.style.borderColor = '#BBDEFB';
+                                  e.currentTarget.style.color = '#1976D2';
                                 }}
                               >
-                                <Trash2 size={16} /> Remove
+                                <Trash2 size={14} />
                               </button>
                             )}
                           </div>
 
-                          <div className="form-row">
-                            <div className="form-group">
-                              <label>Start Time</label>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label style={{ fontSize: '0.85rem', marginBottom: '4px' }}>Start</label>
                               <input
                                 type="time"
                                 className="form-input"
                                 value={range.start_time}
                                 onChange={(e) => handleAvailabilityChange(index, 'start_time', e.target.value)}
+                                style={{ padding: '8px 12px', fontSize: '0.9rem' }}
                               />
                             </div>
 
-                            <div className="form-group">
-                              <label>End Time</label>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label style={{ fontSize: '0.85rem', marginBottom: '4px' }}>End</label>
                               <input
                                 type="time"
                                 className="form-input"
                                 value={range.end_time}
                                 onChange={(e) => handleAvailabilityChange(index, 'end_time', e.target.value)}
+                                style={{ padding: '8px 12px', fontSize: '0.9rem' }}
                               />
                             </div>
 
-                            <div className="form-group">
-                              <label>Time Interval (minutes)</label>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label style={{ fontSize: '0.85rem', marginBottom: '4px' }}>Interval</label>
                               <select
                                 className="form-input"
                                 value={range.interval}
                                 onChange={(e) => handleAvailabilityChange(index, 'interval', parseInt(e.target.value))}
+                                style={{ padding: '8px 12px', fontSize: '0.9rem' }}
                               >
-                                <option value={15}>15 minutes</option>
-                                <option value={25}>25 minutes</option>
-                                <option value={30}>30 minutes</option>
+                                <option value={15}>15 min</option>
+                                <option value={25}>25 min</option>
+                                <option value={30}>30 min</option>
                               </select>
                             </div>
                           </div>
@@ -580,7 +596,7 @@ const DoctorAvailability = ({ embedded = false }) => {
                         style={{
                           width: '100%',
                           padding: '12px',
-                          background: 'linear-gradient(135deg, #4CAF50, #8BC34A)',
+                          background: 'linear-gradient(135deg, #2196F3, #00BCD4)',
                           color: 'white',
                           border: 'none',
                           borderRadius: '12px',
@@ -689,7 +705,7 @@ const DoctorAvailability = ({ embedded = false }) => {
                     border: 'none',
                     cursor: 'pointer',
                     position: 'relative',
-                    backgroundColor: isAcceptingAppointments ? '#4CAF50' : '#ccc',
+                    backgroundColor: isAcceptingAppointments ? '#2196F3' : '#ccc',
                     transition: 'background-color 0.3s',
                     padding: '0',
                     display: 'flex',
@@ -713,27 +729,41 @@ const DoctorAvailability = ({ embedded = false }) => {
               
               {availability.time_ranges.map((range, index) => (
                 <div key={index} style={{ 
-                  marginBottom: '16px', 
-                  padding: '16px', 
-                  border: '2px solid #e0e0e0', 
-                  borderRadius: '8px',
-                  backgroundColor: '#f9f9f9'
+                  marginBottom: '12px', 
+                  padding: '14px', 
+                  border: '2px solid #E3F2FD', 
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(227, 242, 253, 0.3)',
+                  transition: 'all 0.3s ease'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ fontWeight: '600', color: '#2196F3', fontSize: '0.95rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <span style={{ fontWeight: '600', color: '#1976D2', fontSize: '0.9rem' }}>
                       Range {index + 1}
                     </span>
                     {availability.time_ranges.length > 1 && (
                       <button
                         onClick={() => removeTimeRange(index)}
                         style={{
-                          padding: '4px 8px',
-                          background: '#e74c3c',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
+                          padding: '5px 8px',
+                          background: 'transparent',
+                          color: '#1976D2',
+                          border: '1px solid #BBDEFB',
+                          borderRadius: '5px',
                           cursor: 'pointer',
-                          fontSize: '0.8rem'
+                          fontSize: '0.8rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#FFEBEE';
+                          e.currentTarget.style.borderColor = '#EF5350';
+                          e.currentTarget.style.color = '#C62828';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                          e.currentTarget.style.borderColor = '#BBDEFB';
+                          e.currentTarget.style.color = '#1976D2';
                         }}
                       >
                         <Trash2 size={14} />
@@ -741,37 +771,40 @@ const DoctorAvailability = ({ embedded = false }) => {
                     )}
                   </div>
 
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Start</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label style={{ fontSize: '0.8rem', marginBottom: '4px' }}>Start</label>
                       <input
                         type="time"
                         className="form-input"
                         value={range.start_time}
                         onChange={(e) => handleAvailabilityChange(index, 'start_time', e.target.value)}
+                        style={{ padding: '6px 10px', fontSize: '0.85rem' }}
                       />
                     </div>
 
-                    <div className="form-group">
-                      <label>End</label>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label style={{ fontSize: '0.8rem', marginBottom: '4px' }}>End</label>
                       <input
                         type="time"
                         className="form-input"
                         value={range.end_time}
                         onChange={(e) => handleAvailabilityChange(index, 'end_time', e.target.value)}
+                        style={{ padding: '6px 10px', fontSize: '0.85rem' }}
                       />
                     </div>
 
-                    <div className="form-group">
-                      <label>Interval</label>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label style={{ fontSize: '0.8rem', marginBottom: '4px' }}>Interval</label>
                       <select
                         className="form-input"
                         value={range.interval}
                         onChange={(e) => handleAvailabilityChange(index, 'interval', parseInt(e.target.value))}
+                        style={{ padding: '6px 10px', fontSize: '0.85rem' }}
                       >
-                        <option value={15}>15 minutes</option>
-                        <option value={25}>25 minutes</option>
-                        <option value={30}>30 minutes</option>
+                        <option value={15}>15 min</option>
+                        <option value={25}>25 min</option>
+                        <option value={30}>30 min</option>
                       </select>
                     </div>
                   </div>
@@ -783,7 +816,7 @@ const DoctorAvailability = ({ embedded = false }) => {
                 style={{
                   width: '100%',
                   padding: '10px',
-                  background: 'linear-gradient(135deg, #4CAF50, #8BC34A)',
+                  background: 'linear-gradient(135deg, #2196F3, #00BCD4)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',

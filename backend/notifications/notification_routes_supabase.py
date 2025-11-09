@@ -143,10 +143,19 @@ def get_notifications():
         firebase_user = request.firebase_user
         uid = firebase_user["uid"]
         
+        print(f"📥 Fetching notifications for user: {uid}")
+        
         # Get query parameters
         is_read = request.args.get('is_read')
         category = request.args.get('category')
         limit = request.args.get('limit', type=int) or 50
+        
+        print(f"   Query params: is_read={is_read}, category={category}, limit={limit}")
+        
+        # Check if supabase client is available
+        if not supabase or not supabase.service_client:
+            print("❌ Supabase client not available")
+            return jsonify({"success": False, "error": "Database connection unavailable"}), 500
         
         # Build query - use service_client to bypass RLS
         query = supabase.service_client.table("notifications").select("*").eq("user_id", uid)
@@ -159,22 +168,35 @@ def get_notifications():
         
         query = query.order("created_at", desc=True).limit(limit)
         
+        print(f"   Executing query...")
         response = query.execute()
+        print(f"   Query response: {response}")
+        print(f"   Response data type: {type(response.data)}")
+        print(f"   Response data length: {len(response.data) if response.data else 0}")
         
-        # Parse metadata JSON strings
+        # Parse metadata JSON strings or dicts
         notifications = []
-        for notif in (response.data or []):
-            if notif.get('metadata') and isinstance(notif['metadata'], str):
-                try:
-                    import json
-                    notif['metadata'] = json.loads(notif['metadata'])
-                except:
-                    pass
-            notifications.append(notif)
+        if response.data:
+            for notif in response.data:
+                # Handle metadata - it might be a dict (JSONB) or a string
+                if notif.get('metadata'):
+                    if isinstance(notif['metadata'], str):
+                        try:
+                            import json
+                            notif['metadata'] = json.loads(notif['metadata'])
+                        except:
+                            pass
+                    # If it's already a dict, keep it as is
+                notifications.append(notif)
+        
+        print(f"   Processed {len(notifications)} notifications")
         
         # Get unread count - use service_client to bypass RLS
         unread_response = supabase.service_client.table("notifications").select("id", count="exact").eq("user_id", uid).eq("is_read", False).execute()
         unread_count = unread_response.count if hasattr(unread_response, 'count') else 0
+        
+        print(f"   Unread count: {unread_count}")
+        print(f"✅ Successfully fetched {len(notifications)} notifications for user {uid}")
         
         return jsonify({
             "success": True,
@@ -184,7 +206,9 @@ def get_notifications():
         }), 200
         
     except Exception as e:
-        print(f"Error fetching notifications: {e}")
+        print(f"❌ Error fetching notifications: {e}")
+        import traceback
+        print(f"   Traceback: {traceback.format_exc()}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 @notifications_bp.route("/<notification_id>", methods=["DELETE"])
@@ -285,6 +309,30 @@ def mark_all_read():
 def get_notification_stats():
     """Get notification statistics for the user"""
     try:
+        firebase_user = request.firebase_user
+        uid = firebase_user["uid"]
+        
+        # Get total count - use service_client to bypass RLS
+        total_response = supabase.service_client.table("notifications").select("id", count="exact").eq("user_id", uid).execute()
+        total_count = total_response.count if hasattr(total_response, 'count') else 0
+        
+        # Get unread count - use service_client to bypass RLS
+        unread_response = supabase.service_client.table("notifications").select("id", count="exact").eq("user_id", uid).eq("is_read", False).execute()
+        unread_count = unread_response.count if hasattr(unread_response, 'count') else 0
+        
+        return jsonify({
+            "success": True,
+            "stats": {
+                "total": total_count,
+                "unread": unread_count,
+                "read": total_count - unread_count
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
         firebase_user = request.firebase_user
         uid = firebase_user["uid"]
         

@@ -33,6 +33,14 @@ from db.supabase_client import SupabaseClient
 # Load environment variables
 load_dotenv()
 
+# Initialize notification scheduler
+try:
+    from services.notification_scheduler import scheduler
+    print("✅ Notification scheduler initialized")
+except Exception as e:
+    print(f"⚠️  Warning: Notification scheduler not available: {e}")
+    scheduler = None
+
 class StreamlinedAIDiagnosis:
     """Streamlined AI Diagnosis System using Supabase tables"""
     
@@ -766,6 +774,14 @@ if __name__ == '__main__':
     print(f"📡 API available at: http://localhost:5000")
     print(f"🩺 Diagnosis endpoint: POST /api/diagnose")
     print(f"📋 Explanations endpoint: POST /api/symptom-explanations")
+    print(f"❤️  Health check: GET /health")
+    print("=" * 60)
+    
+    app.run(
+        debug=False,
+        host='0.0.0.0',
+        port=5000
+    )
     print(f"❤️  Health check: GET /health")
     print("=" * 60)
     

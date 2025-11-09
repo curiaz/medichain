@@ -1,124 +1,282 @@
-# 🎯 QUICK FIX: Appointments Not Working After Supabase Restart
+# Quick Fix: Appointments Not Fetching
 
-## TL;DR - The Problem
+## Problem
+Appointments exist in the database but cannot be fetched. From your screenshot, I can see:
+- **4 appointments** in the `appointments` table
+- All appointments have `doctor_firebase_uid`: `fLmNDKoCp1e0vQrOAs7bSYLSB8y1`
+- The logged-in user likely has a **different Firebase UID**
 
-**Reloading schema didn't work because the `appointment_time` column DOESN'T EXIST in your database!**
+## Root Cause
+**Firebase UID Mismatch** - Your logged-in Firebase UID doesn't match the `doctor_firebase_uid` in the appointments table.
 
-Your database has the wrong schema structure. No amount of schema reloading will create missing columns.
+## Quick Fix Options
 
----
+### Option 1: Update Appointments to Match Your Current UID (Recommended)
 
-## ✅ The Solution (3 Steps - 5 minutes)
+**Step 1: Get your current Firebase UID**
+1. Open browser console (F12)
+2. Run: `JSON.parse(localStorage.getItem('medichain_user')).firebase_uid` or `JSON.parse(localStorage.getItem('medichain_user')).uid`
+3. Copy the UID
 
-### Step 1: Open Supabase SQL Editor
-
-Go to: https://supabase.com/dashboard/project/royvcmfbcghamnbnxdgb/editor
-
-Click **"SQL Editor"** → **"New Query"**
-
-### Step 2: Run This SQL
-
-Copy the contents of **`FIX_APPOINTMENTS_TABLE.sql`** (or paste below):
+**Step 2: Update the appointments table**
+Run this SQL in Supabase SQL Editor:
 
 ```sql
-DROP TABLE IF EXISTS appointments CASCADE;
-
-CREATE TABLE appointments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  patient_firebase_uid TEXT NOT NULL,
-  doctor_firebase_uid TEXT NOT NULL,
-  appointment_date DATE NOT NULL,
-  appointment_time TIME NOT NULL,  -- THIS WAS MISSING!
-  appointment_type TEXT DEFAULT 'general-practitioner',
-  status TEXT DEFAULT 'scheduled',
-  notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(doctor_firebase_uid, appointment_date, appointment_time)
-);
-
-CREATE INDEX idx_appointments_patient ON appointments(patient_firebase_uid);
-CREATE INDEX idx_appointments_doctor ON appointments(doctor_firebase_uid);
-CREATE INDEX idx_appointments_date ON appointments(appointment_date);
-CREATE INDEX idx_appointments_status ON appointments(status);
-
-ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Patients can view own appointments" ON appointments
-  FOR SELECT USING (patient_firebase_uid = auth.uid()::text);
-
-CREATE POLICY "Doctors can view their appointments" ON appointments
-  FOR SELECT USING (doctor_firebase_uid = auth.uid()::text);
-
-CREATE POLICY "Patients can create appointments" ON appointments
-  FOR INSERT WITH CHECK (patient_firebase_uid = auth.uid()::text);
-
-CREATE POLICY "Patients can update own appointments" ON appointments
-  FOR UPDATE USING (patient_firebase_uid = auth.uid()::text);
-
-CREATE POLICY "Doctors can update their appointments" ON appointments
-  FOR UPDATE USING (doctor_firebase_uid = auth.uid()::text);
-
-NOTIFY pgrst, 'reload schema';
+-- Replace 'YOUR_CURRENT_FIREBASE_UID' with the UID from Step 1
+UPDATE appointments 
+SET doctor_firebase_uid = 'YOUR_CURRENT_FIREBASE_UID'
+WHERE doctor_firebase_uid = 'fLmNDKoCp1e0vQrOAs7bSYLSB8y1';
 ```
 
-Click **"Run"** (F5)
+**Step 3: Verify**
+```sql
+-- Check that appointments are updated
+SELECT id, doctor_firebase_uid, appointment_date, appointment_time 
+FROM appointments;
+```
 
-### Step 3: Test It
+### Option 2: Update Your User Profile to Match Appointments
+
+If you want to use the UID that's already in the appointments:
+
+**Step 1: Update user_profiles**
+```sql
+-- Replace 'your-email@example.com' with your actual email
+UPDATE user_profiles 
+SET firebase_uid = 'fLmNDKoCp1e0vQrOAs7bSYLSB8y1'
+WHERE email = 'your-email@example.com';
+```
+
+**Step 2: Log out and log back in**
+- This will sync your Firebase account with the database
+
+### Option 3: Use the Diagnostic Script
+
+I've created a Python script to help diagnose the issue:
 
 ```bash
-python test_after_migration.py
+cd backend
+python fix_appointment_uids.py
 ```
 
-You should see: **✅ ALL TESTS PASSED!**
+This will show you:
+- All appointments in the database
+- All doctor UIDs in appointments
+- All doctor profiles
+- UID mismatches
+- Suggested SQL to fix the issue
 
----
+## Testing the Fix
 
-## 🔍 What Was Wrong
+### Test 1: Check Backend Logs
+After restarting the backend, check the logs when you load the doctor schedule:
+```
+🔍 Querying appointments for doctor_firebase_uid: <your-uid>
+✅ Found 4 appointments for doctor <your-uid>
+```
 
-| Database Had | Code Expected | Result |
-|-------------|--------------|--------|
-| `patient_id` (UUID) | `patient_firebase_uid` (TEXT) | ❌ Column not found |
-| `doctor_id` (VARCHAR) | `doctor_firebase_uid` (TEXT) | ❌ Column not found |
-| `appointment_date` (TIMESTAMP) | `appointment_date` (DATE) + `appointment_time` (TIME) | ❌ appointment_time missing |
-
-**Schema reload can't fix this** - it only refreshes the cache of *existing* columns!
-
----
-
-## 📁 Files Created For You
-
-| File | Purpose |
-|------|---------|
-| `FIX_APPOINTMENTS_TABLE.sql` | SQL migration to run in Supabase |
-| `test_after_migration.py` | Test script to verify fix works |
-| `WHY_APPOINTMENTS_NOT_WORKING.md` | Detailed explanation |
-
----
-
-## ⚡ After Running Migration
-
-Your appointment system will work completely:
-- ✅ Create appointments
-- ✅ View appointments
-- ✅ Update appointments
-- ✅ Delete appointments
-- ✅ Doctor availability management
-- ✅ Frontend booking works
-
----
-
-## 🆘 Still Not Working?
-
-Run this to check status:
+### Test 2: Use the Diagnostic Endpoint
 ```bash
-python test_after_migration.py
+# Get your auth token first, then:
+curl http://localhost:5000/api/appointments/diagnostic \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-If you see `appointment_time column` error → Migration didn't run, try again in SQL Editor
+This will show:
+- Your current UID
+- All UIDs in the appointments table
+- Whether there's a match
+- The actual query results
 
-If you see `SUCCESS` → You're all set! 🎉
+### Test 3: Check Frontend
+1. Go to the doctor schedule page
+2. You should see all 4 appointments
+3. Patient names should be displayed
+
+## Expected Results After Fix
+
+✅ **Backend Logs:**
+```
+✅ Found 4 appointments for doctor <your-uid>
+📤 Returning 4 appointments to frontend
+✅ Enriched appointment <id> with patient: Name='<name>' Email='<email>'
+```
+
+✅ **Frontend:**
+- All 4 appointments visible
+- Patient names displayed correctly
+- Appointment dates and times shown
+- Video call links available
+
+## If Still Not Working
+
+### Check 1: Verify Service Client
+```python
+# In backend, check if service_client is initialized
+from db.supabase_client import SupabaseClient
+supabase = SupabaseClient()
+print(f"Service client: {supabase.service_client is not None}")
+```
+
+### Check 2: Verify Environment Variables
+Make sure `backend/.env` has:
+```
+SUPABASE_SERVICE_KEY=your-service-role-key
+```
+
+### Check 3: Check Backend Logs
+Look for these messages:
+- `🔍 Querying appointments for doctor_firebase_uid: <uid>`
+- `🔍 Available doctor UIDs in appointments: [...]`
+- `⚠️  Doctor UID <uid> does not match any appointments in database`
+
+### Check 4: Direct Database Query
+Run this in Supabase SQL Editor to verify:
+```sql
+-- Check all appointments
+SELECT 
+    id,
+    doctor_firebase_uid,
+    patient_firebase_uid,
+    appointment_date,
+    appointment_time,
+    status
+FROM appointments;
+
+-- Check your user profile
+SELECT 
+    firebase_uid,
+    email,
+    role,
+    first_name,
+    last_name
+FROM user_profiles
+WHERE role = 'doctor';
+```
+
+## Common Issues
+
+### Issue: "User profile not found"
+**Solution:** Make sure your Firebase UID exists in the `user_profiles` table
+
+### Issue: "Supabase service_client not initialized"
+**Solution:** Check that `SUPABASE_SERVICE_KEY` is set in `backend/.env`
+
+### Issue: "No appointments found" but appointments exist
+**Solution:** This is the UID mismatch - use Option 1 or Option 2 above
+
+## SQL Quick Reference
+
+### Update All Appointments for a Doctor
+```sql
+UPDATE appointments 
+SET doctor_firebase_uid = 'NEW_UID'
+WHERE doctor_firebase_uid = 'OLD_UID';
+```
+
+### Check UID Mismatches
+```sql
+-- Find appointments with UIDs that don't match any user profile
+SELECT DISTINCT a.doctor_firebase_uid
+FROM appointments a
+LEFT JOIN user_profiles u ON a.doctor_firebase_uid = u.firebase_uid
+WHERE u.firebase_uid IS NULL;
+```
+
+### Find Your Current UID
+```sql
+-- Find your user profile by email
+SELECT firebase_uid, email, role
+FROM user_profiles
+WHERE email = 'your-email@example.com';
+```
 
 ---
 
-**That's it!** Just run that SQL in Supabase and you're done. 🚀
+**Quick Fix Date:** 2025-01-27
+**Status:** ✅ Ready to use
+
+**Next Steps:**
+1. Run the diagnostic script: `python backend/fix_appointment_uids.py`
+2. Update appointments table with correct UID (Option 1)
+3. Restart backend server
+4. Test the doctor schedule page
+
+
+### Check 3: Check Backend Logs
+Look for these messages:
+- `🔍 Querying appointments for doctor_firebase_uid: <uid>`
+- `🔍 Available doctor UIDs in appointments: [...]`
+- `⚠️  Doctor UID <uid> does not match any appointments in database`
+
+### Check 4: Direct Database Query
+Run this in Supabase SQL Editor to verify:
+```sql
+-- Check all appointments
+SELECT 
+    id,
+    doctor_firebase_uid,
+    patient_firebase_uid,
+    appointment_date,
+    appointment_time,
+    status
+FROM appointments;
+
+-- Check your user profile
+SELECT 
+    firebase_uid,
+    email,
+    role,
+    first_name,
+    last_name
+FROM user_profiles
+WHERE role = 'doctor';
+```
+
+## Common Issues
+
+### Issue: "User profile not found"
+**Solution:** Make sure your Firebase UID exists in the `user_profiles` table
+
+### Issue: "Supabase service_client not initialized"
+**Solution:** Check that `SUPABASE_SERVICE_KEY` is set in `backend/.env`
+
+### Issue: "No appointments found" but appointments exist
+**Solution:** This is the UID mismatch - use Option 1 or Option 2 above
+
+## SQL Quick Reference
+
+### Update All Appointments for a Doctor
+```sql
+UPDATE appointments 
+SET doctor_firebase_uid = 'NEW_UID'
+WHERE doctor_firebase_uid = 'OLD_UID';
+```
+
+### Check UID Mismatches
+```sql
+-- Find appointments with UIDs that don't match any user profile
+SELECT DISTINCT a.doctor_firebase_uid
+FROM appointments a
+LEFT JOIN user_profiles u ON a.doctor_firebase_uid = u.firebase_uid
+WHERE u.firebase_uid IS NULL;
+```
+
+### Find Your Current UID
+```sql
+-- Find your user profile by email
+SELECT firebase_uid, email, role
+FROM user_profiles
+WHERE email = 'your-email@example.com';
+```
+
+---
+
+**Quick Fix Date:** 2025-01-27
+**Status:** ✅ Ready to use
+
+**Next Steps:**
+1. Run the diagnostic script: `python backend/fix_appointment_uids.py`
+2. Update appointments table with correct UID (Option 1)
+3. Restart backend server
+4. Test the doctor schedule page
