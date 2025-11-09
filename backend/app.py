@@ -575,11 +575,13 @@ except ImportError:
     from notifications.notification_routes import notifications_bp
     print("⚠️  Using SQLite notification routes (fallback)")
 from appointment_routes import appointments_bp
+from admin_routes import admin_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(doctor_verification_bp)
 app.register_blueprint(notifications_bp)
 app.register_blueprint(appointments_bp)
+app.register_blueprint(admin_bp)
 
 # 🔧 FIXED: CORS configuration with credentials support (removed "*" to fix CORS issues)
 CORS(app, resources={

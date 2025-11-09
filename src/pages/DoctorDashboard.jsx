@@ -19,7 +19,10 @@ const DoctorDashboard = () => {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const verificationStatus = user?.doctor_profile?.verification_status || user?.profile?.verification_status
+  // Prioritize doctor_profiles.verification_status over user_profiles.verification_status
+  // This is the source of truth for doctor verification
+  const verificationStatus = user?.doctor_profile?.verification_status || 
+                             (user?.role === 'doctor' ? (user?.profile?.verification_status || 'pending') : null)
 
   useEffect(() => {
     // Load doctor dashboard stats when component mounts or user changes

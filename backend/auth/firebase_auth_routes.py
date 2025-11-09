@@ -625,16 +625,17 @@ def register():
                 doctor_profile_data = {
                     "firebase_uid": uid,
                     "user_id": user_profile["id"],
-                    "specialization": "General Medicine",  # Default
+                    "specialization": "General Practitioner",  # Default
                     "license_number": f"DR-{uid[:8].upper()}",  # Generate temporary license
                     "years_of_experience": 0,
+                    "verification_status": "pending",  # Set to pending for admin approval
                 }
                 print(f"💾 Inserting doctor profile: {doctor_profile_data}")
                 try:
                     doc_response = supabase.service_client.table("doctor_profiles").insert(doctor_profile_data).execute()
                     if doc_response.data:
                         doctor_profile = doc_response.data[0]
-                        print("✅ Doctor profile created successfully")
+                        print("✅ Doctor profile created successfully with pending verification status")
                     else:
                         print("❌ Failed to create doctor profile")
                 except Exception as doc_insert_error:
