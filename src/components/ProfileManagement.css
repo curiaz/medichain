@@ -827,10 +827,13 @@
 @media (max-width: 768px) {
   .profile-management-container {
     padding: 1rem;
+    padding-bottom: 4rem;
+    min-height: calc(100vh - 60px);
   }
   
   .profile-header {
     padding: 1.5rem;
+    margin-bottom: 1rem;
   }
   
   .profile-info h1 {
@@ -854,8 +857,13 @@
     padding-bottom: 0.5rem;
   }
   
+  .tab-container {
+    margin-bottom: 2rem;
+  }
+  
   .tab-content {
     padding: 1.5rem;
+    padding-bottom: 2rem;
   }
   
   .form-grid {
@@ -877,8 +885,15 @@
 }
 
 @media (max-width: 480px) {
+  .profile-management-container {
+    padding: 0.75rem;
+    padding-bottom: 5rem;
+    min-height: calc(100vh - 60px);
+  }
+  
   .profile-header {
     padding: 1rem;
+    margin-bottom: 1rem;
   }
   
   .profile-avatar {
@@ -887,8 +902,13 @@
     font-size: 1.5rem;
   }
   
+  .tab-container {
+    margin-bottom: 2.5rem;
+  }
+  
   .tab-content {
     padding: 1rem;
+    padding-bottom: 2rem;
   }
   
   .form-section h3 {

@@ -24,7 +24,7 @@ const BottomNavigation = () => {
       path: "/dashboard",
       icon: Home,
       label: "Home",
-      matchPaths: ["/dashboard", "/book-appointment", "/select-gp", "/book-appointment-form"],
+      matchPaths: ["/dashboard"],
     },
     {
       path: "/book-appointment",

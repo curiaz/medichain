@@ -834,7 +834,8 @@
 
 /* Footer Styling - Scoped to login page only */
 .login-container .footer,
-.login-wrapper .footer {
+.login-wrapper .footer,
+.footer {
   background: #ffffff;
   border-top: 1px solid #e5e7eb;
   padding: 2rem 0;
@@ -843,10 +844,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  left: 0;
+  right: 0;
 }
 
 .login-container .footer-content,
-.login-wrapper .footer-content {
+.login-wrapper .footer-content,
+.footer .footer-content {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 2rem;
@@ -864,6 +869,8 @@
   margin-bottom: 0;
   font-weight: 500;
   line-height: 1.5;
+  text-align: center;
+  width: 100%;
 }
 
 .login-container .footer-main strong,
@@ -884,6 +891,8 @@
   color: #64748b;
   margin-bottom: 0;
   line-height: 1.4;
+  text-align: center;
+  width: 100%;
 }
 
 .login-container .footer-academic,
@@ -893,33 +902,120 @@
   font-style: italic;
   margin-bottom: 0;
   line-height: 1.4;
+  text-align: center;
+  width: 100%;
 }
 
 @media (max-width: 768px) {
   .login-container .footer,
-  .login-wrapper .footer {
-    padding: 1.5rem 0;
+  .login-wrapper .footer,
+  .footer {
+    padding: 0.75rem 0 !important;
+    text-align: center !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
   }
   
   .login-container .footer-content,
-  .login-wrapper .footer-content {
-    padding: 0 1rem;
-    gap: 0.5rem;
+  .login-wrapper .footer-content,
+  .footer .footer-content {
+    padding: 0 1rem !important;
+    gap: 0.3rem;
+    text-align: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    margin-left: auto !important;
+    margin-right: auto !important;
   }
   
   .login-container .footer-main,
-  .login-wrapper .footer-main {
-    font-size: 0.85rem;
+  .login-wrapper .footer-main,
+  .footer .footer-main {
+    font-size: 0.75rem;
+    line-height: 1.4;
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   
   .login-container .footer-sub,
-  .login-wrapper .footer-sub {
-    font-size: 0.75rem;
+  .login-wrapper .footer-sub,
+  .footer .footer-sub {
+    font-size: 0.7rem;
+    line-height: 1.3;
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   
   .login-container .footer-academic,
-  .login-wrapper .footer-academic {
+  .login-wrapper .footer-academic,
+  .footer .footer-academic {
+    font-size: 0.65rem;
+    line-height: 1.3;
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-container .footer,
+  .login-wrapper .footer,
+  .footer {
+    padding: 0.5rem 0 !important;
+    text-align: center !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  
+  .login-container .footer-content,
+  .login-wrapper .footer-content,
+  .footer .footer-content {
+    padding: 0 0.75rem !important;
+    gap: 0.25rem;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  
+  .login-container .footer-main,
+  .login-wrapper .footer-main,
+  .footer .footer-main {
     font-size: 0.7rem;
+    line-height: 1.3;
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .login-container .footer-sub,
+  .login-wrapper .footer-sub,
+  .footer .footer-sub {
+    font-size: 0.65rem;
+    line-height: 1.2;
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .login-container .footer-academic,
+  .login-wrapper .footer-academic,
+  .footer .footer-academic {
+    font-size: 0.6rem;
+    line-height: 1.2;
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 }
 
@@ -949,15 +1045,15 @@
     margin: 0 auto;
   }
   
-  .doctor-image {
+  .login-form {
     order: -1;
     min-height: auto;
-    padding: 32px 24px;
+    padding: 28px 20px;
   }
   
-  .login-form {
+  .doctor-image {
     min-height: auto;
-    padding: 28px 20px;
+    padding: 32px 24px;
   }
   
   .doctor-placeholder { padding: 24px 20px; max-width: none; }

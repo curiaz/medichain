@@ -688,10 +688,41 @@
   -ms-overflow-style: none;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  cursor: grab;
+  user-select: none;
+}
+
+.profile-tab-nav-list.active {
+  cursor: grabbing;
+  scroll-behavior: auto;
 }
 
 .profile-tab-nav-list::-webkit-scrollbar {
   display: none;
+}
+
+/* Enable scrolling on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .profile-tab-nav-list {
+    overflow-x: scroll;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+  }
+  
+  .profile-tab-nav-list::-webkit-scrollbar {
+    display: block;
+    height: 4px;
+  }
+  
+  .profile-tab-nav-list::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+  
+  .profile-tab-nav-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 2px;
+  }
 }
 
 .profile-tab-nav-item {
@@ -1408,17 +1439,39 @@
 
 /* Tablets */
 @media (max-width: 768px) {
+  .profile-page {
+    padding-bottom: 4rem;
+    min-height: calc(100vh - 60px);
+  }
+  
   .profile-main-container {
     padding: var(--space-4);
+    padding-bottom: 5rem;
   }
   
   .profile-header-content {
     height: 4rem;
     gap: var(--space-2);
+    justify-content: center;
+  }
+  
+  .profile-header-left {
+    justify-content: center;
+    position: relative;
+    width: 100%;
+  }
+  
+  .profile-back-btn {
+    position: absolute;
+    left: 0;
+    z-index: 2;
   }
   
   .profile-header-title {
     font-size: 1.5rem;
+    text-align: center;
+    flex: 1;
+    width: 100%;
   }
   
   .profile-welcome-text {
@@ -1458,20 +1511,64 @@
     justify-content: center;
   }
   
-  .profile-tab-nav-list {
-    gap: 1rem;
-    padding-bottom: 0.5rem;
-    padding-right: 2rem;
+  .profile-tab-container {
+    overflow: visible;
+  }
+  
+  .profile-tab-navigation {
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    scroll-behavior: smooth;
+    position: relative;
+    padding: 0;
+    margin: 0;
     -webkit-overflow-scrolling: touch;
   }
   
+  .profile-tab-nav-list {
+    display: flex;
+    gap: 1rem;
+    padding: var(--space-4);
+    padding-bottom: 0.75rem;
+    margin: 0;
+    overflow-x: scroll !important;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    touch-action: pan-x;
+    width: auto;
+    min-width: 100%;
+  }
+  
+  .profile-tab-nav-item {
+    flex-shrink: 0;
+    flex-grow: 0;
+    scroll-snap-align: start;
+  }
+  
+  .profile-tab-nav-button {
+    white-space: nowrap;
+    min-width: max-content;
+  }
+  
   .profile-tab-nav-list::-webkit-scrollbar {
-    display: none;
+    height: 6px;
+  }
+  
+  .profile-tab-nav-list::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+  }
+  
+  .profile-tab-nav-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+  
+  .profile-tab-nav-list::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
   }
   
   /* Scroll indicator for tablet */
@@ -1487,8 +1584,13 @@
     z-index: 1;
   }
   
+  .profile-tab-container {
+    margin-bottom: 2rem;
+  }
+  
   .profile-tab-content {
     padding: 1.5rem;
+    padding-bottom: 2rem;
   }
   
   .profile-form-grid {
@@ -1580,23 +1682,43 @@
 @media (max-width: 480px) {
   .profile-page {
     background: var(--bg-primary); /* Simplified background for performance */
+    padding-bottom: 5rem;
+    min-height: calc(100vh - 60px);
   }
   
   .profile-main-container {
     padding: var(--space-2);
+    padding-bottom: 6rem;
   }
   
   .profile-header-content {
     padding: 0 var(--space-2);
+    justify-content: center;
+  }
+  
+  .profile-header-left {
+    justify-content: center;
+    position: relative;
+    width: 100%;
+  }
+  
+  .profile-back-btn {
+    position: absolute;
+    left: 0;
+    z-index: 2;
   }
   
   .profile-header-title {
     font-size: 1.25rem;
+    text-align: center;
+    flex: 1;
+    width: 100%;
   }
   
   .profile-card-header {
     padding: var(--space-4);
     border-radius: var(--radius-2xl);
+    margin-bottom: 1rem;
   }
   
   .profile-avatar {
@@ -1605,8 +1727,71 @@
     font-size: 1.5rem;
   }
   
+  .profile-tab-container {
+    margin-bottom: 2.5rem;
+  }
+  
+  .profile-tab-container {
+    overflow: visible;
+  }
+  
+  .profile-tab-navigation {
+    overflow-x: auto;
+    overflow-y: hidden;
+    position: relative;
+    padding: 0;
+    margin: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .profile-tab-nav-list {
+    display: flex;
+    gap: 0.75rem;
+    padding: var(--space-3);
+    padding-bottom: 0.75rem;
+    margin: 0;
+    overflow-x: scroll !important;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    touch-action: pan-x;
+    width: auto;
+    min-width: 100%;
+  }
+  
+  .profile-tab-nav-item {
+    flex-shrink: 0;
+    flex-grow: 0;
+    scroll-snap-align: start;
+  }
+  
+  .profile-tab-nav-button {
+    white-space: nowrap;
+    font-size: 0.8rem;
+    padding: var(--space-3) var(--space-2);
+    min-width: max-content;
+  }
+  
+  .profile-tab-nav-list::-webkit-scrollbar {
+    height: 5px;
+  }
+  
+  .profile-tab-nav-list::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+  }
+  
+  .profile-tab-nav-list::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+  
   .profile-tab-content {
     padding: 1rem;
+    padding-bottom: 2rem;
   }
   
   .profile-tab-title {

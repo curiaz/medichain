@@ -49,6 +49,53 @@ const ProfilePage = () => {
   const [saving, setSaving] = useState(false);
   const [auditTrail, setAuditTrail] = useState([]); // eslint-disable-line no-unused-vars
 
+  // Add drag-to-scroll functionality for tab navigation
+  useEffect(() => {
+    const slider = document.querySelector('.profile-tab-nav-list');
+    if (!slider) return;
+
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    const handleMouseDown = (e) => {
+      isDown = true;
+      slider.classList.add('active');
+      startX = e.pageX - slider.offsetLeft;
+      scrollLeft = slider.scrollLeft;
+    };
+
+    const handleMouseLeave = () => {
+      isDown = false;
+      slider.classList.remove('active');
+    };
+
+    const handleMouseUp = () => {
+      isDown = false;
+      slider.classList.remove('active');
+    };
+
+    const handleMouseMove = (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - slider.offsetLeft;
+      const walk = (x - startX) * 2; // Multiply by 2 for faster scroll
+      slider.scrollLeft = scrollLeft - walk;
+    };
+
+    slider.addEventListener('mousedown', handleMouseDown);
+    slider.addEventListener('mouseleave', handleMouseLeave);
+    slider.addEventListener('mouseup', handleMouseUp);
+    slider.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      slider.removeEventListener('mousedown', handleMouseDown);
+      slider.removeEventListener('mouseleave', handleMouseLeave);
+      slider.removeEventListener('mouseup', handleMouseUp);
+      slider.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, []);
+
   const loadProfile = useCallback(async () => {
     console.log('🚀 LOADING PROFILE - ENHANCED MODE');
     console.log('👤 User object:', user);
@@ -488,7 +535,7 @@ const ProfilePage = () => {
               >
                 <ArrowLeft size={20} />
               </button>
-              <h1 className="profile-header-title">Patient Profile Management</h1>
+              <h1 className="profile-header-title">Profile</h1>
             </div>
             <div className="profile-header-right">
               <div className="profile-welcome-text">

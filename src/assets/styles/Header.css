@@ -153,14 +153,67 @@
   display: none;
 }
 
+/* Mobile header actions container */
+.mobile-header-actions {
+  display: none;
+}
+
 /* Hide desktop buttons on mobile */
 @media (max-width: 768px) {
   .desktop-only {
     display: none !important;
   }
   
+  .mobile-header-actions {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .mobile-icon-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    background: rgba(100, 116, 139, 0.08);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .mobile-icon-btn:hover {
+    background: rgba(33, 150, 243, 0.12);
+    color: #2196f3;
+    transform: translateY(-1px);
+  }
+  
+  .mobile-icon-btn:active {
+    transform: translateY(0);
+    background: rgba(33, 150, 243, 0.18);
+  }
+  
+  /* Notifications icon specific styling */
+  .mobile-icon-btn {
+    color: #64748b;
+  }
+  
+  .mobile-icon-btn:hover {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+  }
+  
   .burger-menu-button.icon-button {
     display: flex !important;
+    background: rgba(33, 150, 243, 0.1);
+    color: #2196f3;
+  }
+  
+  .burger-menu-button.icon-button:hover {
+    background: rgba(33, 150, 243, 0.2);
   }
 }
 
@@ -181,7 +234,8 @@
 
 @media (max-width: 768px) {
   .dashboard-header {
-    padding: 0;
+    padding: 12px 0 12px 0 !important;
+    height: 104px;
   }
   
   .dashboard-header-container {
@@ -270,8 +324,8 @@
 
 @media (max-width: 640px) {
   .dashboard-header {
-    height: 70px;
-    padding: 0;
+    height: 94px;
+    padding: 12px 0 12px 0 !important;
   }
 
   .dashboard-header-container {
@@ -293,6 +347,17 @@
     gap: 0;
     padding: 0;
     margin: 0;
+  }
+  
+  .mobile-header-actions {
+    gap: 6px;
+  }
+  
+  .mobile-icon-btn {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
   }
   
   .burger-menu-button {
@@ -322,9 +387,9 @@
 @media (max-width: 480px) {
   /* Android phone compact header */
   .dashboard-header {
-    height: 56px;
-    padding: 0;
-    padding-top: env(safe-area-inset-top, 0);
+    height: 80px;
+    padding: 12px 0 12px 0 !important;
+    padding-top: max(env(safe-area-inset-top, 0), 12px) !important;
   }
 
   .dashboard-header-container {
@@ -358,6 +423,23 @@
     height: 28px;
   }
 
+  .mobile-header-actions {
+    gap: 5px;
+  }
+  
+  .mobile-icon-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    border-radius: 8px;
+  }
+  
+  .mobile-icon-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
   .burger-menu-button {
     width: 36px;
     height: 36px;
@@ -365,6 +447,7 @@
     min-height: 36px;
     margin: 0;
     padding: 0;
+    border-radius: 8px;
   }
 
   .burger-menu-button svg {
