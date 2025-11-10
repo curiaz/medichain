@@ -138,9 +138,9 @@ const Footer = ({ onPrivacyClick, onTermsClick }) => {
                 <button 
                   onClick={() => scrollToFeature('AI-Driven Diagnosis')} 
                   className="footer-link"
-                  aria-label="View AI-Driven Diagnosis feature"
+                  aria-label="View AI Diagnosis feature"
                 >
-                  AI-Driven Diagnosis
+                  AI Diagnosis
                 </button>
               </li>
               <li>
@@ -156,9 +156,9 @@ const Footer = ({ onPrivacyClick, onTermsClick }) => {
                 <button 
                   onClick={() => scrollToFeature('Advanced Encryption')} 
                   className="footer-link"
-                  aria-label="View Advanced Encryption feature"
+                  aria-label="View Secure Encryption feature"
                 >
-                  Advanced Encryption
+                  Secure Encryption
                 </button>
               </li>
               <li>
@@ -170,24 +170,6 @@ const Footer = ({ onPrivacyClick, onTermsClick }) => {
                   Real-time Analytics
                 </button>
               </li>
-              <li>
-                <button 
-                  onClick={() => scrollToFeature('Interoperability')} 
-                  className="footer-link"
-                  aria-label="View Interoperability feature"
-                >
-                  Interoperability
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => scrollToFeature('Mobile-First Design')} 
-                  className="footer-link"
-                  aria-label="View Mobile-First Design feature"
-                >
-                  Mobile-First Design
-                </button>
-              </li>
             </ul>
           </div>
 
@@ -197,11 +179,11 @@ const Footer = ({ onPrivacyClick, onTermsClick }) => {
             <ul className="footer-links">
               <li>
                 <a 
-                  href="mailto:medichain173@gmail.com" 
+                  href="mailto:support@medichain.com" 
                   className="footer-link"
                   aria-label="Send us an email"
                 >
-                  medichain173@gmail.com
+                  support@medichain.com
                 </a>
               </li>
               <li>
