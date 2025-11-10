@@ -1,0 +1,37 @@
+[33mcommit c69a5c27aa4860a1c97c4e4d833f2871b6513e83[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32muser_interface[m[33m, [m[1;31morigin/user_interface[m[33m)[m
+Author: Jeremiah Curias <jeremiahcurias@gmail.com>
+Date:   Wed Nov 5 20:44:37 2025 +0800
+
+    feat: Mobile UI improvements and Android app-like experience
+    
+    - Added Android-style bottom navigation for mobile devices
+    - Updated header for mobile: logo left, burger menu right (removed profile/logout on mobile)
+    - Removed burger menu on desktop view
+    - Centered dashboard header content on mobile
+    - Fixed gap between header and dashboard section on mobile
+    - Updated viewport meta tags for Android app-like experience
+    - Updated manifest.json for PWA support
+    - Improved mobile responsiveness across all breakpoints
+    - Applied consistent logo format on login and signup pages
+    - Added Android-specific CSS with Material Design styling
+    - Enhanced touch targets and safe area handling
+    - Optimized spacing and margins for clean mobile layout
+
+public/index.html
+public/manifest.json
+src/App.js
+src/assets/styles/AndroidApp.css
+src/assets/styles/BookAppointment.css
+src/assets/styles/BottomNavigation.css
+src/assets/styles/Header.css
+src/assets/styles/ModernDashboard.css
+src/assets/styles/SelectGP.css
+src/components/BottomNavigation.jsx
+src/frontend/MedichainLogin.css
+src/frontend/MedichainLogin.jsx
+src/frontend/ResetPassword.test.jsx
+src/index.css
+src/pages/BookAppointment.jsx
+src/pages/Header.jsx
+src/pages/PatientDashboard.jsx
+src/pages/SelectGP.jsx
