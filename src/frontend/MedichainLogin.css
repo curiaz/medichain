@@ -173,7 +173,8 @@
   box-shadow: 0 12px 32px rgba(0, 188, 212, 0.25);
 }
 
-.theme-classic .footer {
+.theme-classic .login-container .footer,
+.theme-classic .login-wrapper .footer {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -831,8 +832,9 @@
   flex-shrink: 0;
 }
 
-/* Footer Styling */
-.footer {
+/* Footer Styling - Scoped to login page only */
+.login-container .footer,
+.login-wrapper .footer {
   background: #ffffff;
   border-top: 1px solid #e5e7eb;
   padding: 2rem 0;
@@ -843,7 +845,8 @@
   justify-content: center;
 }
 
-.footer-content {
+.login-container .footer-content,
+.login-wrapper .footer-content {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 2rem;
@@ -855,31 +858,36 @@
   gap: 0.75rem;
 }
 
-.footer-main {
+.login-container .footer-main,
+.login-wrapper .footer-main {
   font-size: 0.9rem;
   margin-bottom: 0;
   font-weight: 500;
   line-height: 1.5;
 }
 
-.footer-main strong {
+.login-container .footer-main strong,
+.login-wrapper .footer-main strong {
   color: #0f172a;
   font-weight: 700;
 }
 
-.footer-main em {
+.login-container .footer-main em,
+.login-wrapper .footer-main em {
   color: #64748b;
   font-style: normal;
 }
 
-.footer-sub {
+.login-container .footer-sub,
+.login-wrapper .footer-sub {
   font-size: 0.8rem;
   color: #64748b;
   margin-bottom: 0;
   line-height: 1.4;
 }
 
-.footer-academic {
+.login-container .footer-academic,
+.login-wrapper .footer-academic {
   font-size: 0.75rem;
   color: #94a3b8;
   font-style: italic;
@@ -888,24 +896,29 @@
 }
 
 @media (max-width: 768px) {
-  .footer {
+  .login-container .footer,
+  .login-wrapper .footer {
     padding: 1.5rem 0;
   }
   
-  .footer-content {
+  .login-container .footer-content,
+  .login-wrapper .footer-content {
     padding: 0 1rem;
     gap: 0.5rem;
   }
   
-  .footer-main {
+  .login-container .footer-main,
+  .login-wrapper .footer-main {
     font-size: 0.85rem;
   }
   
-  .footer-sub {
+  .login-container .footer-sub,
+  .login-wrapper .footer-sub {
     font-size: 0.75rem;
   }
   
-  .footer-academic {
+  .login-container .footer-academic,
+  .login-wrapper .footer-academic {
     font-size: 0.7rem;
   }
 }
