@@ -14,6 +14,13 @@ const LandingPage = () => {
   const [headerStyle, setHeaderStyle] = useState({});
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth <= 768;
+    }
+    return false;
+  });
   const [contactForm, setContactForm] = useState({
     name: '',
     email: '',
@@ -106,9 +113,23 @@ const LandingPage = () => {
     }
   };
 
+  // Track mobile state separately
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile, { passive: true });
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 100) {
+      const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      
+      // Update header style
+      if (scrollY > 100) {
         setHeaderStyle({
           position: 'fixed',
           top: 0,
@@ -131,11 +152,30 @@ const LandingPage = () => {
           transition: 'all 0.3s ease',
         });
       }
+
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Check initial scroll position
+    handleScroll();
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [isMobile]);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileNavOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileNavOpen]);
 
   // Reveal on scroll animations
   useEffect(() => {
@@ -164,8 +204,26 @@ const LandingPage = () => {
         block: 'start',
       });
     }
-    setIsMobileNavOpen(false);
+    closeMobileMenu();
   };
+
+  const closeMobileMenu = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsMobileNavOpen(false);
+      setIsClosing(false);
+    }, 300); // Match dropdownClose animation duration (300ms)
+  };
+
+  const toggleMobileMenu = () => {
+    if (isMobileNavOpen) {
+      closeMobileMenu();
+    } else {
+      setIsMobileNavOpen(true);
+      setIsClosing(false);
+    }
+  };
+
 
   return (
     <div className="medichain">
@@ -230,7 +288,7 @@ const LandingPage = () => {
             className={`mobile-menu-button ${isMobileNavOpen ? 'open' : ''}`}
             aria-label="Toggle navigation menu"
             aria-expanded={isMobileNavOpen}
-            onClick={() => setIsMobileNavOpen((v) => !v)}
+            onClick={toggleMobileMenu}
             type="button"
           >
             <span></span>
@@ -239,15 +297,24 @@ const LandingPage = () => {
           </button>
         </div>
         {isMobileNavOpen && (
-          <div className="mobile-nav">
-            <button className="nav-link" onClick={(e) => handleSmoothScroll(e, '#about')} type="button">About</button>
-            <button className="nav-link" onClick={(e) => handleSmoothScroll(e, '#features')} type="button">Features</button>
-            <button className="nav-link" onClick={(e) => handleSmoothScroll(e, '#contact')} type="button">Contact Us</button>
-            <div className="mobile-cta">
-              <button className="btn btn-secondary" onClick={() => { setIsMobileNavOpen(false); navigate('/login'); }}>Log In</button>
-              <button className="btn btn-primary" onClick={() => { setIsMobileNavOpen(false); handleGetStarted(); }}>Sign Up</button>
+          <>
+            <div 
+              className={`mobile-nav-overlay ${isClosing ? 'closing' : ''}`}
+              onClick={closeMobileMenu}
+              aria-label="Close menu"
+            ></div>
+            <div className={`mobile-nav ${isClosing ? 'closing' : ''}`}>
+              <div className="mobile-nav-content">
+                <button className="nav-link" onClick={(e) => handleSmoothScroll(e, '#about')} type="button">About</button>
+                <button className="nav-link" onClick={(e) => handleSmoothScroll(e, '#features')} type="button">Features</button>
+                <button className="nav-link" onClick={(e) => handleSmoothScroll(e, '#contact')} type="button">Contact Us</button>
+                <div className="mobile-cta">
+                  <button className="btn btn-secondary" onClick={() => { closeMobileMenu(); navigate('/login'); }}>Log In</button>
+                  <button className="btn btn-primary" onClick={() => { closeMobileMenu(); handleGetStarted(); }}>Sign Up</button>
+                </div>
+              </div>
             </div>
-          </div>
+          </>
         )}
       </header>
 
@@ -566,6 +633,7 @@ const LandingPage = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };

@@ -121,7 +121,7 @@ describe('MedichainLogin Component', () => {
       expect(screen.getByText('Welcome Back!')).toBeInTheDocument();
       expect(screen.getByText('Sign in to your MediChain account')).toBeInTheDocument();
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument();
       expect(screen.getByText("Don't have an account?")).toBeInTheDocument();
     });
@@ -133,10 +133,11 @@ describe('MedichainLogin Component', () => {
         </TestWrapper>
       );
 
-      const logo = screen.getByTestId('medichain-logo');
+      // Component now uses img tag instead of MedichainLogo component
+      const logo = screen.getByAltText('MediChain Logo');
       expect(logo).toBeInTheDocument();
-      expect(logo).toHaveAttribute('data-size', '50');
-      expect(logo).toHaveAttribute('data-use-png', 'true');
+      expect(logo).toHaveAttribute('width', '40');
+      expect(logo).toHaveAttribute('height', '40');
     });
 
     it('shows loading spinner when authentication is loading', () => {
@@ -167,7 +168,7 @@ describe('MedichainLogin Component', () => {
       );
 
       const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -183,15 +184,17 @@ describe('MedichainLogin Component', () => {
         </TestWrapper>
       );
 
-      const passwordInput = screen.getByLabelText(/password/i);
-      const toggleButton = screen.getByRole('button', { name: '' }); // Password toggle button
+      const passwordInput = screen.getByLabelText(/^password$/i);
+      const toggleButton = screen.getByRole('button', { name: /show password/i }); // Password toggle button
 
       expect(passwordInput.type).toBe('password');
 
       fireEvent.click(toggleButton);
       expect(passwordInput.type).toBe('text');
 
-      fireEvent.click(toggleButton);
+      // After toggling, the button label changes to "Hide password"
+      const hideButton = screen.getByRole('button', { name: /hide password/i });
+      fireEvent.click(hideButton);
       expect(passwordInput.type).toBe('password');
     });
 
@@ -234,7 +237,7 @@ describe('MedichainLogin Component', () => {
         </TestWrapper>
       );
 
-      const passwordInput = screen.getByLabelText(/password/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
       const submitButton = screen.getByRole('button', { name: /log in/i });
 
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -255,7 +258,7 @@ describe('MedichainLogin Component', () => {
       );
 
       const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
       const submitButton = screen.getByRole('button', { name: /log in/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
@@ -285,7 +288,7 @@ describe('MedichainLogin Component', () => {
       );
 
       const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
       const submitButton = screen.getByRole('button', { name: /log in/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
@@ -313,7 +316,7 @@ describe('MedichainLogin Component', () => {
       );
 
       const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
       const submitButton = screen.getByRole('button', { name: /log in/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
@@ -342,7 +345,7 @@ describe('MedichainLogin Component', () => {
       );
 
       const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
       const rememberCheckbox = screen.getByLabelText(/remember me/i);
       const submitButton = screen.getByRole('button', { name: /log in/i });
 
@@ -370,7 +373,7 @@ describe('MedichainLogin Component', () => {
       );
 
       const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
       const submitButton = screen.getByRole('button', { name: /log in/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
@@ -398,7 +401,7 @@ describe('MedichainLogin Component', () => {
       );
 
       const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
       const rememberCheckbox = screen.getByLabelText(/remember me/i);
 
       expect(emailInput.value).toBe('saved@example.com');
@@ -487,7 +490,7 @@ describe('MedichainLogin Component', () => {
         requiresVerification: true 
       });
 
-      const passwordInput = screen.getByLabelText(/password/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
       const submitButton = screen.getByRole('button', { name: /log in/i });
 
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -564,7 +567,7 @@ describe('MedichainLogin Component', () => {
       );
 
       const emailInput = screen.getByLabelText(/email/i);
-      const passwordInput = screen.getByLabelText(/password/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
       const submitButton = screen.getByRole('button', { name: /log in/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
@@ -595,7 +598,7 @@ describe('MedichainLogin Component', () => {
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
 
       // Simulate verification prompt
-      const passwordInput = screen.getByLabelText(/password/i);
+      const passwordInput = screen.getByLabelText(/^password$/i);
       mockLogin.mockResolvedValue({ 
         success: false, 
         requiresVerification: true 
@@ -628,7 +631,7 @@ describe('MedichainLogin Component', () => {
       );
 
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/remember me/i)).toBeInTheDocument();
     });
 

@@ -12,6 +12,14 @@ footer.footer,
   z-index: 1;
 }
 
+/* Ensure footer doesn't overlap back-to-top button */
+@media (max-width: 768px) {
+  footer.footer,
+  .footer {
+    padding-bottom: 90px !important;
+  }
+}
+
 .footer-container {
   max-width: 1200px;
   margin: 0 auto;
