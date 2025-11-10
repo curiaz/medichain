@@ -310,8 +310,13 @@ const JitsiVideoConference = () => {
 
         apiRef.current = new window.JitsiMeetExternalAPI(domain, options);
 
+        // Ensure API instance is valid before adding event listeners
+        if (!apiRef.current) {
+          throw new Error('Failed to create Jitsi API instance');
+        }
+
         // Event handlers
-        apiRef.current.addEventListeners({
+        const eventHandlers = {
           readyToClose: () => {
             console.log('Jitsi: Ready to close');
             handleMeetingEnd();
@@ -352,7 +357,14 @@ const JitsiVideoConference = () => {
             setError("An error occurred in the video conference. Please try again.");
             setLoading(false);
           }
-        });
+        };
+
+        // Add event listeners to the API instance
+        if (apiRef.current && typeof apiRef.current.addEventListeners === 'function') {
+          apiRef.current.addEventListeners(eventHandlers);
+        } else {
+          console.warn('Jitsi API instance does not have addEventListeners method');
+        }
 
         setLoading(false);
       } catch (error) {

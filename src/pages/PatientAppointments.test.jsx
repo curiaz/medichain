@@ -152,12 +152,16 @@ describe('PatientAppointments - Video Call Integration', () => {
       );
 
       await waitFor(() => {
-        const button = screen.getByText('Join Video Consultation');
-        fireEvent.click(button);
-        
-        // Should extract room name from meeting_link (new-url)
-        expect(mockNavigate).toHaveBeenCalledWith('/video/new-url');
+        expect(screen.getByText('Join Video Consultation')).toBeInTheDocument();
       });
+
+      const button = screen.getByText('Join Video Consultation');
+      fireEvent.click(button);
+      
+      // Should extract room name from meeting_link (new-url)
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/video/new-url');
+      }, { timeout: 2000 });
     });
   });
 

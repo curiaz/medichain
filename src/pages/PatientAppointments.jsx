@@ -168,11 +168,11 @@ const PatientAppointments = () => {
                               <User size={16} />
                               <span>{doctorName}</span>
                             </div>
-                            {(appt.meeting_url || appt.meeting_link) && (
+                            {(appt.meeting_link || appt.meeting_url) && (
                               <div className="time-slot video-consultation">
                                 <Video size={16} />
                                 <button
-                                  onClick={() => handleJoinVideoCall(appt.meeting_url || appt.meeting_link)}
+                                  onClick={() => handleJoinVideoCall(appt.meeting_link || appt.meeting_url)}
                                   style={{ 
                                     background: 'none', 
                                     border: 'none', 

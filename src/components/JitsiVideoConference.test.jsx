@@ -60,16 +60,20 @@ beforeEach(() => {
   mockJitsiAPI.executeCommand.mockClear();
   
   // Ensure Jitsi API is available - component checks this before loading script
+  let currentApiInstance = null;
   global.window.JitsiMeetExternalAPI = jest.fn(() => {
     // Create new mock instance for each test
-    return {
+    currentApiInstance = {
       dispose: jest.fn(),
       addEventListeners: jest.fn((handlers) => {
         // Store handlers so tests can call them
         mockJitsiAPI._lastHandlers = handlers;
+        // Also store on the instance itself
+        currentApiInstance._lastHandlers = handlers;
       }),
       executeCommand: jest.fn(),
     };
+    return currentApiInstance;
   });
   
   // Also set the main mock
@@ -404,10 +408,24 @@ describe('JitsiVideoConference Component', () => {
       }, { timeout: 5000 });
 
       // Check if addEventListeners was called on the API instance
-      const apiInstance = mockJitsiAPI;
-      if (apiInstance.addEventListeners) {
-        expect(apiInstance.addEventListeners).toHaveBeenCalled();
-      }
+      // The component creates a new instance, so we need to check the last call
+      await waitFor(() => {
+        const lastCall = global.window.JitsiMeetExternalAPI.mock.results[
+          global.window.JitsiMeetExternalAPI.mock.results.length - 1
+        ];
+        if (lastCall && lastCall.value && lastCall.value.addEventListeners) {
+          expect(lastCall.value.addEventListeners).toHaveBeenCalled();
+        } else {
+          // Fallback: check if any instance had addEventListeners called
+          const calls = global.window.JitsiMeetExternalAPI.mock.results;
+          const hasCalledAddEventListeners = calls.some(result => 
+            result.value && 
+            result.value.addEventListeners && 
+            result.value.addEventListeners.mock.calls.length > 0
+          );
+          expect(hasCalledAddEventListeners).toBe(true);
+        }
+      }, { timeout: 2000 });
     });
 
     it('navigates to appointments when conference is closed', async () => {
@@ -442,7 +460,10 @@ describe('JitsiVideoConference Component', () => {
         await act(async () => {
           mockJitsiAPI._lastHandlers.readyToClose();
         });
-        expect(mockNavigate).toHaveBeenCalledWith('/my-appointments');
+        // Wait for the setTimeout in handleMeetingEnd (500ms delay)
+        await waitFor(() => {
+          expect(mockNavigate).toHaveBeenCalledWith('/my-appointments');
+        }, { timeout: 1000 });
       } else {
         // If handlers weren't captured, just verify API was called
         expect(global.window.JitsiMeetExternalAPI).toHaveBeenCalled();
@@ -497,7 +518,7 @@ describe('JitsiVideoConference Component', () => {
         }
       });
 
-      let unmount: () => void;
+      let unmount;
       
       await act(async () => {
         const { unmount: unmountFn } = render(
@@ -512,11 +533,31 @@ describe('JitsiVideoConference Component', () => {
         expect(global.window.JitsiMeetExternalAPI).toHaveBeenCalled();
       }, { timeout: 5000 });
 
+      // Get the API instance that was created
+      const lastCall = global.window.JitsiMeetExternalAPI.mock.results[
+        global.window.JitsiMeetExternalAPI.mock.results.length - 1
+      ];
+      const apiInstance = lastCall?.value;
+
       await act(async () => {
         unmount();
       });
 
-      expect(mockJitsiAPI.dispose).toHaveBeenCalled();
+      // Wait for cleanup to complete
+      await waitFor(() => {
+        if (apiInstance && apiInstance.dispose) {
+          expect(apiInstance.dispose).toHaveBeenCalled();
+        } else {
+          // Fallback: check if any instance had dispose called
+          const calls = global.window.JitsiMeetExternalAPI.mock.results;
+          const hasCalledDispose = calls.some(result => 
+            result.value && 
+            result.value.dispose && 
+            result.value.dispose.mock.calls.length > 0
+          );
+          expect(hasCalledDispose).toBe(true);
+        }
+      }, { timeout: 1000 });
     });
   });
 
