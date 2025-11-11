@@ -71,15 +71,15 @@ describe('Role Info Integration Tests', () => {
       renderWithRouter(<DoctorDashboard />);
       
       await waitFor(() => {
-        expect(screen.getByText('My Patients')).toBeInTheDocument();
-      });
-      
-      await waitFor(() => {
         expect(screen.getByText('Pending Reviews')).toBeInTheDocument();
       });
       
       await waitFor(() => {
-        expect(screen.getByText('AI Consultations')).toBeInTheDocument();
+        expect(screen.getByText('AI Diagnosis Reviewed')).toBeInTheDocument();
+      });
+      
+      await waitFor(() => {
+        expect(screen.getByText("Today's Activity")).toBeInTheDocument();
       });
     });
 
@@ -87,7 +87,7 @@ describe('Role Info Integration Tests', () => {
       renderWithRouter(<DoctorDashboard />);
       
       await waitFor(() => {
-        expect(screen.getByText('Patient Records')).toBeInTheDocument();
+        expect(screen.getByText('Patient List')).toBeInTheDocument();
       });
       
       await waitFor(() => {
