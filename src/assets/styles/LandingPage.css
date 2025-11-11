@@ -819,6 +819,10 @@ body {
   position: relative;
   z-index: 1;
   animation: fadeInUp 1s ease-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
 }
 
 .landing_features .section-badge {
@@ -829,10 +833,11 @@ body {
   border-radius: 25px;
   font-size: 14px;
   font-weight: 600;
-  margin-bottom: 25px;
+  margin: 0;
   border: 1px solid rgba(59, 130, 246, 0.3);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
   animation: badgePulse 3s ease-in-out infinite;
+  order: -1;
 }
 
 .landing_features .section-title {
@@ -842,7 +847,7 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  margin-bottom: 30px;
+  margin: 0 0 15px 0;
   animation: titleGlow 3s ease-in-out infinite alternate;
 }
 
