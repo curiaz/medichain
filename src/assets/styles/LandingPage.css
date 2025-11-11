@@ -1370,6 +1370,50 @@ body {
     background: rgba(255, 255, 255, 0.98) !important;
     backdrop-filter: blur(10px) !important;
   }
+  
+  /* Mobile features section header rearrangement */
+  .landing_features .container {
+    padding: 20px 15px;
+  }
+  
+  .landing_features .section-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  .landing_features .section-badge {
+    order: 2;
+    margin-top: 20px;
+    margin-bottom: 0;
+  }
+  
+  .landing_features .section-title {
+    order: 0;
+    margin-bottom: 15px;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    text-align: center !important;
+    width: 100%;
+    display: block;
+  }
+  
+  .landing_features .section-subtitle {
+    order: 1;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    text-align: center !important;
+    width: 100%;
+    margin-bottom: 0;
+    display: block;
+  }
 
   .nav-container {
     z-index: 1001;
@@ -1735,11 +1779,13 @@ body {
   .landing_features .section-title {
     font-size: 2rem;
     margin-bottom: 20px;
+    text-align: center;
   }
   
   .landing_features .section-subtitle {
     font-size: 1rem;
     line-height: 1.6;
+    text-align: center;
   }
   
   .landing_features .features-grid {
@@ -1874,6 +1920,50 @@ body {
   .nav-container {
     padding: 0 16px;
     z-index: 1001 !important;
+  }
+  
+  /* Mobile features section header rearrangement for small screens */
+  .landing_features .container {
+    padding: 20px 10px;
+  }
+  
+  .landing_features .section-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  .landing_features .section-badge {
+    order: 2;
+    margin-top: 20px;
+    margin-bottom: 0;
+  }
+  
+  .landing_features .section-title {
+    order: 0;
+    margin-bottom: 15px;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    text-align: center !important;
+    width: 100%;
+    display: block;
+  }
+  
+  .landing_features .section-subtitle {
+    order: 1;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    text-align: center !important;
+    width: 100%;
+    margin-bottom: 0;
+    display: block;
   }
 
   .mobile-menu-button {
@@ -2039,8 +2129,8 @@ body {
   .section-title { font-size: 1.8rem; line-height: 1.2; }
   .about-title { font-size: 1.6rem; }
   .about-description { font-size: 0.95rem; }
-  .landing_features .section-title { font-size: 1.6rem; }
-  .landing_features .section-subtitle { font-size: 0.95rem; }
+  .landing_features .section-title { font-size: 1.6rem; text-align: center; }
+  .landing_features .section-subtitle { font-size: 0.95rem; text-align: center; }
   
   .btn-large {
     padding: 12px 24px;
@@ -2073,11 +2163,13 @@ body {
   .landing_features .section-title {
     font-size: 1.6rem;
     margin-bottom: 15px;
+    text-align: center;
   }
   
   .landing_features .section-subtitle {
     font-size: 0.9rem;
     line-height: 1.5;
+    text-align: center;
   }
   
   .landing_features .features-grid {
