@@ -33,6 +33,7 @@ const BookAppointmentForm = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [notes, setNotes] = useState("");
+  const [followUpCheckup, setFollowUpCheckup] = useState(false);
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState(null);
@@ -333,6 +334,15 @@ const BookAppointmentForm = () => {
         appointment_type: location.state?.appointmentType || "general-practitioner",
       });
 
+      // Prepare document data (convert File objects to base64 or store metadata)
+      const documentData = (location.state?.documents || []).map(doc => ({
+        name: doc.name,
+        size: doc.size,
+        type: doc.type,
+        // Note: In production, files should be uploaded to storage first
+        // For now, we'll store metadata and handle file upload separately
+      }));
+
       const response = await axios.post(
         "http://localhost:5000/api/appointments",
         {
@@ -341,6 +351,9 @@ const BookAppointmentForm = () => {
           appointment_time: selectedTime,
           appointment_type: location.state?.appointmentType || "general-practitioner",
           notes: notes,
+          follow_up_checkup: followUpCheckup,
+          symptoms: location.state?.symptomKeys || location.state?.symptoms || [],
+          documents: documentData,
         },
         {
           headers: {
@@ -599,6 +612,24 @@ const BookAppointmentForm = () => {
                   )}
                 </>
               )}
+
+              {/* Follow-up Checkup */}
+              <div className="form-group">
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={followUpCheckup}
+                    onChange={(e) => setFollowUpCheckup(e.target.checked)}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      cursor: 'pointer',
+                      accentColor: '#2196F3'
+                    }}
+                  />
+                  <span>This is a follow-up checkup</span>
+                </label>
+              </div>
 
               {/* Notes */}
               <div className="form-group">

@@ -348,6 +348,97 @@
   justify-content: center;
 }
 
+/* AI Diagnosis Slot Styles */
+.time-slot.ai-diagnosis-slot {
+  flex-direction: column;
+  align-items: flex-start;
+  background: linear-gradient(135deg, #f3e5f5, #e1bee7);
+  border: 2px solid #9c27b0;
+  padding: 16px;
+  margin-top: 12px;
+  gap: 12px;
+}
+
+.ai-diagnosis-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.ai-diagnosis-icon {
+  font-size: 20px;
+}
+
+.ai-diagnosis-title {
+  font-weight: 700;
+  color: #7b1fa2;
+  font-size: 16px;
+}
+
+.ai-diagnosis-content {
+  width: 100%;
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #ce93d8;
+}
+
+.ai-primary-condition {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.ai-primary-condition strong {
+  color: #4a148c;
+  font-size: 16px;
+}
+
+.ai-confidence {
+  background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ai-reason {
+  color: #555;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 8px 0;
+}
+
+.ai-action {
+  color: #333;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.ai-action strong {
+  color: #7b1fa2;
+}
+
+.ai-symptoms-list {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #ce93d8;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+}
+
+.ai-symptoms-list strong {
+  color: #7b1fa2;
+  margin-right: 6px;
+}
+
 .remove-time {
   background: none;
   border: none;

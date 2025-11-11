@@ -142,9 +142,28 @@ export class SupabaseService {
         .eq('patient_firebase_uid', patientId)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
-      return { success: true, data };
+      if (error) {
+        // Handle table not found or RLS blocking gracefully
+        if (error.code === 'PGRST116' || 
+            error.message?.includes('relation') || 
+            error.message?.includes('does not exist') ||
+            error.message?.includes('permission denied') ||
+            error.status === 406) {
+          console.log('ℹ️  medical_records table not available or access denied');
+          return { success: true, data: [] }; // Return empty array instead of error
+        }
+        throw error;
+      }
+      return { success: true, data: data || [] };
     } catch (error) {
+      // Don't log as error if it's just a missing table
+      if (error.code === 'PGRST116' || 
+          error.message?.includes('relation') || 
+          error.message?.includes('does not exist') ||
+          error.status === 406) {
+        console.log('ℹ️  medical_records table not available');
+        return { success: true, data: [] }; // Return empty array
+      }
       console.error('Error fetching patient records:', error);
       return { success: false, error: error.message };
     }

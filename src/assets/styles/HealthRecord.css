@@ -1,0 +1,609 @@
+/* Health Record Styles */
+.health-records-container {
+  margin: 24px 0;
+}
+
+.records-header {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.records-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.records-count {
+  color: #666;
+  font-size: 14px;
+}
+
+.records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.health-record-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.health-record-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.record-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.record-date-info {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.record-date-info svg {
+  color: #2196F3;
+  margin-top: 2px;
+}
+
+.record-date {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.record-doctor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #666;
+  font-size: 14px;
+}
+
+.record-doctor svg {
+  color: #4CAF50;
+}
+
+.record-status {
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.record-status.scheduled {
+  background: #E3F2FD;
+  color: #1976D2;
+}
+
+.record-status.completed {
+  background: #E8F5E9;
+  color: #2E7D32;
+}
+
+.record-status.confirmed {
+  background: #FFF3E0;
+  color: #F57C00;
+}
+
+.record-section {
+  margin-bottom: 20px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.section-title svg {
+  color: #2196F3;
+}
+
+.symptoms-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.symptom-badge {
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+  color: #1976D2;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid #90CAF9;
+}
+
+.final-diagnosis-section {
+  background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #81C784;
+}
+
+.final-diagnosis-content {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.diagnosis-text {
+  color: #2E7D32;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+  font-weight: 500;
+}
+
+.primary-condition {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+
+.primary-condition strong {
+  color: #4a148c;
+}
+
+.confidence-badge {
+  background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.diagnosis-reason {
+  color: #555;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.documents-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.document-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  transition: all 0.2s;
+}
+
+.document-item:hover {
+  background: #f5f5f5;
+  border-color: #2196F3;
+}
+
+.document-item svg {
+  color: #2196F3;
+  flex-shrink: 0;
+}
+
+.document-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.document-name {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.document-size {
+  font-size: 12px;
+  color: #666;
+}
+
+.download-doc-btn {
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.download-doc-btn:hover {
+  background: #1976D2;
+  transform: scale(1.05);
+}
+
+.record-notes {
+  color: #555;
+  font-size: 14px;
+  line-height: 1.6;
+  background: #f9f9f9;
+  padding: 12px;
+  border-radius: 8px;
+  margin: 0;
+}
+
+.record-actions {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.view-prescription-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.view-prescription-btn:hover {
+  background: linear-gradient(135deg, #45a049, #3d8b40);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+/* No Records State */
+.no-records-container {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.no-records-container svg {
+  color: #ccc;
+  margin-bottom: 20px;
+}
+
+.no-records-container h2 {
+  font-size: 24px;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.no-records-container p {
+  color: #666;
+  font-size: 16px;
+  margin-bottom: 24px;
+}
+
+.book-appointment-btn {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.book-appointment-btn:hover {
+  background: linear-gradient(135deg, #1976D2, #1565C0);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+/* Prescription Modal */
+.prescription-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.prescription-modal {
+  background: white;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.modal-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.close-modal-btn {
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: #999;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.close-modal-btn:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.modal-content {
+  padding: 24px;
+}
+
+.prescription-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.prescription-date,
+.prescription-doctor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #666;
+  font-size: 14px;
+}
+
+.prescription-date svg,
+.prescription-doctor svg {
+  color: #2196F3;
+}
+
+.prescription-details {
+  margin-bottom: 20px;
+}
+
+.prescription-details h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.medication-item {
+  background: #f9f9f9;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.medication-item strong {
+  display: block;
+  font-size: 18px;
+  color: #4CAF50;
+  margin-bottom: 8px;
+}
+
+.dosage {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+}
+
+.prescription-instructions {
+  background: #E3F2FD;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #2196F3;
+}
+
+.prescription-instructions h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1976D2;
+  margin-bottom: 8px;
+}
+
+.prescription-instructions p {
+  color: #555;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.no-prescription {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+
+.no-prescription svg {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.no-prescription p {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.prescription-note {
+  font-size: 14px;
+  color: #666;
+  font-style: italic;
+}
+
+.prescription-disclaimer {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  background: #FFF3E0;
+  border-radius: 8px;
+  border-left: 4px solid #FF9800;
+  margin-top: 20px;
+}
+
+.prescription-disclaimer svg {
+  color: #FF9800;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.prescription-disclaimer p {
+  font-size: 12px;
+  color: #E65100;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e0e0f0;
+}
+
+.close-btn {
+  padding: 10px 20px;
+  background: #f5f5f5;
+  color: #333;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: #e0e0e0;
+}
+
+.download-prescription-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.download-prescription-btn:hover {
+  background: linear-gradient(135deg, #1976D2, #1565C0);
+  transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .health-record-card {
+    padding: 16px;
+  }
+
+  .record-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .prescription-modal {
+    max-width: 100%;
+    margin: 10px;
+  }
+
+  .modal-footer {
+    flex-direction: column;
+  }
+
+  .close-btn,
+  .download-prescription-btn {
+    width: 100%;
+  }
+}
+
