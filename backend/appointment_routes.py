@@ -1198,7 +1198,11 @@ def create_appointment():
             "appointment_type": data.get("appointment_type", "consultation"),
             "meeting_link": meeting_url,  # Store in meeting_link column
             "notes": data.get("notes", "").strip(),
-            "status": "scheduled"
+            "follow_up_checkup": data.get("follow_up_checkup", False),  # Store follow-up checkup flag
+            "status": "scheduled",
+            "symptoms": data.get("symptoms", []),  # Store symptoms array
+            "documents": data.get("documents", []),  # Store documents metadata
+            "ai_diagnosis_processed": False  # Will be processed after booking
         }
 
         # Use service_client to bypass RLS policies when inserting appointments
@@ -1208,6 +1212,67 @@ def create_appointment():
             return jsonify({"success": False, "error": "Failed to create appointment"}), 500
         
         appointment_id = response.data[0].get("id")
+
+        # Process AI diagnosis if symptoms are provided
+        symptoms_list = data.get("symptoms", [])
+        if symptoms_list and len(symptoms_list) > 0:
+            try:
+                print(f"🤖 Processing AI diagnosis for appointment {appointment_id} with symptoms: {symptoms_list}")
+                # Import AI diagnosis system
+                from app import StreamlinedAIDiagnosis
+                
+                # Initialize AI system (it's a singleton, so this should be fast)
+                ai_system = StreamlinedAIDiagnosis()
+                
+                # Convert symptoms list to text
+                symptoms_text = ", ".join(symptoms_list)
+                
+                # Get AI diagnosis
+                predictions = ai_system.predict_conditions(symptoms_text)
+                
+                if predictions and len(predictions) > 0:
+                    # Get detailed results for top conditions
+                    detailed_results = []
+                    for pred in predictions[:3]:  # Top 3 conditions
+                        condition = pred.get('condition', '')
+                        reason = ai_system.get_condition_reason(condition)
+                        action_data = ai_system.get_recommended_action_and_medication(condition)
+                        
+                        detailed_results.append({
+                            'condition': condition,
+                            'confidence': pred.get('confidence', 0),
+                            'confidence_percent': pred.get('confidence_percent', '0%'),
+                            'reason': reason,
+                            'recommended_action': action_data.get('recommended_action', ''),
+                            'medication': action_data.get('medication', ''),
+                            'dosage': action_data.get('dosage', ''),
+                        })
+                    
+                    # Store AI diagnosis in appointment
+                    ai_diagnosis_data = {
+                        'primary_condition': predictions[0].get('condition', ''),
+                        'confidence_score': predictions[0].get('confidence', 0),
+                        'detailed_results': detailed_results,
+                        'symptoms_analyzed': symptoms_list,
+                        'processed_at': datetime.utcnow().isoformat()
+                    }
+                    
+                    # Update appointment with AI diagnosis
+                    supabase.service_client.table("appointments").update({
+                        "ai_diagnosis": ai_diagnosis_data,
+                        "ai_diagnosis_processed": True,
+                        "ai_diagnosis_processed_at": datetime.utcnow().isoformat()
+                    }).eq("id", appointment_id).execute()
+                    
+                    print(f"✅ AI diagnosis processed and stored for appointment {appointment_id}")
+                else:
+                    print(f"⚠️  No predictions returned from AI system for symptoms: {symptoms_text}")
+            except Exception as ai_error:
+                print(f"❌ Error processing AI diagnosis: {ai_error}")
+                import traceback
+                print(traceback.format_exc())
+                # Don't fail the appointment creation if AI processing fails
+                # The appointment is still created successfully
 
         # For old format only: Remove the booked time slot from doctor's availability
         # New format doesn't need this since availability is schedule-based
@@ -1349,6 +1414,88 @@ def create_appointment():
         print(f"Error creating appointment: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
+
+@appointments_bp.route("/<appointment_id>", methods=["GET"])
+@auth_required
+def get_appointment_by_id(appointment_id):
+    """Get a single appointment by ID"""
+    try:
+        # Verify Supabase client is available
+        if not supabase or not supabase.service_client:
+            print("❌ ERROR: Supabase service_client is not available")
+            return jsonify({
+                "success": False,
+                "error": "Database connection failed. Please check server configuration.",
+                "details": "Supabase service_client not initialized"
+            }), 500
+        
+        firebase_user = request.firebase_user
+        uid = firebase_user["uid"]
+        
+        print(f"🔍 GET /api/appointments/{appointment_id}: Request from user UID: {uid}")
+        
+        # Get the appointment using service_client (bypasses RLS)
+        appointment_response = supabase.service_client.table("appointments").select("*").eq("id", appointment_id).execute()
+        
+        if not appointment_response.data or len(appointment_response.data) == 0:
+            print(f"❌ Appointment {appointment_id} not found")
+            return jsonify({
+                "success": False,
+                "error": "Appointment not found"
+            }), 404
+        
+        appointment = appointment_response.data[0]
+        
+        # Check if user has access to this appointment (patient or doctor)
+        patient_uid = appointment.get("patient_firebase_uid")
+        doctor_uid = appointment.get("doctor_firebase_uid")
+        
+        if uid != patient_uid and uid != doctor_uid:
+            print(f"❌ User {uid} does not have access to appointment {appointment_id}")
+            return jsonify({
+                "success": False,
+                "error": "Access denied"
+            }), 403
+        
+        # Get patient information
+        patient_info = None
+        if patient_uid:
+            try:
+                patient_response = supabase.service_client.table("user_profiles").select("firebase_uid, first_name, last_name, email").eq("firebase_uid", patient_uid).execute()
+                if patient_response.data:
+                    patient_info = patient_response.data[0]
+            except Exception as patient_err:
+                print(f"⚠️  Could not fetch patient info: {patient_err}")
+        
+        # Get doctor information
+        doctor_info = None
+        if doctor_uid:
+            try:
+                doctor_response = supabase.service_client.table("user_profiles").select("firebase_uid, first_name, last_name, email").eq("firebase_uid", doctor_uid).execute()
+                if doctor_response.data:
+                    doctor_info = doctor_response.data[0]
+            except Exception as doctor_err:
+                print(f"⚠️  Could not fetch doctor info: {doctor_err}")
+        
+        # Enrich appointment with patient and doctor info
+        appointment["patient"] = patient_info
+        appointment["doctor"] = doctor_info
+        
+        print(f"✅ Successfully fetched appointment {appointment_id}")
+        
+        return jsonify({
+            "success": True,
+            "appointment": appointment
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error fetching appointment {appointment_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 @appointments_bp.route("/<appointment_id>", methods=["PUT"])
 @firebase_auth_required
@@ -2125,6 +2272,139 @@ def update_doctor_availability():
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
+
+@appointments_bp.route("/pending-reviews-count", methods=["GET"])
+@auth_required
+def get_pending_reviews_count():
+    """Get count of pending reviews (appointments with AI diagnosis not yet reviewed) for the current doctor"""
+    try:
+        firebase_user = request.firebase_user
+        doctor_uid = firebase_user["uid"]
+        doctor_email = firebase_user.get("email", "unknown")
+        
+        print(f"🔍 [Backend] Getting pending reviews count for doctor: {doctor_uid} ({doctor_email})")
+        
+        # Get appointments WITH AI diagnosis for this SPECIFIC doctor using service_client (bypasses RLS)
+        # Only count appointments that have AI diagnosis processed
+        # First get all appointments with ai_diagnosis_processed = True, then filter for non-null ai_diagnosis in Python
+        appointments_result = supabase.service_client.table("appointments").select("id, doctor_firebase_uid, appointment_date, ai_diagnosis").eq("doctor_firebase_uid", doctor_uid).eq("ai_diagnosis_processed", True).execute()
+        
+        # Filter for appointments with non-null ai_diagnosis
+        appointments_with_ai = [apt for apt in (appointments_result.data or []) if apt.get("ai_diagnosis") is not None]
+        appointment_ids = [apt["id"] for apt in appointments_with_ai]
+        print(f"🔍 [Backend] Found {len(appointment_ids)} appointments with AI diagnosis for doctor {doctor_uid}")
+        
+        # Debug: Show appointment details
+        if appointments_result.data:
+            for apt in appointments_result.data:
+                print(f"  - Appointment ID: {apt['id']}, Doctor UID: {apt.get('doctor_firebase_uid')}, Date: {apt.get('appointment_date')}")
+        
+        if len(appointment_ids) == 0:
+            print(f"✅ [Backend] No appointments with AI diagnosis found for doctor {doctor_uid}")
+            return jsonify({
+                "success": True,
+                "pending_reviews": 0,
+                "doctor_uid": doctor_uid
+            }), 200
+        
+        # Get medical reports for these appointments (only for this doctor)
+        reports_result = supabase.service_client.table("medical_records").select("appointment_id, review_status, doctor_firebase_uid").in_("appointment_id", appointment_ids).eq("doctor_firebase_uid", doctor_uid).execute()
+        
+        # Count appointments that don't have a reviewed report
+        reviewed_appointment_ids = set()
+        if reports_result.data:
+            for report in reports_result.data:
+                if report.get("review_status") == "reviewed":
+                    reviewed_appointment_ids.add(report["appointment_id"])
+                    print(f"  - Appointment {report['appointment_id']} has been reviewed")
+        
+        pending_count = len([id for id in appointment_ids if id not in reviewed_appointment_ids])
+        
+        print(f"✅ [Backend] Pending reviews count for doctor {doctor_uid}: {pending_count} (total with AI: {len(appointment_ids)}, reviewed: {len(reviewed_appointment_ids)})")
+        
+        return jsonify({
+            "success": True,
+            "pending_reviews": pending_count,
+            "doctor_uid": doctor_uid,
+            "total_with_ai": len(appointment_ids),
+            "reviewed": len(reviewed_appointment_ids)
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ [Backend] Error getting pending reviews count: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@appointments_bp.route("/ai-diagnosis-reviewed-count", methods=["GET"])
+@auth_required
+def get_ai_diagnosis_reviewed_count():
+    """Get count of AI diagnoses that have been reviewed (medical reports with review_status = 'reviewed') for the current doctor"""
+    try:
+        # Verify Supabase client is available
+        if not supabase or not supabase.service_client:
+            print("❌ ERROR: Supabase service_client is not available")
+            return jsonify({
+                "success": False,
+                "error": "Database connection failed. Please check server configuration.",
+                "details": "Supabase service_client not initialized"
+            }), 500
+        
+        firebase_user = request.firebase_user
+        doctor_uid = firebase_user["uid"]
+        doctor_email = firebase_user.get("email", "unknown")
+        
+        print(f"🔍 [Backend] Getting AI diagnosis reviewed count for doctor: {doctor_uid} ({doctor_email})")
+        
+        # Get medical reports for this doctor using service_client (bypasses RLS)
+        # Include diagnosis field for fallback check if review_status column doesn't exist
+        reports_result = supabase.service_client.table("medical_records").select("id, review_status, appointment_id, doctor_firebase_uid, diagnosis").eq("doctor_firebase_uid", doctor_uid).execute()
+        
+        # Check for errors in the query
+        if not reports_result:
+            print(f"⚠️  [Backend] No result returned from medical_records query")
+            return jsonify({
+                "success": True,
+                "ai_diagnosis_reviewed": 0,
+                "doctor_uid": doctor_uid,
+                "total_reports": 0
+            }), 200
+        
+        # Filter for reviewed reports
+        reviewed_reports = []
+        if reports_result.data:
+            for report in reports_result.data:
+                # Check review_status column if it exists, otherwise assume reviewed if diagnosis exists
+                if report.get("review_status") == "reviewed":
+                    reviewed_reports.append(report)
+                    print(f"  - Medical report {report['id']} for appointment {report.get('appointment_id')} has been reviewed")
+                elif not report.get("review_status") and report.get("diagnosis"):
+                    # Fallback: if no review_status column, consider reviewed if diagnosis exists
+                    reviewed_reports.append(report)
+                    print(f"  - Medical report {report['id']} for appointment {report.get('appointment_id')} has diagnosis (fallback to reviewed)")
+        
+        reviewed_count = len(reviewed_reports)
+        
+        print(f"✅ [Backend] AI diagnosis reviewed count for doctor {doctor_uid}: {reviewed_count} (total reports: {len(reports_result.data) if reports_result.data else 0})")
+        
+        return jsonify({
+            "success": True,
+            "ai_diagnosis_reviewed": reviewed_count,
+            "doctor_uid": doctor_uid,
+            "total_reports": len(reports_result.data) if reports_result.data else 0
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ [Backend] Error getting AI diagnosis reviewed count: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 @appointments_bp.route("/availability/<doctor_firebase_uid>", methods=["GET"])
 @auth_required

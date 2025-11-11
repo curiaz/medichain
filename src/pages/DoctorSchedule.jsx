@@ -105,7 +105,7 @@ const DoctorSchedule = () => {
       if (resp.data?.success) {
         const appts = Array.isArray(resp.data.appointments) ? resp.data.appointments : []
         
-        // Debug: Log patient info for each appointment
+        // Debug: Log patient info and AI diagnosis for each appointment
         appts.forEach((appt, index) => {
           console.log(`📋 Appointment ${index + 1} (ID: ${appt.id}):`, {
             patient_firebase_uid: appt.patient_firebase_uid,
@@ -113,6 +113,17 @@ const DoctorSchedule = () => {
             has_patient_first_name: !!appt.patient?.first_name,
             has_patient_last_name: !!appt.patient?.last_name,
             has_patient_email: !!appt.patient?.email,
+            has_symptoms: !!appt.symptoms,
+            symptoms: appt.symptoms,
+            has_documents: !!appt.documents,
+            has_ai_diagnosis: !!appt.ai_diagnosis,
+            ai_diagnosis_processed: appt.ai_diagnosis_processed,
+            ai_diagnosis_data: appt.ai_diagnosis ? {
+              primary_condition: appt.ai_diagnosis.primary_condition,
+              confidence: appt.ai_diagnosis.confidence_score,
+              has_detailed_results: !!appt.ai_diagnosis.detailed_results,
+              results_count: appt.ai_diagnosis.detailed_results?.length || 0
+            } : null
           })
         })
         

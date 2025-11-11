@@ -1,0 +1,261 @@
+/* Document Upload Styles */
+.symptoms-summary-box {
+  margin: 24px 0;
+  padding: 20px;
+  background: #f5f9ff;
+  border-radius: 12px;
+  border: 2px solid #e3f2fd;
+}
+
+.summary-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1976D2;
+  margin-bottom: 12px;
+}
+
+.symptoms-summary-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.symptom-tag {
+  padding: 6px 12px;
+  background: white;
+  border: 1px solid #2196F3;
+  border-radius: 16px;
+  font-size: 13px;
+  color: #1976D2;
+  font-weight: 500;
+}
+
+.document-upload-container {
+  margin: 32px 0;
+}
+
+.upload-dropzone {
+  border: 3px dashed #e0e0e0;
+  border-radius: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #fafafa;
+}
+
+.upload-dropzone:hover {
+  border-color: #2196F3;
+  background: #f5f9ff;
+}
+
+.upload-dropzone.dragging {
+  border-color: #2196F3;
+  background: #e3f2fd;
+  transform: scale(1.02);
+}
+
+.upload-icon {
+  color: #2196F3;
+  margin-bottom: 16px;
+}
+
+.upload-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.upload-subtitle {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.upload-hint {
+  font-size: 14px;
+  color: #999;
+  margin-top: 8px;
+}
+
+.uploaded-files-container {
+  margin-top: 32px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+}
+
+.uploaded-files-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16px;
+}
+
+.uploaded-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.uploaded-file-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  transition: all 0.2s;
+}
+
+.uploaded-file-item:hover {
+  background: #f5f5f5;
+  border-color: #2196F3;
+}
+
+.file-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: #e3f2fd;
+  border-radius: 8px;
+  color: #1976D2;
+  flex-shrink: 0;
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  font-size: 13px;
+  color: #666;
+}
+
+.remove-file-btn {
+  background: #ffebee;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #c62828;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.remove-file-btn:hover {
+  background: #ffcdd2;
+  transform: scale(1.1);
+}
+
+.document-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.document-nav-right {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.back-button-docs,
+.skip-button-docs,
+.next-button-docs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-button-docs {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.back-button-docs:hover {
+  background: #e0e0e0;
+}
+
+.skip-button-docs {
+  background: transparent;
+  color: #666;
+  border: 2px solid #e0e0e0;
+}
+
+.skip-button-docs:hover {
+  border-color: #999;
+  color: #333;
+}
+
+.next-button-docs {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+  color: white;
+}
+
+.next-button-docs:hover {
+  background: linear-gradient(135deg, #1976D2, #1565C0);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .upload-dropzone {
+    padding: 32px 16px;
+  }
+
+  .upload-title {
+    font-size: 18px;
+  }
+
+  .upload-subtitle {
+    font-size: 14px;
+  }
+
+  .document-navigation {
+    flex-direction: column;
+  }
+
+  .document-nav-right {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .skip-button-docs,
+  .next-button-docs {
+    flex: 1;
+  }
+}
+

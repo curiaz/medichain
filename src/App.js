@@ -16,10 +16,14 @@ import PatientList from './pages/PatientList'; // Patient list management page
 import Notifications from './pages/Notifications'; // Notifications page
 import BookAppointment from './pages/BookAppointment'; // Book appointment page
 import SelectGP from './pages/SelectGP'; // Select GP page
+import SymptomsSelection from './pages/SymptomsSelection'; // Symptoms selection page
+import DocumentUpload from './pages/DocumentUpload'; // Document upload page
 import SelectDateTime from './pages/SelectDateTime'; // Select Date & Time page
 import BookAppointmentForm from './pages/BookAppointmentForm'; // Appointment booking form
 import DoctorAvailability from './pages/DoctorAvailability'; // Doctor availability management
 import DoctorSchedule from './pages/DoctorSchedule'; // Doctor schedule management
+import DoctorAIDiagnosisReview from './pages/DoctorAIDiagnosisReview'; // Doctor AI diagnosis review page
+import DoctorMedicalReports from './pages/DoctorMedicalReports'; // Doctor medical reports page
 import PatientAppointments from './pages/PatientAppointments'; // Patient appointments list
 import ProtectedRoute from './components/ProtectedRoute';
 import JitsiVideoConference from './components/JitsiVideoConference'; // Jitsi video conference component
@@ -129,6 +133,24 @@ function App() {
             />
             
             <Route 
+              path="/symptoms-selection" 
+              element={
+                <ProtectedRoute>
+                  <SymptomsSelection />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/document-upload" 
+              element={
+                <ProtectedRoute>
+                  <DocumentUpload />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
               path="/select-date-time" 
               element={
                 <ProtectedRoute>
@@ -160,6 +182,24 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["doctor"]} requireDoctorVerified={true}>
                   <DoctorSchedule />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/doctor-ai-diagnosis/:appointmentId?" 
+              element={
+                <ProtectedRoute allowedRoles={["doctor"]} requireDoctorVerified={true}>
+                  <DoctorAIDiagnosisReview />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/doctor-medical-reports" 
+              element={
+                <ProtectedRoute allowedRoles={["doctor"]} requireDoctorVerified={true}>
+                  <DoctorMedicalReports />
                 </ProtectedRoute>
               } 
             />

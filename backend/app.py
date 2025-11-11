@@ -584,12 +584,14 @@ except ImportError:
     print("⚠️  Using SQLite notification routes (fallback)")
 from appointment_routes import appointments_bp
 from admin_routes import admin_bp
+from medical_reports_routes import medical_reports_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(doctor_verification_bp)
 app.register_blueprint(notifications_bp)
 app.register_blueprint(appointments_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(medical_reports_bp)
 
 # 🔧 FIXED: CORS configuration with credentials support (removed "*" to fix CORS issues)
 CORS(app, resources={
@@ -693,6 +695,83 @@ def ai_health():
         'conditions_loaded': len(ai_engine.conditions_df),
         'symptoms_tracked': len(ai_engine.symptom_columns)
     })
+
+@app.route('/api/symptoms', methods=['GET'])
+def get_symptoms():
+    """Get list of available symptoms from conditions table"""
+    try:
+        if not ai_engine:
+            print("❌ /api/symptoms: AI engine not initialized")
+            return jsonify({
+                'success': False,
+                'message': 'AI system not initialized'
+            }), 503
+        
+        # Check if symptom_columns exists
+        if not hasattr(ai_engine, 'symptom_columns'):
+            print("❌ /api/symptoms: symptom_columns attribute not found")
+            return jsonify({
+                'success': False,
+                'message': 'Symptom columns not available. AI system may not be fully loaded.'
+            }), 503
+        
+        # Get symptom columns (exclude ID and condition columns)
+        symptoms = list(ai_engine.symptom_columns) if ai_engine.symptom_columns else []
+        
+        if not symptoms:
+            print("⚠️  /api/symptoms: No symptoms found in symptom_columns")
+            return jsonify({
+                'success': False,
+                'message': 'No symptoms available'
+            }), 503
+        
+        # Format symptom names: convert snake_case to Title Case
+        formatted_symptoms = []
+        for symptom in symptoms:
+            try:
+                # Convert snake_case or underscore_separated to Title Case
+                formatted = str(symptom).replace('_', ' ').title()
+                formatted_symptoms.append({
+                    'key': str(symptom),  # Original key for backend processing
+                    'display': formatted  # Formatted name for display
+                })
+            except Exception as format_error:
+                print(f"⚠️  Error formatting symptom '{symptom}': {format_error}")
+                # Still include it with original name
+                formatted_symptoms.append({
+                    'key': str(symptom),
+                    'display': str(symptom)
+                })
+        
+        # Sort alphabetically by display name
+        formatted_symptoms.sort(key=lambda x: x['display'])
+        
+        print(f"✅ /api/symptoms: Returning {len(formatted_symptoms)} symptoms")
+        
+        return jsonify({
+            'success': True,
+            'symptoms': formatted_symptoms,
+            'count': len(formatted_symptoms)
+        })
+        
+    except AttributeError as attr_error:
+        print(f"❌ /api/symptoms: AttributeError - {attr_error}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'AI system attribute error: {str(attr_error)}',
+            'details': 'The AI system may not be fully initialized. Please check server logs.'
+        }), 500
+    except Exception as e:
+        print(f"❌ /api/symptoms: Unexpected error - {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Error loading symptoms: {str(e)}',
+            'error_type': type(e).__name__
+        }), 500
 
 @app.route('/api/diagnose', methods=['POST'])
 def diagnose():
