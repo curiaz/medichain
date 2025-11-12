@@ -7,11 +7,20 @@ import RoleSelectionModal from '../components/RoleSelectionModal';
 import Footer from '../components/Footer';
 import medichainLogo from '../assets/medichain_logo.png';
 import '../assets/styles/LandingPage.css';
+import { API_CONFIG, buildURL } from '../config/api';
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const [headerStyle, setHeaderStyle] = useState({});
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth <= 768;
+    }
+    return false;
+  });
   const [contactForm, setContactForm] = useState({
     name: '',
     email: '',
@@ -75,7 +84,7 @@ const LandingPage = () => {
     setSubmitMessage('');
 
     try {
-      const response = await fetch('http://localhost:5000/contact', {
+      const response = await fetch(buildURL(API_CONFIG.ENDPOINTS.CONTACT), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,9 +113,23 @@ const LandingPage = () => {
     }
   };
 
+  // Track mobile state separately
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile, { passive: true });
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 100) {
+      const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      
+      // Update header style
+      if (scrollY > 100) {
         setHeaderStyle({
           position: 'fixed',
           top: 0,
@@ -129,10 +152,47 @@ const LandingPage = () => {
           transition: 'all 0.3s ease',
         });
       }
+
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Check initial scroll position
+    handleScroll();
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [isMobile]);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMobileNavOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileNavOpen]);
+
+  // Reveal on scroll animations
+  useEffect(() => {
+    const elements = document.querySelectorAll('.reveal');
+    if (!elements.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('reveal-visible');
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
   }, []);
 
   const handleSmoothScroll = (e, targetId) => {
@@ -144,7 +204,26 @@ const LandingPage = () => {
         block: 'start',
       });
     }
+    closeMobileMenu();
   };
+
+  const closeMobileMenu = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsMobileNavOpen(false);
+      setIsClosing(false);
+    }, 300); // Match dropdownClose animation duration (300ms)
+  };
+
+  const toggleMobileMenu = () => {
+    if (isMobileNavOpen) {
+      closeMobileMenu();
+    } else {
+      setIsMobileNavOpen(true);
+      setIsClosing(false);
+    }
+  };
+
 
   return (
     <div className="medichain">
@@ -205,32 +284,60 @@ const LandingPage = () => {
               Sign Up
             </button>
           </div>
+          <button
+            className={`mobile-menu-button ${isMobileNavOpen ? 'open' : ''}`}
+            aria-label="Toggle navigation menu"
+            aria-expanded={isMobileNavOpen}
+            onClick={toggleMobileMenu}
+            type="button"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
         </div>
+        {isMobileNavOpen && (
+          <>
+            <div 
+              className={`mobile-nav-overlay ${isClosing ? 'closing' : ''}`}
+              onClick={closeMobileMenu}
+              aria-label="Close menu"
+            ></div>
+            <div className={`mobile-nav ${isClosing ? 'closing' : ''}`}>
+              <div className="mobile-nav-content">
+                <button className="nav-link" onClick={(e) => handleSmoothScroll(e, '#about')} type="button">About</button>
+                <button className="nav-link" onClick={(e) => handleSmoothScroll(e, '#features')} type="button">Features</button>
+                <button className="nav-link" onClick={(e) => handleSmoothScroll(e, '#contact')} type="button">Contact Us</button>
+                <div className="mobile-cta">
+                  <button className="btn btn-secondary" onClick={() => { closeMobileMenu(); navigate('/login'); }}>Log In</button>
+                  <button className="btn btn-primary" onClick={() => { closeMobileMenu(); handleGetStarted(); }}>Sign Up</button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </header>
 
       {/* Hero Section */}
       <section className="hero">
         {/* Hero Content */}
         <div className="hero-content">
-          <div className="hero-text">
+          <div className="hero-text reveal">
             <div className="hero-badge">🚀 Next-Gen Healthcare Platform</div>
             <h1 className="hero-title">
               The Future of <span className="highlight">Healthcare</span> is Here
             </h1>
             <p className="hero-subtitle">
-              Revolutionary AI-powered diagnosis combined with secure blockchain health records. 
-              Experience healthcare that's intelligent, secure, and designed for the digital age.
+              Secure health records combined with modern healthcare solutions. 
+              Experience healthcare that's secure, efficient, and designed for the digital age.
             </p>
             <div className="hero-buttons">
               <button
                 className="btn btn-primary btn-extra-large"
-                onClick={() => navigate('/ai-health')}
+                onClick={handleGetStarted}
               >
-                Try AI Diagnosis & Prescription
+                Get Started
               </button>
-              <p className="ai-disclaimer">
-                Note: This is only a predicted condition. Please seek professional medical advice for accurate diagnosis.
-              </p>
             </div>
           </div>
         </div>
@@ -240,7 +347,7 @@ const LandingPage = () => {
       <section className="about" id="about">
         <div className="container about-container">
           {/* Description Section */}
-          <div className="about-description-section">
+          <div className="about-description-section reveal">
             <h2 className="about-title">About MediChain</h2>
             <p className="about-description">
               MediChain is a groundbreaking healthcare platform that combines the power of artificial intelligence and blockchain technology. Our mission is to revolutionize the healthcare industry by providing secure, efficient, and intelligent solutions for managing patient health records and delivering accurate diagnoses.
@@ -251,7 +358,7 @@ const LandingPage = () => {
           </div>
 
           {/* Built On Section */}
-          <div className="about-built-on-section">
+          <div className="about-built-on-section reveal">
             <h2 className="about-title">What MediChain is Built On</h2>
             <p className="about-description">
               MediChain is powered by cutting-edge technologies, including artificial intelligence for accurate diagnostics, blockchain for secure and immutable health records, and advanced encryption protocols to ensure data privacy and security.
@@ -286,42 +393,42 @@ const LandingPage = () => {
             </p>
           </div>
           <div className="features-grid">
-            <div className="feature-item">
+            <div className="feature-item reveal">
               <div className="feature-item-icon">🤖</div>
               <h3>AI-Driven Diagnosis</h3>
               <p>
                 Receive fast and reliable diagnostic results with our AI technology, which analyzes symptoms and medical data to support healthcare decisions.
               </p>
             </div>
-            <div className="feature-item">
+            <div className="feature-item reveal">
               <div className="feature-item-icon">⛓️</div>
               <h3>Blockchain Records</h3>
               <p>
                 Patient health records are securely stored on blockchain, making them tamper-proof and always accessible for trusted medical use.
               </p>
             </div>
-            <div className="feature-item">
+            <div className="feature-item reveal">
               <div className="feature-item-icon">🔐</div>
               <h3>Advanced Encryption</h3>
               <p>
                 All sensitive medical information is protected by strong encryption, keeping patient data private and secure at every step.
               </p>
             </div>
-            <div className="feature-item">
+            <div className="feature-item reveal">
               <div className="feature-item-icon">⚡</div>
               <h3>Real-time Analytics</h3>
               <p>
                 Instantly view health trends and analytics to help improve care and make informed decisions for better patient outcomes.
               </p>
             </div>
-            <div className="feature-item">
+            <div className="feature-item reveal">
               <div className="feature-item-icon">🌐</div>
               <h3>Interoperability</h3>
               <p>
                 Effortlessly share and integrate patient data across healthcare systems, ensuring smooth collaboration between providers.
               </p>
             </div>
-            <div className="feature-item">
+            <div className="feature-item reveal">
               <div className="feature-item-icon">📱</div>
               <h3>Mobile-First Design</h3>
               <p>
@@ -334,7 +441,7 @@ const LandingPage = () => {
 
       {/* Contact Us Section */}
       <section className="contact" id="contact">
-        <div className="container contact-container">
+        <div className="container contact-container reveal">
           <h2 className="contact-title">Contact Us</h2>
           <div className="contact-info">
             <p><strong>Email:</strong> <a href="mailto:medichain173@gmail.com" className="email-link">medichain173@gmail.com</a></p>
@@ -523,6 +630,7 @@ const LandingPage = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };

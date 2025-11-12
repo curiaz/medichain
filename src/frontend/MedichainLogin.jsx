@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import "./MedichainLogin.css"
+import "../pages/ProfilePage.css" // For modal styling
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { Eye, EyeOff, Lock, Mail, Plus, ChevronRight, AlertCircle } from "lucide-react"
@@ -22,6 +23,9 @@ const MedichainLogin = () => {
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false)
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false)
   const [isResendingVerification, setIsResendingVerification] = useState(false)
+  const [showReactivationModal, setShowReactivationModal] = useState(false)
+  const [reactivationToken, setReactivationToken] = useState(null)
+  const [isReactivating, setIsReactivating] = useState(false)
 
   const handleSignUpClick = () => {
     setIsRoleModalOpen(true)
@@ -85,9 +89,22 @@ const MedichainLogin = () => {
     setIsSubmitting(true)
     
     try {
+      console.log('🔐 Attempting login...');
       const result = await login(email.trim(), password)
+      console.log('📊 Login result:', result);
       
       if (result.success) {
+        // Check if account requires reactivation
+        if (result.requiresReactivation) {
+          console.log('🔔 Showing reactivation modal');
+          setReactivationToken(result.token || null)
+          setShowReactivationModal(true)
+          showToast.info("Your account is deactivated. Please confirm reactivation.")
+          setIsSubmitting(false)
+          // Keep email and password in state for reactivation (already available)
+          return
+        }
+
         // Handle remember me functionality
         if (rememberMe) {
           localStorage.setItem("medichain_remembered_email", email.trim())
@@ -144,6 +161,74 @@ const MedichainLogin = () => {
     } finally {
       setIsResendingVerification(false)
     }
+  }
+
+  const handleReactivateAccount = async () => {
+    setIsReactivating(true)
+    
+    try {
+      // Check if we have a token (authenticated reactivation) or email/password (disabled user reactivation)
+      let response;
+      
+      if (reactivationToken) {
+        // User is authenticated - use token-based reactivation
+        response = await fetch('http://localhost:5000/api/auth/reactivate-account', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${reactivationToken}`
+          }
+        })
+      } else if (email && password) {
+        // User is disabled (deactivated doctor) - use email/password reactivation
+        response = await fetch('http://localhost:5000/api/auth/reactivate-disabled-account', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email.trim(),
+            password: password
+          })
+        })
+      } else {
+        showToast.error("Invalid reactivation session. Please try logging in again.")
+        return
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        showToast.success("Account reactivated successfully! Logging you in...")
+        setShowReactivationModal(false)
+        
+        // Now automatically log in with the email and password
+        const loginResult = await login(email, password)
+        
+        if (loginResult.success) {
+          // Login successful, redirect to dashboard
+          setTimeout(() => {
+            navigate('/dashboard')
+          }, 1000)
+        } else {
+          // Login failed for some reason, show error
+          showToast.error(loginResult.error || "Failed to log in after reactivation. Please try logging in manually.")
+        }
+      } else {
+        showToast.error(result.error || "Failed to reactivate account")
+      }
+    } catch (error) {
+      console.error("Reactivation error:", error)
+      showToast.error("Failed to reactivate account. Please try again.")
+    } finally {
+      setIsReactivating(false)
+    }
+  }
+
+  const handleCancelReactivation = () => {
+    setShowReactivationModal(false)
+    setReactivationToken(null)
+    showToast.info("Reactivation cancelled. Your account remains deactivated.")
   }
 
   // Show loading spinner if checking authentication
@@ -368,6 +453,56 @@ const MedichainLogin = () => {
         onClose={closeRoleModal}
         onRoleSelect={handleRoleSelect}
       />
+
+      {/* Reactivation Confirmation Modal */}
+      {showReactivationModal && (
+        <div className="profile-modal-overlay" onClick={handleCancelReactivation}>
+          <div className="profile-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="profile-modal-header">
+              <AlertCircle size={48} className="profile-modal-icon-warning" />
+              <h2>Reactivate Your Doctor Account</h2>
+              <p>Your account is currently deactivated. Would you like to reactivate it?</p>
+            </div>
+
+            <div className="profile-modal-body">
+              <div className="profile-modal-warning-box">
+                <div>
+                  <p className="profile-modal-warning-title">Account Reactivation</p>
+                  <p className="profile-modal-warning-text">
+                    By reactivating your account, you will:
+                  </p>
+                  <ul className="profile-modal-warning-list">
+                    <li>Regain full access to your doctor dashboard</li>
+                    <li>Be able to manage patient records</li>
+                    <li>Continue providing medical services</li>
+                    <li>Access all your professional data</li>
+                  </ul>
+                  <p className="profile-modal-warning-text" style={{ marginTop: '15px' }}>
+                    Your profile has remained visible to patients during deactivation.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="profile-modal-footer">
+              <button 
+                onClick={handleCancelReactivation}
+                className="profile-btn profile-btn-secondary"
+                disabled={isReactivating}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleReactivateAccount}
+                className="profile-btn profile-btn-success"
+                disabled={isReactivating}
+              >
+                {isReactivating ? 'Reactivating...' : 'Yes, Reactivate My Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

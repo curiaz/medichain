@@ -48,6 +48,13 @@ const ProfilePage = () => {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [auditTrail, setAuditTrail] = useState([]);
+  
+  // Delete Account Modal States
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteStep, setDeleteStep] = useState(1); // 1: password, 2: confirmation
+  const [deletePassword, setDeletePassword] = useState('');
+  const [passwordVerifying, setPasswordVerifying] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -87,6 +94,13 @@ const ProfilePage = () => {
       if (!user) {
         console.log('❌ No user found');
         setError('No user found');
+        setLoading(false);
+        return;
+      }
+      
+      // Check if user is a patient
+      if (user.profile?.role === 'doctor') {
+        setError('Access denied. This page is for patients only. Please use the Doctor Profile page.');
         setLoading(false);
         return;
       }
@@ -395,6 +409,143 @@ const ProfilePage = () => {
     }
   };
 
+  const handleDeleteAccount = () => {
+    // Open the delete account modal
+    setShowDeleteModal(true);
+    setDeleteStep(1);
+    setDeletePassword('');
+    setPasswordError('');
+  };
+
+  const handleCloseDeleteModal = () => {
+    setShowDeleteModal(false);
+    setDeleteStep(1);
+    setDeletePassword('');
+    setPasswordError('');
+    setPasswordVerifying(false);
+  };
+
+  const handleVerifyPassword = async () => {
+    if (!deletePassword.trim()) {
+      setPasswordError('Please enter your password');
+      return;
+    }
+
+    try {
+      setPasswordVerifying(true);
+      setPasswordError('');
+      
+      console.log('🔐 Verifying password...');
+      console.log('👤 User object:', user);
+      console.log('📧 User email:', user?.email || userProfile?.email);
+      
+      // Get authentication token
+      const token = localStorage.getItem('medichain_token');
+      if (!token) {
+        setPasswordError('Authentication token not found. Please log in again.');
+        return;
+      }
+
+      // Get email from user object or profile
+      const userEmail = user?.email || userProfile?.email || profile?.email;
+      
+      if (!userEmail) {
+        setPasswordError('Email not found. Please log in again.');
+        return;
+      }
+
+      console.log('📤 Sending verification request with email:', userEmail);
+
+      // Verify password by attempting to re-authenticate
+      const response = await fetch('http://localhost:5000/api/auth/verify-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          password: deletePassword
+        })
+      });
+
+      const result = await response.json();
+      console.log('📥 Verification response:', result);
+      
+      if (result.success) {
+        console.log('✅ Password verified successfully!');
+        // Move to confirmation step
+        setDeleteStep(2);
+        setPasswordError('');
+      } else {
+        const errorMsg = result.error || 'Incorrect password. Please try again.';
+        setPasswordError(errorMsg);
+        console.log('❌ Password verification failed:', errorMsg);
+      }
+    } catch (err) {
+      console.error('❌ Error verifying password:', err);
+      setPasswordError('Failed to verify password. Please try again.');
+    } finally {
+      setPasswordVerifying(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      setSaving(true);
+      setError('');
+      
+      console.log('🗑️ Deleting user account...');
+      
+      // Get authentication token
+      const token = localStorage.getItem('medichain_token');
+      if (!token) {
+        setError('Authentication token not found. Please log in again.');
+        return;
+      }
+
+      // Call backend API to delete account
+      const response = await fetch('http://localhost:5000/api/profile/delete-account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Clear local storage
+        localStorage.removeItem('medichain_token');
+        localStorage.removeItem('medichain_user');
+        
+        // Close modal
+        handleCloseDeleteModal();
+        
+        // Show success message
+        setSuccess('✅ Your account has been successfully deleted.');
+        
+        // Redirect to home page after a short delay
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 2000);
+        
+        console.log('✅ Account deleted successfully!');
+      } else {
+        setError(result.error || 'Failed to delete account. Please try again.');
+        console.log('❌ Account deletion failed:', result.error);
+        handleCloseDeleteModal();
+      }
+    } catch (err) {
+      console.error('❌ Error deleting account:', err);
+      setError('Failed to delete account. Please try again or contact support.');
+      handleCloseDeleteModal();
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="profile-page">
@@ -660,6 +811,31 @@ const ProfilePage = () => {
                     </button>
                   </div>
                 </div>
+
+                {/* Delete Account Section */}
+                <div className="profile-danger-zone">
+                  <h4 className="profile-danger-zone-title">Danger Zone</h4>
+                  <div className="profile-danger-zone-content">
+                    <div className="profile-danger-warning">
+                      <AlertCircle size={20} />
+                      <div>
+                        <p className="profile-danger-warning-title">Delete Account</p>
+                        <p className="profile-danger-warning-text">
+                          Once you delete your account, there is no going back. This will permanently delete all your medical records, 
+                          appointments, prescriptions, and personal information. Please be certain.
+                        </p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={handleDeleteAccount}
+                      disabled={saving}
+                      className="profile-btn profile-btn-danger"
+                    >
+                      <Trash2 size={16} />
+                      {saving ? 'Deleting...' : 'Delete Account'}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -706,6 +882,145 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <div className="profile-modal-overlay" onClick={handleCloseDeleteModal}>
+          <div className="profile-modal-content profile-delete-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="profile-modal-close" onClick={handleCloseDeleteModal}>
+              <X size={24} />
+            </button>
+
+            {deleteStep === 1 ? (
+              /* Step 1: Password Verification */
+              <>
+                <div className="profile-modal-header">
+                  <AlertCircle size={48} className="profile-modal-icon-warning" />
+                  <h2>Verify Your Identity</h2>
+                  <p>Please enter your password to continue with account deletion</p>
+                </div>
+
+                <div className="profile-modal-body">
+                  <div className="profile-modal-warning-box">
+                    <AlertCircle size={20} />
+                    <div>
+                      <p className="profile-modal-warning-title">⚠️ This action is irreversible</p>
+                      <p className="profile-modal-warning-text">
+                        Deleting your account will permanently remove:
+                      </p>
+                      <ul className="profile-modal-warning-list">
+                        <li>All your medical records and history</li>
+                        <li>Appointments and prescriptions</li>
+                        <li>Uploaded health documents</li>
+                        <li>Privacy settings and preferences</li>
+                        <li>Your entire account from the system</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">
+                      <Lock size={16} />
+                      Enter Your Password
+                    </label>
+                    <input
+                      type="password"
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleVerifyPassword()}
+                      className="profile-form-input"
+                      placeholder="Enter your password"
+                      autoFocus
+                      disabled={passwordVerifying}
+                    />
+                    {passwordError && (
+                      <p className="profile-form-error">
+                        <AlertCircle size={16} />
+                        {passwordError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="profile-modal-footer">
+                  <button 
+                    onClick={handleCloseDeleteModal}
+                    className="profile-btn profile-btn-secondary"
+                    disabled={passwordVerifying}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleVerifyPassword}
+                    className="profile-btn profile-btn-primary"
+                    disabled={passwordVerifying || !deletePassword.trim()}
+                  >
+                    {passwordVerifying ? 'Verifying...' : 'Verify Password'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Step 2: Final Confirmation */
+              <>
+                <div className="profile-modal-header">
+                  <AlertCircle size={48} className="profile-modal-icon-danger" />
+                  <h2>Final Confirmation</h2>
+                  <p>Are you absolutely sure you want to delete your account?</p>
+                </div>
+
+                <div className="profile-modal-body">
+                  <div className="profile-modal-danger-box">
+                    <h3>⚠️ This Will Permanently Delete:</h3>
+                    <div className="profile-modal-delete-list">
+                      <div className="profile-modal-delete-item">
+                        <CheckCircle size={20} />
+                        <span>All medical records and health history</span>
+                      </div>
+                      <div className="profile-modal-delete-item">
+                        <CheckCircle size={20} />
+                        <span>All appointments and prescriptions</span>
+                      </div>
+                      <div className="profile-modal-delete-item">
+                        <CheckCircle size={20} />
+                        <span>All uploaded health documents</span>
+                      </div>
+                      <div className="profile-modal-delete-item">
+                        <CheckCircle size={20} />
+                        <span>Your account and authentication credentials</span>
+                      </div>
+                      <div className="profile-modal-delete-item">
+                        <CheckCircle size={20} />
+                        <span>All privacy settings and preferences</span>
+                      </div>
+                    </div>
+                    <p className="profile-modal-danger-text">
+                      <strong>This action cannot be undone.</strong> Your data will be permanently removed from our systems.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="profile-modal-footer">
+                  <button 
+                    onClick={handleCloseDeleteModal}
+                    className="profile-btn profile-btn-success"
+                    disabled={saving}
+                  >
+                    No, Keep My Account
+                  </button>
+                  <button 
+                    onClick={handleConfirmDelete}
+                    className="profile-btn profile-btn-danger"
+                    disabled={saving}
+                  >
+                    <Trash2 size={16} />
+                    {saving ? 'Deleting Account...' : 'Yes, Delete My Account'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -91,6 +91,17 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (response.data.success) {
+        // Check if account requires reactivation
+        if (response.data.requires_reactivation) {
+          return {
+            success: true,
+            requiresReactivation: true,
+            message: 'Account is deactivated',
+            user: response.data.user,
+            token: idToken
+          };
+        }
+
         localStorage.setItem('medichain_token', idToken);
         localStorage.setItem('medichain_user', JSON.stringify(response.data.user));
 
@@ -106,6 +117,45 @@ export const AuthProvider = ({ children }) => {
         throw new Error(response.data.error || 'Login failed');
       }
     } catch (error) {
+      // Special handling for disabled user (deactivated doctor accounts)
+      if (error.code === 'auth/user-disabled') {
+        console.log('🔍 Detected disabled user, checking if deactivated doctor...');
+        
+        // Try to check if this is a deactivated doctor account
+        try {
+          // Use Firebase Admin SDK through backend to check user status
+          const checkResponse = await axios.post(`${API_URL}/auth/check-deactivated`, {
+            email: email
+          });
+          
+          console.log('✅ Deactivation check response:', checkResponse.data);
+          
+          if (checkResponse.data.success && checkResponse.data.is_deactivated_doctor) {
+            // This is a deactivated doctor - return reactivation required
+            console.log('✅ This is a deactivated doctor - showing reactivation modal');
+            // DO NOT set error - we want to show the modal, not an error message
+            return {
+              success: true,
+              requiresReactivation: true,
+              message: 'Account is deactivated',
+              user: checkResponse.data.user,
+              email: email,
+              password: password // Store for reactivation
+            };
+          }
+        } catch (checkError) {
+          console.error('❌ Error checking deactivation status:', checkError);
+        }
+        
+        // If not a deactivated doctor, show the disabled error
+        console.log('⚠️ Not a deactivated doctor - showing disabled error');
+        setError('This account has been disabled. Please contact support.');
+        return {
+          success: false,
+          message: 'This account has been disabled. Please contact support.'
+        };
+      }
+      
       setError(error.message || 'Login failed');
       return {
         success: false,
@@ -151,10 +201,23 @@ export const AuthProvider = ({ children }) => {
         throw new Error(response.data.error || 'Signup failed');
       }
     } catch (error) {
-      setError(error.message || 'Signup failed');
+      // Handle Firebase errors
+      let errorMessage = error.message || 'Signup failed';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please login instead or use a different email.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Please use a stronger password.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      setError(errorMessage);
       return {
         success: false,
-        error: error.message || 'Signup failed'
+        error: errorMessage
       };
     } finally {
       setLoading(false);

@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext"
 import "../assets/styles/Header.css"
 
 const Header = () => {
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -15,7 +15,12 @@ const Header = () => {
 
   const handleProfileClick = () => {
     console.log('Profile icon clicked in Header!')
-    navigate('/profile')
+    // Navigate to appropriate profile page based on user role
+    if (user?.profile?.role === 'doctor') {
+      navigate('/doctor-profile')
+    } else {
+      navigate('/profile')
+    }
   }
 
   return (

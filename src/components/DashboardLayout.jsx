@@ -35,8 +35,13 @@ const DashboardLayout = ({ children }) => {
   };
 
   const handleProfileClick = () => {
-    console.log('Profile clicked - navigating to /profile');
-    navigate('/profile');
+    console.log('Profile clicked - navigating to profile page');
+    // Navigate to appropriate profile page based on user role
+    if (user?.profile?.role === 'doctor') {
+      navigate('/doctor-profile');
+    } else {
+      navigate('/profile');
+    }
     setProfileOpen(false);
   };
 
