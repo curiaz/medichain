@@ -25,6 +25,7 @@ import DoctorSchedule from './pages/DoctorSchedule'; // Doctor schedule manageme
 import DoctorAIDiagnosisReview from './pages/DoctorAIDiagnosisReview'; // Doctor AI diagnosis review page
 import DoctorMedicalReports from './pages/DoctorMedicalReports'; // Doctor medical reports page
 import PatientAppointments from './pages/PatientAppointments'; // Patient appointments list
+import PrescriptionVerification from './pages/PrescriptionVerification'; // Prescription QR verification page
 import ProtectedRoute from './components/ProtectedRoute';
 import JitsiVideoConference from './components/JitsiVideoConference'; // Jitsi video conference component
 import './App.css';
@@ -44,6 +45,9 @@ function App() {
             <Route path="/signup" element={<MedichainSignup />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/debug-firebase" element={<FirebaseDebugTest />} />
+            
+            {/* Public prescription verification route (for pharmacy QR scanning) */}
+            <Route path="/verify-prescription/:appointmentId" element={<PrescriptionVerification />} />
             
             {/* Protected Dashboard routes */}
             <Route 

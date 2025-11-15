@@ -14,6 +14,57 @@ const HealthRecord = () => {
   const [error, setError] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [showPrescription, setShowPrescription] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+
+  // Load user profile from database if not already loaded
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (!user?.uid) return;
+
+      // Check if profile data is already available
+      const hasProfileData = user.profile?.first_name || user.first_name;
+      
+      if (!hasProfileData) {
+        try {
+          // Get token for authentication
+          let token = null;
+          try {
+            if (getFirebaseToken) {
+              token = await getFirebaseToken();
+            }
+          } catch (authError) {
+            console.warn("Could not get Firebase token:", authError);
+          }
+
+          if (!token) {
+            token = sessionStorage.getItem('firebase_id_token') || 
+                    localStorage.getItem('firebase_id_token') ||
+                    localStorage.getItem('medichain_token');
+          }
+
+          if (token) {
+            // Fetch user profile from backend
+            const response = await axios.get('http://localhost:5000/api/profile', {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (response.data?.success && response.data?.user) {
+              setUserProfile(response.data.user);
+              console.log('✅ Loaded user profile from database:', response.data.user);
+            }
+          }
+        } catch (err) {
+          console.warn('Could not load user profile:', err);
+          // Continue without profile - will use fallback names
+        }
+      } else {
+        // Profile data already available in user object
+        setUserProfile(user);
+      }
+    };
+
+    loadUserProfile();
+  }, [user, getFirebaseToken]);
 
   useEffect(() => {
     if (user?.uid) {
@@ -154,6 +205,208 @@ const HealthRecord = () => {
     alert(`Download functionality will be implemented soon.\n\nDocument: ${document.name}\nSize: ${(document.size / 1024).toFixed(2)} KB`);
   };
 
+  const handleDownloadPrescription = async (record) => {
+    try {
+      // Dynamically import jsPDF and qrcode
+      const { default: jsPDF } = await import('jspdf');
+      const QRCode = await import('qrcode');
+      
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      const bottomMargin = 50; // Space reserved for footer (QR, signature, ID)
+      let yPos = margin;
+
+      // Header - MediChain branding (compact)
+      doc.setFillColor(33, 150, 243);
+      doc.rect(0, 0, pageWidth, 28, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text('MEDICHAIN', pageWidth / 2, 14, { align: 'center' });
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('E-Prescription System', pageWidth / 2, 22, { align: 'center' });
+
+      yPos = 40;
+
+      // Prescribing Physician Section (stacked layout)
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Prescribing Physician:', margin, yPos);
+      
+      yPos += 7;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      if (record.doctor) {
+        doc.text(`Dr. ${record.doctor.name}`, margin, yPos);
+        yPos += 6;
+        doc.text(`Specialization: ${record.doctor.specialization}`, margin, yPos);
+      }
+
+      yPos += 12;
+
+      // Patient Information Section (stacked layout)
+      // Use userProfile if loaded, otherwise fall back to user object
+      const profileData = userProfile || user;
+      
+      // Try multiple locations for patient name
+      const firstName = profileData?.profile?.first_name || profileData?.first_name || profileData?.profile?.firstName || '';
+      const lastName = profileData?.profile?.last_name || profileData?.last_name || profileData?.profile?.lastName || '';
+      const patientName = firstName && lastName 
+        ? `${firstName} ${lastName}`.trim()
+        : profileData?.profile?.name || profileData?.name || profileData?.displayName || profileData?.email?.split('@')[0] || 'Patient';
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Patient Information:', margin, yPos);
+      
+      yPos += 7;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Name: ${patientName}`, margin, yPos);
+      yPos += 6;
+      doc.text(`Date: ${formatDate(record.date, record.time)}`, margin, yPos);
+
+      yPos += 12;
+
+      // Diagnosis Section
+      if (record.finalDiagnosis) {
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Diagnosis:', margin, yPos);
+        yPos += 7;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        const diagnosisLines = doc.splitTextToSize(record.finalDiagnosis, pageWidth - 2 * margin);
+        doc.text(diagnosisLines, margin, yPos);
+        yPos += diagnosisLines.length * 5 + 10;
+      }
+
+      // Prescription Section
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Prescription:', margin, yPos);
+      yPos += 8;
+
+      // Draw table header
+      doc.setFillColor(233, 242, 253);
+      doc.rect(margin, yPos - 6, pageWidth - 2 * margin, 8, 'F');
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 0, 0);
+      doc.text('Medication', margin + 2, yPos);
+      doc.text('Dosage', margin + 80, yPos);
+      doc.text('Duration', margin + 130, yPos);
+      
+      yPos += 10;
+
+      // Medication rows
+      if (record.prescription && record.prescription.medications) {
+        record.prescription.medications.forEach((med, idx) => {
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0, 0, 0);
+          
+          // Medication name
+          const medName = med.name || 'Medication';
+          const nameLines = doc.splitTextToSize(medName, 70);
+          doc.text(nameLines, margin + 2, yPos);
+          
+          // Dosage
+          if (med.dosage) {
+            const dosageLines = doc.splitTextToSize(med.dosage, 40);
+            doc.text(dosageLines, margin + 80, yPos);
+          }
+          
+          // Duration
+          if (med.duration) {
+            doc.text(med.duration, margin + 130, yPos);
+          }
+
+          yPos += Math.max(nameLines.length * 5, 8);
+          
+          // Draw separator line
+          doc.setDrawColor(200, 200, 200);
+          doc.line(margin, yPos - 2, pageWidth - margin, yPos - 2);
+          yPos += 4;
+        });
+      }
+
+      // Instructions Section
+      if (record.prescription && record.prescription.instructions) {
+        yPos += 8;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Instructions:', margin, yPos);
+        yPos += 7;
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        const instructionLines = doc.splitTextToSize(record.prescription.instructions, pageWidth - 2 * margin);
+        doc.text(instructionLines, margin, yPos);
+        yPos += instructionLines.length * 5 + 4;
+      }
+
+      // Generate QR Code with secure URL pointing to verification page
+      // The URL contains the appointment ID which is used to verify the prescription
+      const baseUrl = window.location.origin;
+      const verificationUrl = `${baseUrl}/verify-prescription/${record.id}`;
+      
+      const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
+        width: 50,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+
+      // Footer area - Add QR code, signature, ID, and time at the bottom
+      // This is added after all content, so it won't affect the main layout
+      const footerY = pageHeight - 45;
+      
+      // QR Code on bottom left (without label)
+      doc.addImage(qrCodeDataUrl, 'PNG', margin, footerY, 35, 35);
+
+      // Doctor signature on bottom right (centered)
+      const signatureX = pageWidth - margin - 60;
+      const signatureText = 'Doctor\'s Signature';
+      const signatureTextWidth = doc.getTextWidth(signatureText);
+      const signatureLineX = signatureX + (55 - signatureTextWidth) / 2;
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.line(signatureLineX, footerY + 25, signatureLineX + signatureTextWidth, footerY + 25);
+      doc.text(signatureText, signatureX + (55 - signatureTextWidth) / 2, footerY + 32);
+
+      // Prescription ID and timestamp at the very bottom (centered)
+      const bottomY = pageHeight - 8;
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      const prescriptionId = `Prescription ID: ${record.id.substring(0, 8)}`;
+      const generatedTime = `Generated: ${new Date().toLocaleString()}`;
+      const idWidth = doc.getTextWidth(prescriptionId);
+      const timeWidth = doc.getTextWidth(generatedTime);
+      
+      // Center the text at bottom
+      doc.text(prescriptionId, (pageWidth - idWidth) / 2, bottomY);
+      doc.text(generatedTime, (pageWidth - timeWidth) / 2, bottomY + 4);
+
+      // Save PDF
+      const fileName = `prescription_${record.id.substring(0, 8)}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+    } catch (error) {
+      console.error('Error generating prescription PDF:', error);
+      alert('Error generating prescription. Please install required packages: npm install jspdf qrcode');
+    }
+  };
+
   if (!isAuthenticated || !user) {
     return (
       <div className="dashboard-container">
@@ -179,18 +432,26 @@ const HealthRecord = () => {
         <div className="dashboard-header-section">
           <div className="dashboard-title-section">
             <h1 className="dashboard-title">MY HEALTH RECORD</h1>
-            {user && (
-              <div className="user-welcome">
-                <span>
-                  Health record for <strong>
-                    {user.profile?.first_name 
-                      ? `${user.profile.first_name} ${user.profile.last_name || ''}`.trim()
-                      : user.profile?.name || user.displayName || 'User'}
-                  </strong>
-                </span>
-                <span className="user-role">Medical Records Portal</span>
-              </div>
-            )}
+            {user && (() => {
+              // Use userProfile if loaded, otherwise fall back to user object
+              const profileData = userProfile || user;
+              
+              // Try multiple locations for user name
+              const firstName = profileData.profile?.first_name || profileData.first_name || profileData.profile?.firstName || '';
+              const lastName = profileData.profile?.last_name || profileData.last_name || profileData.profile?.lastName || '';
+              const fullName = firstName && lastName 
+                ? `${firstName} ${lastName}`.trim()
+                : profileData.profile?.name || profileData.name || profileData.displayName || profileData.email?.split('@')[0] || 'User';
+              
+              return (
+                <div className="user-welcome">
+                  <span>
+                    Health record for <strong>{fullName}</strong>
+                  </span>
+                  <span className="user-role">Medical Records Portal</span>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -368,27 +629,52 @@ const HealthRecord = () => {
               {/* Prescription Content - From medical report */}
               {selectedRecord.prescription && selectedRecord.prescription.medications?.length > 0 ? (
                 <div className="prescription-details">
-                  <h3>Medication</h3>
-                  {selectedRecord.prescription.medications.map((med, idx) => (
-                    <div key={idx} className="medication-item">
-                      <strong>{med.name || 'Medication'}</strong>
-                      {med.dosage && (
-                        <p className="dosage">Dosage: {med.dosage}</p>
-                      )}
-                      {med.duration && (
-                        <p className="duration">Duration: {med.duration}</p>
-                      )}
-                    </div>
-                  ))}
+                  <div className="prescription-section-header">
+                    <Pill size={20} />
+                    <h3>Medication</h3>
+                  </div>
+                  <div className="medications-list">
+                    {selectedRecord.prescription.medications.map((med, idx) => (
+                      <div key={idx} className="medication-item">
+                        <div className="medication-content">
+                          <div className="medication-name-section">
+                            <strong className="medication-name">{med.name || 'Medication'}</strong>
+                          </div>
+                          <div className="medication-info-section">
+                            {med.dosage && (
+                              <div className="medication-info-item">
+                                <span className="info-label">DOSAGE:</span>
+                                <span className="info-value">{med.dosage}</span>
+                              </div>
+                            )}
+                            {med.duration && (
+                              <div className="medication-info-item">
+                                <span className="info-label">DURATION:</span>
+                                <span className="info-value">{med.duration}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
                   {selectedRecord.prescription.instructions && (
                     <div className="prescription-instructions">
-                      <h3>Instructions</h3>
-                      <p>{selectedRecord.prescription.instructions}</p>
+                      <div className="instructions-header">
+                        <Activity size={18} />
+                        <h3>Instructions</h3>
+                      </div>
+                      <div className="instructions-content">
+                        <p>{selectedRecord.prescription.instructions}</p>
+                      </div>
                     </div>
                   )}
+                  
                   {selectedRecord.prescription.duration_days && (
-                    <div className="prescription-duration">
-                      <strong>Treatment Duration:</strong> {selectedRecord.prescription.duration_days} days
+                    <div className="prescription-duration-info">
+                      <Calendar size={16} />
+                      <span><strong>Treatment Duration:</strong> {selectedRecord.prescription.duration_days} days</span>
                     </div>
                   )}
                 </div>
@@ -401,25 +687,20 @@ const HealthRecord = () => {
                   </p>
                 </div>
               )}
-
-              <div className="prescription-disclaimer">
-                <AlertCircle size={16} />
-                <p>This is a preliminary prescription based on AI diagnosis. Please consult with your doctor before taking any medication.</p>
-              </div>
             </div>
             <div className="modal-footer">
+              <button
+                className="download-prescription-btn"
+                onClick={() => handleDownloadPrescription(selectedRecord)}
+              >
+                <Download size={18} />
+                Download Prescription
+              </button>
               <button
                 className="close-btn"
                 onClick={() => setShowPrescription(false)}
               >
                 Close
-              </button>
-              <button
-                className="download-prescription-btn"
-                onClick={() => alert('Download prescription functionality coming soon!')}
-              >
-                <Download size={18} />
-                Download Prescription
               </button>
             </div>
           </div>
