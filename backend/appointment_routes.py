@@ -2,125 +2,2547 @@
 Appointments API Routes
 Handles appointment scheduling and management
 """
-from flask import Blueprint, request, jsonify
+
+from flask import Blueprint, jsonify, request, make_response
+from functools import wraps
+from datetime import datetime, timedelta
+try:
+    import pytz
+    MANILA_TZ = pytz.timezone('Asia/Manila')
+except ImportError:
+    # Fallback to zoneinfo for Python 3.9+
+    try:
+        from zoneinfo import ZoneInfo
+        MANILA_TZ = ZoneInfo('Asia/Manila')
+    except ImportError:
+        # If neither available, use UTC offset (UTC+8)
+        from datetime import timezone
+        MANILA_TZ = timezone(timedelta(hours=8))
+
 from auth.firebase_auth import firebase_auth_required
 from db.supabase_client import SupabaseClient
-from datetime import datetime
 
-appointments_bp = Blueprint('appointments', __name__, url_prefix='/api/appointments')
-supabase = SupabaseClient()
+appointments_bp = Blueprint("appointments", __name__, url_prefix="/api/appointments")
+# Initialize Supabase client with error handling
+try:
+    supabase = SupabaseClient()
+    print("✅ Supabase client initialized for appointments")
+except Exception as e:
+    print(f"❌ Error initializing Supabase client for appointments: {e}")
+    supabase = None
 
-@appointments_bp.route('', methods=['GET'])
-@firebase_auth_required
+def get_manila_now():
+    """Get current datetime in Asia/Manila timezone"""
+    if hasattr(MANILA_TZ, 'localize'):
+        # pytz timezone
+        return datetime.now(MANILA_TZ)
+    else:
+        # zoneinfo or timezone offset
+        return datetime.now(MANILA_TZ)
+
+
+def auth_required(f):
+    """Decorator that accepts both Firebase and Supabase tokens"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get("Authorization")
+        
+        if not auth_header:
+            return jsonify({"error": "No authorization header provided"}), 401
+        
+        try:
+            token = auth_header.split(" ")[1]  # Remove 'Bearer ' prefix
+        except IndexError:
+            return jsonify({"error": "Invalid authorization header format"}), 401
+        
+        # Try Firebase token first, but don't fail if it's not a Firebase token
+        # IMPORTANT: We MUST try JWT fallbacks if Firebase fails, especially for "kid" claim errors
+        from auth.firebase_auth import firebase_auth_service
+        firebase_verified = False
+        try:
+            firebase_result = firebase_auth_service.verify_token(token)
+            if firebase_result.get("success"):
+                request.firebase_user = firebase_result
+                print(f"✅ Firebase token verified for user: {firebase_result.get('email', 'unknown')}")
+                return f(*args, **kwargs)
+            else:
+                # Firebase verification failed - check if it's a JWT format issue
+                error_msg = firebase_result.get('error', '')
+                print(f"⚠️  Firebase token verification failed: {error_msg}")
+                # If it's a "kid" claim error, it's definitely a JWT, not a Firebase token
+                if 'kid' in error_msg.lower():
+                    print(f"🔍 Token is JWT (no 'kid' claim), skipping Firebase and trying JWT fallbacks immediately...")
+                    # Skip to JWT fallbacks - don't try Firebase again
+                else:
+                    print(f"⚠️  Firebase verification failed for other reason, trying JWT fallbacks...")
+                # Continue to JWT fallbacks - don't return error yet
+        except Exception as firebase_error:
+            # Firebase verification threw an exception (e.g., "no 'kid' claim"), continue to JWT fallbacks
+            error_str = str(firebase_error)
+            print(f"⚠️  Firebase token verification exception: {error_str}")
+            if "kid" in error_str.lower() or "invalid" in error_str.lower() or "malformed" in error_str.lower():
+                print(f"🔍 Token is not a Firebase token (likely JWT), trying JWT fallbacks...")
+            # Continue to try JWT tokens - don't return error yet
+
+        # If Firebase fails, try accepting a Supabase-style JWT (no signature verification in dev)
+        try:
+            import jwt
+            # Decode the JWT without verification (development only)
+            decoded = jwt.decode(token, options={"verify_signature": False})
+
+            # Accept Supabase JWTs with sub/email
+            if 'sub' in decoded and 'email' in decoded:
+                request.firebase_user = {
+                    "success": True,
+                    "uid": decoded.get('sub'),
+                    "email": decoded.get('email')
+                }
+                print(f"✅ Supabase JWT accepted for user: {decoded.get('email')}")
+                return f(*args, **kwargs)
+        except Exception as e:
+            print(f"⚠️  Token decoding failed (supabase-style): {e}")
+
+        # Finally, accept app-issued JWTs (medichain_token) generated by auth_utils
+        try:
+            from auth.auth_utils import auth_utils
+            print(f"🔍 Attempting to decode JWT token (length: {len(token)})...")
+            app_payload = auth_utils.decode_token(token)
+            print(f"🔍 JWT decode result: {app_payload}")
+            
+            if app_payload and app_payload.get('email'):
+                print(f"✅ JWT decoded successfully for email: {app_payload.get('email')}")
+                # The JWT has user_id which is the database ID, not Firebase UID
+                # We need to look up the user profile to get the firebase_uid
+                user_id = app_payload.get('user_id')
+                print(f"🔍 JWT user_id: {user_id}")
+                
+                if user_id and supabase and supabase.service_client:
+                    # Look up user profile to get firebase_uid
+                    try:
+                        print(f"🔍 Looking up user profile by id: {user_id}")
+                        user_profile_response = (
+                            supabase.service_client.table("user_profiles")
+                            .select("firebase_uid, email, role")
+                            .eq("id", user_id)
+                            .execute()
+                        )
+                        print(f"🔍 User profile lookup result: {user_profile_response.data}")
+                        
+                        if user_profile_response.data:
+                            user_profile = user_profile_response.data[0]
+                            firebase_uid = user_profile.get('firebase_uid')
+                            
+                            if firebase_uid:
+                                request.firebase_user = {
+                                    "success": True,
+                                    "uid": firebase_uid,  # Use Firebase UID
+                                    "email": app_payload.get('email'),
+                                    "role": app_payload.get('role')
+                                }
+                                print(f"✅ App JWT accepted for user: {app_payload.get('email')} (firebase_uid: {firebase_uid})")
+                                return f(*args, **kwargs)
+                            else:
+                                print(f"⚠️  User profile found but no firebase_uid for user_id: {user_id}")
+                        else:
+                            # Fallback: try to find by email if user_id lookup fails
+                            print(f"🔍 User profile not found by id, trying email lookup: {app_payload.get('email')}")
+                            user_profile_response = (
+                                supabase.service_client.table("user_profiles")
+                                .select("firebase_uid, email, role")
+                                .eq("email", app_payload.get('email'))
+                                .execute()
+                            )
+                            print(f"🔍 User profile lookup by email result: {user_profile_response.data}")
+                            
+                            if user_profile_response.data:
+                                user_profile = user_profile_response.data[0]
+                                firebase_uid = user_profile.get('firebase_uid')
+                                
+                                if firebase_uid:
+                                    request.firebase_user = {
+                                        "success": True,
+                                        "uid": firebase_uid,
+                                        "email": app_payload.get('email'),
+                                        "role": app_payload.get('role')
+                                    }
+                                    print(f"✅ App JWT accepted for user: {app_payload.get('email')} (firebase_uid: {firebase_uid}, found by email)")
+                                    return f(*args, **kwargs)
+                    except Exception as db_error:
+                        print(f"⚠️  Database lookup failed for JWT user_id: {db_error}")
+                        import traceback
+                        traceback.print_exc()
+                else:
+                    print(f"⚠️  Missing user_id ({user_id}) or supabase client not available")
+                
+                # If we can't find firebase_uid, try using user_id directly (might work if it's actually the firebase_uid)
+                uid = app_payload.get('user_id') or app_payload.get('uid') or app_payload.get('sub')
+                print(f"⚠️  Using direct mapping with uid: {uid}")
+                request.firebase_user = {
+                    "success": True,
+                    "uid": uid,
+                    "email": app_payload.get('email'),
+                    "role": app_payload.get('role')
+                }
+                print(f"✅ App JWT accepted for user: {app_payload.get('email')} (uid: {uid}, using direct mapping)")
+                return f(*args, **kwargs)
+            else:
+                print(f"⚠️  JWT decode returned None or missing email: {app_payload}")
+        except Exception as e:
+            print(f"⚠️  App JWT decoding failed: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        # If we get here, all token verification methods failed
+        print(f"❌ All token verification methods failed for token (length: {len(token)})")
+        print(f"❌ Token preview: {token[:50]}...")
+        return jsonify({
+            "error": "Invalid or expired token", 
+            "details": "Token could not be verified as Firebase token or JWT. Please ensure you are logged in and try again."
+        }), 401
+    
+    return decorated_function
+
+
+# Test route to debug
+@appointments_bp.route("/test", methods=["GET"])
+def test_route():
+    """Test route to verify API is working"""
+    return jsonify({"success": True, "message": "Appointments API is working"}), 200
+
+
+# Diagnostic route to help debug appointment fetching issues
+# Placed BEFORE the main "" route to avoid route conflicts
+@appointments_bp.route("/my-uid", methods=["GET"])
+@auth_required
+def get_my_uid():
+    """Get the current logged-in user's Firebase UID"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user["uid"]
+        return jsonify({
+            "success": True,
+            "uid": uid,
+            "email": firebase_user.get("email", "N/A"),
+            "message": "This is your current Firebase UID. Use this to update appointments in the database."
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@appointments_bp.route("/diagnostic", methods=["GET", "OPTIONS"])
+def diagnostic():
+    """Diagnostic endpoint to help debug appointment fetching issues"""
+    try:
+        # Handle CORS preflight
+        if request.method == "OPTIONS":
+            response = make_response()
+            response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
+            response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+            response.headers.add("Access-Control-Allow-Methods", "GET,OPTIONS")
+            return response
+        
+        # Check auth but don't fail if missing - try to extract UID manually
+        uid = None
+        auth_header = request.headers.get("Authorization")
+        if auth_header:
+            try:
+                token = auth_header.split(" ")[1] if " " in auth_header else auth_header
+                # Try Firebase token verification
+                try:
+                    from auth.firebase_auth import firebase_auth_service
+                    result = firebase_auth_service.verify_token(token)
+                    if result.get("success"):
+                        uid = result.get("uid")
+                        print(f"🔍 Diagnostic: Extracted UID from token: {uid}")
+                except Exception as firebase_error:
+                    print(f"⚠️  Diagnostic: Could not verify Firebase token: {firebase_error}")
+                    # Try JWT decode as fallback
+                    try:
+                        import jwt
+                        decoded = jwt.decode(token, options={"verify_signature": False})
+                        uid = decoded.get('uid') or decoded.get('sub') or decoded.get('user_id')
+                        if uid:
+                            print(f"🔍 Diagnostic: Extracted UID from JWT: {uid}")
+                    except:
+                        pass
+            except Exception as token_error:
+                print(f"⚠️  Diagnostic: Error parsing token: {token_error}")
+        
+        if not supabase or not supabase.service_client:
+            return jsonify({
+                "success": False,
+                "error": "Supabase service_client not initialized",
+                "check": "Verify SUPABASE_SERVICE_KEY environment variable",
+                "supabase_available": supabase is not None,
+                "service_client_available": supabase.service_client is not None if supabase else False
+            }), 500
+        
+        diagnostic_info = {
+            "user_uid": uid or "Not authenticated (no valid token provided)",
+            "supabase_client_available": supabase.client is not None,
+            "service_client_available": supabase.service_client is not None,
+            "has_auth_header": auth_header is not None,
+        }
+        
+        # Test 1: Check user profile (if UID provided)
+        if uid:
+            try:
+                user_profile = supabase.service_client.table("user_profiles").select("*").eq("firebase_uid", uid).execute()
+                diagnostic_info["user_profile"] = {
+                    "exists": len(user_profile.data) > 0 if user_profile.data else False,
+                    "data": user_profile.data[0] if user_profile.data else None,
+                    "role": user_profile.data[0].get("role") if user_profile.data else None
+                }
+            except Exception as e:
+                diagnostic_info["user_profile"] = {"error": str(e)}
+                import traceback
+                diagnostic_info["user_profile"]["traceback"] = traceback.format_exc()
+        else:
+            diagnostic_info["user_profile"] = {"message": "No UID extracted - provide Authorization header with Bearer token"}
+        
+        # Test 2: Check total appointments in table (always do this - most important test)
+        try:
+            print("🔍 Diagnostic: Querying all appointments from database...")
+            all_appointments = supabase.service_client.table("appointments").select("id, doctor_firebase_uid, patient_firebase_uid, appointment_date, appointment_time, status").execute()
+            print(f"🔍 Diagnostic: Query executed, response: {all_appointments}")
+            
+            diagnostic_info["appointments_table"] = {
+                "total_count": len(all_appointments.data) if all_appointments.data else 0,
+                "sample_data": all_appointments.data[:5] if all_appointments.data else [],
+                "query_successful": True
+            }
+            
+            # Check unique doctor UIDs
+            if all_appointments.data:
+                unique_doctors = set(a.get("doctor_firebase_uid") for a in all_appointments.data if a.get("doctor_firebase_uid"))
+                unique_patients = set(a.get("patient_firebase_uid") for a in all_appointments.data if a.get("patient_firebase_uid"))
+                diagnostic_info["appointments_table"]["unique_doctor_uids"] = list(unique_doctors)
+                diagnostic_info["appointments_table"]["unique_patient_uids"] = list(unique_patients)
+                diagnostic_info["appointments_table"]["unique_doctor_count"] = len(unique_doctors)
+                diagnostic_info["appointments_table"]["unique_patient_count"] = len(unique_patients)
+                
+                if uid:
+                    diagnostic_info["appointments_table"]["user_uid_in_doctors"] = uid in unique_doctors
+                    diagnostic_info["appointments_table"]["user_uid_in_patients"] = uid in unique_patients
+                    diagnostic_info["appointments_table"]["uid_match_found"] = uid in unique_doctors or uid in unique_patients
+                    
+                    if uid not in unique_doctors and uid not in unique_patients:
+                        diagnostic_info["appointments_table"]["mismatch_warning"] = f"Your UID ({uid}) does not match any appointments. Available doctor UIDs: {list(unique_doctors)[:3]}..."
+        except Exception as e:
+            diagnostic_info["appointments_table"] = {
+                "error": str(e),
+                "query_successful": False
+            }
+            import traceback
+            diagnostic_info["appointments_table"]["traceback"] = traceback.format_exc()
+            print(f"❌ Diagnostic: Error querying appointments: {e}")
+        
+        # Test 3: Try to query appointments for this user as doctor (if UID provided)
+        if uid:
+            try:
+                doctor_appointments = supabase.service_client.table("appointments").select("*").eq("doctor_firebase_uid", uid).execute()
+                diagnostic_info["doctor_appointments_query"] = {
+                    "count": len(doctor_appointments.data) if doctor_appointments.data else 0,
+                    "data": doctor_appointments.data[:3] if doctor_appointments.data else [],
+                    "query_successful": True
+                }
+            except Exception as e:
+                diagnostic_info["doctor_appointments_query"] = {
+                    "error": str(e),
+                    "query_successful": False
+                }
+        
+        # Test 4: Try to query appointments for this user as patient (if UID provided)
+        if uid:
+            try:
+                patient_appointments = supabase.service_client.table("appointments").select("*").eq("patient_firebase_uid", uid).execute()
+                diagnostic_info["patient_appointments_query"] = {
+                    "count": len(patient_appointments.data) if patient_appointments.data else 0,
+                    "data": patient_appointments.data[:3] if patient_appointments.data else [],
+                    "query_successful": True
+                }
+            except Exception as e:
+                diagnostic_info["patient_appointments_query"] = {
+                    "error": str(e),
+                    "query_successful": False
+                }
+        
+        return jsonify({
+            "success": True,
+            "diagnostic": diagnostic_info,
+            "message": "Diagnostic information retrieved successfully"
+        }), 200
+        
+    except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"❌ Diagnostic endpoint error: {e}")
+        print(error_traceback)
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": error_traceback
+        }), 500
+
+
+@appointments_bp.route("/doctors/approved", methods=["GET"])
+@auth_required
+def get_approved_doctors():
+    """Get list of approved doctors for appointment booking with availability"""
+    try:
+        print("📋 Fetching approved doctors...")
+        # Fetch approved doctors from database using service_client to bypass RLS
+        response = (
+            supabase.service_client.table("user_profiles")
+            .select("id, firebase_uid, first_name, last_name, email, verification_status")
+            .eq("role", "doctor")
+            .eq("verification_status", "approved")
+            .execute()
+        )
+        print(f"✅ Found {len(response.data) if response.data else 0} approved doctors")
+
+        if not response.data:
+            return jsonify({"success": True, "doctors": [], "message": "No approved doctors available"}), 200
+
+        # Fetch doctor profiles with specializations and availability
+        doctors = []
+        for user in response.data:
+            try:
+                # Try to select with is_accepting_appointments first
+                try:
+                    doctor_profile_response = (
+                        supabase.service_client.table("doctor_profiles")
+                        .select("specialization, availability, is_accepting_appointments")
+                        .eq("firebase_uid", user["firebase_uid"])
+                        .execute()
+                    )
+                except Exception as select_error:
+                    # If column doesn't exist, fall back to selecting without it
+                    print(f"⚠️  Warning: Error selecting is_accepting_appointments: {select_error}")
+                    print(f"⚠️  Falling back to availability only (assuming is_accepting_appointments = True)")
+                doctor_profile_response = (
+                    supabase.service_client.table("doctor_profiles")
+                    .select("specialization, availability")
+                    .eq("firebase_uid", user["firebase_uid"])
+                    .execute()
+                )
+                
+                specialization = "General Practitioner"
+                availability = []
+                has_availability = False
+                is_accepting_appointments = True  # Default to True if column doesn't exist
+                
+                if doctor_profile_response.data and len(doctor_profile_response.data) > 0:
+                    specialization = doctor_profile_response.data[0].get("specialization", "General Practitioner")
+                    availability_raw = doctor_profile_response.data[0].get("availability", {})
+                    
+                    # Get is_accepting_appointments from response, default to True if not present
+                    is_accepting_appointments = doctor_profile_response.data[0].get("is_accepting_appointments", True)
+                    # Handle None/null values and ensure it's a boolean
+                    if is_accepting_appointments is None:
+                        is_accepting_appointments = True
+                    # Convert to boolean if it's stored as string or other type
+                    if isinstance(is_accepting_appointments, str):
+                        is_accepting_appointments = is_accepting_appointments.lower() in ('true', '1', 'yes', 'on')
+                    else:
+                        is_accepting_appointments = bool(is_accepting_appointments)
+                    
+                    # CRITICAL: If doctor is not accepting appointments, they have NO availability regardless of time ranges
+                    if not is_accepting_appointments:
+                        has_availability = False
+                        print(f"🚫 Doctor {user.get('email')}: NOT accepting appointments - has_availability = False")
+                    else:
+                        # Debug logging
+                        print(f"🔍 Doctor {user.get('email')}: availability_raw type = {type(availability_raw)}")
+                        print(f"🔍 Doctor {user.get('email')}: availability_raw = {availability_raw}")
+                        print(f"🔍 Doctor {user.get('email')}: is_accepting_appointments = {is_accepting_appointments}")
+                        
+                        # Check availability based on format
+                        # New format: { time_ranges: [{ start_time, end_time, interval }, ...] }
+                        # Old format: [{ date: "...", time_slots: [...] }, ...]
+                        if isinstance(availability_raw, dict) and availability_raw:
+                            # New format with time_ranges
+                            if "time_ranges" in availability_raw and isinstance(availability_raw["time_ranges"], list):
+                                print(f"🔍 Doctor {user.get('email')}: Found time_ranges with {len(availability_raw['time_ranges'])} ranges")
+                                if len(availability_raw["time_ranges"]) > 0:
+                                    # Doctor is accepting appointments AND has time_ranges defined
+                                    has_availability = True
+                                    print(f"✅ Doctor {user.get('email')}: has_availability = True (has time_ranges, accepting={is_accepting_appointments})")
+                                else:
+                                    print(f"❌ Doctor {user.get('email')}: has_availability = False (empty time_ranges)")
+                                availability = availability_raw  # Store the raw availability object
+                            # Legacy single range format: { start_time, end_time, interval }
+                            elif "start_time" in availability_raw and "end_time" in availability_raw:
+                                print(f"✅ Doctor {user.get('email')}: Found legacy format, converting to time_ranges")
+                                # Convert to time_ranges format for consistency
+                                availability = {
+                                    "time_ranges": [{
+                                        "start_time": availability_raw.get("start_time", "07:00"),
+                                        "end_time": availability_raw.get("end_time", "17:00"),
+                                        "interval": availability_raw.get("interval", 30)
+                                    }]
+                                }
+                                has_availability = True  # Doctor is accepting and has time range
+                            else:
+                                print(f"❌ Doctor {user.get('email')}: Dict format but no time_ranges or start_time/end_time found")
+                        elif isinstance(availability_raw, list) and len(availability_raw) > 0:
+                            print(f"🔍 Doctor {user.get('email')}: Found list format (old format)")
+                            # Old format: array of date slots
+                            availability = availability_raw
+                            # Check if any slots are in the future
+                            today = datetime.now().date()
+                            for slot in availability_raw:
+                                if isinstance(slot, dict) and "date" in slot:
+                                    slot_date = datetime.strptime(slot["date"], "%Y-%m-%d").date()
+                                    if slot_date >= today and slot.get("time_slots"):
+                                        has_availability = True  # Doctor is accepting and has future slots
+                                        break
+                        else:
+                            print(f"❌ Doctor {user.get('email')}: availability_raw is empty or invalid: {type(availability_raw)}")
+                        
+                        print(f"🔍 Doctor {user.get('email')}: Final has_availability = {has_availability}, is_accepting_appointments = {is_accepting_appointments}")
+            except Exception as profile_error:
+                print(f"⚠️  Error fetching profile for {user.get('email')}: {profile_error}")
+                import traceback
+                traceback.print_exc()
+                # Continue with default values if profile fetch fails
+                specialization = "General Practitioner"
+                availability = []
+                has_availability = False
+                is_accepting_appointments = True
+
+            doctors.append(
+                {
+                    "id": user["id"],
+                    "firebase_uid": user["firebase_uid"],
+                    "name": f"{user.get('first_name', '')} {user.get('last_name', '')}".strip(),
+                    "first_name": user.get("first_name", ""),
+                    "last_name": user.get("last_name", ""),
+                    "email": user.get("email", ""),
+                    "specialization": specialization,
+                    "verification_status": user.get("verification_status", "approved"),
+                    "availability": availability,
+                    "has_availability": has_availability,
+                }
+            )
+
+        print(f"✅ Returning {len(doctors)} doctors")
+        return jsonify({"success": True, "doctors": doctors, "count": len(doctors)}), 200
+
+    except Exception as e:
+        print(f"Error fetching approved doctors: {str(e)}")
+        return jsonify({"success": False, "error": "Failed to fetch doctors", "message": str(e)}), 500
+
+
+@appointments_bp.route("", methods=["GET"])
+@auth_required
 def get_appointments():
     """Get user's appointments"""
     try:
+        # Verify Supabase client is available
+        if not supabase or not supabase.service_client:
+            print("❌ ERROR: Supabase service_client is not available")
+            return jsonify({
+                "success": False, 
+                "error": "Database connection failed. Please check server configuration.",
+                "details": "Supabase service_client not initialized"
+            }), 500
+        
         firebase_user = request.firebase_user
-        uid = firebase_user['uid']
+        uid = firebase_user["uid"]
+        
+        print(f"🔍 GET /api/appointments: Request from user UID: {uid}")
+        print(f"🔍 Firebase user data: {firebase_user}")
 
-        # Get user profile to determine role
-        user_response = supabase.client.table('user_profiles').select('role').eq('firebase_uid', uid).execute()
-        if not user_response.data:
-            return jsonify({'success': False, 'error': 'User profile not found'}), 404
+        # Get user profile to determine role - use service_client to bypass RLS
+        try:
+            print(f"🔍 Querying user_profiles for firebase_uid: {uid}")
+            user_response = supabase.service_client.table("user_profiles").select("role").eq("firebase_uid", uid).execute()
+            print(f"🔍 User profile query response: {user_response}")
+            print(f"🔍 User profile data: {user_response.data if user_response else 'None'}")
+            
+            if not user_response.data:
+                print(f"❌ User profile not found for firebase_uid: {uid}")
+                # Try to check if any user profiles exist at all
+                try:
+                    test_response = supabase.service_client.table("user_profiles").select("firebase_uid, role").limit(5).execute()
+                    print(f"🔍 Test query - Sample user_profiles: {test_response.data if test_response else 'None'}")
+                except Exception as test_error:
+                    print(f"⚠️  Could not query user_profiles table: {test_error}")
+                
+                return jsonify({
+                    "success": False, 
+                    "error": f"User profile not found for UID: {uid}",
+                    "hint": "Please ensure your user profile exists in the database"
+                }), 404
+            
+            user_role = user_response.data[0]["role"]
+        except Exception as user_query_error:
+            print(f"❌ Error querying user profile: {user_query_error}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                "success": False,
+                "error": "Failed to query user profile",
+                "details": str(user_query_error)
+            }), 500
 
-        user_role = user_response.data[0]['role']
+        print(f"✅ User role determined: {user_role}")
 
-        if user_role == 'patient':
-            # Patients see their own appointments
-            response = supabase.client.table('appointments').select('*').eq('patient_firebase_uid', uid).execute()
-        elif user_role == 'doctor':
-            # Doctors see their appointments
-            response = supabase.client.table('appointments').select('*').eq('doctor_firebase_uid', uid).execute()
+        # Initialize response variable
+        response = None
+
+        if user_role == "patient":
+            # Patients see their own appointments - use service_client to bypass RLS
+            try:
+                print(f"🔍 Querying appointments for patient_firebase_uid: {uid}")
+                response = supabase.service_client.table("appointments").select("*").eq("patient_firebase_uid", uid).execute()
+                print(f"🔍 Appointments query response: {response}")
+                print(f"🔍 Appointments found: {len(response.data) if response and response.data else 0}")
+                
+                if response and response.data:
+                    print(f"✅ Found {len(response.data)} appointments for patient {uid}")
+                else:
+                    print(f"ℹ️  No appointments found for patient {uid}")
+                    response = type('obj', (object,), {'data': []})()  # Create empty response object
+            except Exception as appointment_query_error:
+                print(f"❌ Error querying appointments: {appointment_query_error}")
+                import traceback
+                traceback.print_exc()
+                return jsonify({
+                    "success": False,
+                    "error": "Failed to query appointments",
+                    "details": str(appointment_query_error)
+                }), 500
+            
+            # Enrich with doctor info for patients
+            if response and response.data:
+                try:
+                    doctor_uids = sorted({appt.get("doctor_firebase_uid") for appt in response.data if appt.get("doctor_firebase_uid")})
+                    if doctor_uids:
+                        profiles_resp = (
+                            supabase.service_client
+                            .table("user_profiles")
+                            .select("firebase_uid, first_name, last_name, email")
+                            .in_("firebase_uid", doctor_uids)
+                            .execute()
+                        )
+                        uid_to_doctor = {p["firebase_uid"]: {
+                            "first_name": p.get("first_name", ""),
+                            "last_name": p.get("last_name", ""),
+                            "email": p.get("email", "")
+                        } for p in (profiles_resp.data or [])}
+                        for appt in response.data:
+                            dfuid = appt.get("doctor_firebase_uid")
+                            if dfuid and dfuid in uid_to_doctor:
+                                appt["doctor"] = uid_to_doctor[dfuid]
+                except Exception as _e:
+                    print(f"⚠️  Error enriching doctor info: {_e}")
+                    pass
+        elif user_role == "doctor":
+            # Doctors see their appointments - use service_client to bypass RLS
+            try:
+                print(f"🔍 Querying appointments for doctor_firebase_uid: {uid}")
+                # First, let's verify we can query the appointments table at all
+                try:
+                    test_appointments = supabase.service_client.table("appointments").select("id, doctor_firebase_uid, patient_firebase_uid").limit(10).execute()
+                    print(f"🔍 Test query - Total appointments in table: {len(test_appointments.data) if test_appointments and test_appointments.data else 0}")
+                    if test_appointments and test_appointments.data:
+                        print(f"🔍 Sample appointments: {test_appointments.data[:3]}")
+                        # Check if any appointments match this doctor's UID
+                        matching = [a for a in test_appointments.data if a.get("doctor_firebase_uid") == uid]
+                        print(f"🔍 Appointments matching doctor UID {uid}: {len(matching)}")
+                except Exception as test_error:
+                    print(f"⚠️  Could not query appointments table: {test_error}")
+                    import traceback
+                    traceback.print_exc()
+                
+                # Now query for this specific doctor's appointments
+                response = supabase.service_client.table("appointments").select("*").eq("doctor_firebase_uid", uid).execute()
+                print(f"🔍 Appointments query response: {response}")
+                print(f"🔍 Appointments found: {len(response.data) if response and response.data else 0}")
+                
+                if response and response.data:
+                    print(f"✅ Found {len(response.data)} appointments for doctor {uid}")
+                else:
+                    print(f"⚠️  No appointments found for doctor {uid}")
+                    # Check if there are any appointments with this doctor UID at all
+                    try:
+                        all_appointments = supabase.service_client.table("appointments").select("id, doctor_firebase_uid").execute()
+                        if all_appointments and all_appointments.data:
+                            unique_doctors = set(a.get("doctor_firebase_uid") for a in all_appointments.data if a.get("doctor_firebase_uid"))
+                            print(f"🔍 Available doctor UIDs in appointments: {unique_doctors}")
+                            print(f"🔍 Requested doctor UID: {uid}")
+                            if uid not in unique_doctors:
+                                print(f"⚠️  Doctor UID {uid} does not match any appointments in database")
+                                print(f"💡 HINT: The logged-in doctor's UID doesn't match the doctor_firebase_uid in the appointments table")
+                                print(f"💡 This could mean:")
+                                print(f"   1. The doctor logged in with a different Firebase account")
+                                print(f"   2. The appointments were created with a different doctor UID")
+                                print(f"   3. There's a UID mismatch in the database")
+                    except Exception as check_error:
+                        print(f"⚠️  Could not check all appointments: {check_error}")
+                    
+                    # Create empty response object
+                    if not response:
+                        response = type('obj', (object,), {'data': []})()
+                    elif not response.data:
+                        response.data = []
+            except Exception as appointment_query_error:
+                print(f"❌ Error querying appointments: {appointment_query_error}")
+                import traceback
+                traceback.print_exc()
+                return jsonify({
+                    "success": False,
+                    "error": "Failed to query appointments",
+                    "details": str(appointment_query_error)
+                }), 500
+            
+            # Enrich with basic patient info for schedule views
+            if response and response.data:
+                try:
+                    patient_uids = sorted({appt.get("patient_firebase_uid") for appt in response.data if appt.get("patient_firebase_uid")})
+                    print(f"🔍 Doctor appointments: Found {len(patient_uids)} unique patient UIDs: {patient_uids}")
+                    if patient_uids:
+                        profiles_resp = (
+                            supabase.service_client
+                            .table("user_profiles")
+                            .select("firebase_uid, first_name, last_name, email")
+                            .in_("firebase_uid", patient_uids)
+                            .execute()
+                        )
+                        print(f"🔍 Doctor appointments: Fetched {len(profiles_resp.data or [])} patient profiles")
+                        uid_to_patient = {}
+                        # First, add all patient profiles to cache (even if empty)
+                        # This ensures we can identify which patients need Firebase fallback
+                        for p in (profiles_resp.data or []):
+                            firebase_uid = p.get("firebase_uid")
+                            if not firebase_uid:
+                                continue
+                                
+                            # Get values, handling None, empty strings, and whitespace
+                            first_name = (p.get("first_name") or "").strip() if p.get("first_name") else ""
+                            last_name = (p.get("last_name") or "").strip() if p.get("last_name") else ""
+                            email = (p.get("email") or "").strip() if p.get("email") else ""
+                            
+                            # Always add to cache, even if empty (we'll check later if we need Firebase fallback)
+                            uid_to_patient[firebase_uid] = {
+                                "first_name": first_name,
+                                "last_name": last_name,
+                                "email": email,
+                                "from_db": True  # Flag to indicate this came from database
+                            }
+                            
+                            full_name = f"{first_name} {last_name}".strip()
+                            if full_name or email:
+                                print(f"✅ Patient profile: {firebase_uid} -> Name: '{full_name}' Email: '{email}'")
+                            else:
+                                print(f"⚠️  Patient profile {firebase_uid} exists but ALL fields are empty - will try Firebase Auth fallback")
+                        
+                        # Now enrich each appointment with patient info
+                        for appt in response.data:
+                            pfuid = appt.get("patient_firebase_uid")
+                            if not pfuid:
+                                print(f"⚠️  Appointment {appt.get('id')}: No patient_firebase_uid found in appointment record")
+                                appt["patient"] = {
+                                    "first_name": "",
+                                    "last_name": "",
+                                    "email": ""
+                                }
+                                continue
+                            
+                            # Get patient info from cache (if exists)
+                            cached_patient = uid_to_patient.get(pfuid, {})
+                            cached_fname = (cached_patient.get("first_name") or "").strip()
+                            cached_lname = (cached_patient.get("last_name") or "").strip()
+                            cached_email = (cached_patient.get("email") or "").strip()
+                            cached_full_name = f"{cached_fname} {cached_lname}".strip()
+                            
+                            # Determine if we need Firebase Auth fallback
+                            needs_fallback = False
+                            
+                            if pfuid not in uid_to_patient:
+                                # Patient profile doesn't exist in database at all
+                                needs_fallback = True
+                                print(f"🔄 Appointment {appt.get('id')}: Patient UID {pfuid} not in database - trying Firebase Auth fallback")
+                            elif not cached_full_name and not cached_email:
+                                # Patient profile exists but is completely empty
+                                needs_fallback = True
+                                print(f"🔄 Appointment {appt.get('id')}: Patient UID {pfuid} has empty profile - trying Firebase Auth fallback")
+                                
+                            # Try Firebase Auth fallback if needed
+                            if needs_fallback:
+                                print(f"🔄 Attempting Firebase Auth fallback for patient UID: {pfuid}")
+                                try:
+                                    from auth.firebase_auth import firebase_auth_service
+                                    firebase_result = firebase_auth_service.get_user_by_uid(pfuid)
+                                    
+                                    if firebase_result.get("success") and firebase_result.get("user"):
+                                        firebase_user = firebase_result["user"]
+                                        firebase_email = (firebase_user.get("email") or "").strip()
+                                        firebase_display_name = (firebase_user.get("display_name") or "").strip()
+                                        
+                                        # Extract name from Firebase
+                                        if firebase_display_name:
+                                            name_parts = firebase_display_name.split(" ", 1)
+                                            first_name = name_parts[0].strip()
+                                            last_name = name_parts[1].strip() if len(name_parts) > 1 else ""
+                                        elif firebase_email:
+                                            # Use email username as first name
+                                            first_name = firebase_email.split("@")[0].strip()
+                                            last_name = ""
+                                        else:
+                                            first_name = ""
+                                            last_name = ""
+                                        
+                                        # Create patient info from Firebase data
+                                        patient_info = {
+                                            "first_name": first_name,
+                                            "last_name": last_name,
+                                            "email": firebase_email,
+                                            "from_firebase": True  # Flag to indicate this came from Firebase
+                                        }
+                                        
+                                        # Update cache
+                                        uid_to_patient[pfuid] = patient_info
+                                        appt["patient"] = patient_info
+                                        
+                                        full_name = f"{first_name} {last_name}".strip()
+                                        print(f"✅ Fetched patient data from Firebase Auth: Name='{full_name}' Email='{firebase_email}' for appointment {appt.get('id')}")
+                                        
+                                        # Update database profile for future requests (async - don't block response)
+                                        try:
+                                            update_data = {
+                                                "first_name": first_name,
+                                                "last_name": last_name,
+                                                "email": firebase_email
+                                            }
+                                            # Only update if we got data from Firebase
+                                            if first_name or last_name or firebase_email:
+                                                supabase.service_client.table("user_profiles").update(update_data).eq("firebase_uid", pfuid).execute()
+                                                print(f"✅ Updated patient profile in database with Firebase Auth data for {pfuid}")
+                                        except Exception as update_error:
+                                            print(f"⚠️  Could not update patient profile for {pfuid}: {update_error}")
+                                            # Don't fail the request if update fails
+                                except Exception as firebase_fallback_error:
+                                    print(f"❌ Error in Firebase Auth fallback for {pfuid}: {firebase_fallback_error}")
+                                    import traceback
+                                    traceback.print_exc()
+                                    # Use cached data (even if empty) or set empty patient object
+                                    if cached_patient:
+                                        appt["patient"] = {
+                                            "first_name": cached_fname,
+                                            "last_name": cached_lname,
+                                            "email": cached_email
+                                        }
+                                    else:
+                                        appt["patient"] = {
+                                            "first_name": "",
+                                            "last_name": "",
+                                            "email": ""
+                                        }
+                            else:
+                                # No fallback needed, use cached data
+                                if cached_patient:
+                                    appt["patient"] = {
+                                        "first_name": cached_fname,
+                                        "last_name": cached_lname,
+                                        "email": cached_email
+                                    }
+                                else:
+                                    appt["patient"] = {
+                                        "first_name": "",
+                                        "last_name": "",
+                                        "email": ""
+                                    }
+                                if cached_full_name or cached_email:
+                                    print(f"✅ Enriched appointment {appt.get('id')} with patient: Name='{cached_full_name}' Email='{cached_email}'")
+                except Exception as _e:
+                    # If enrichment fails, continue with base data
+                    print(f"⚠️  Error enriching patient info: {_e}")
+                    import traceback
+                    traceback.print_exc()
+                    # Still add empty patient objects to prevent frontend errors
+                    for appt in response.data:
+                        if "patient" not in appt:
+                            appt["patient"] = {
+                                "first_name": "",
+                                "last_name": "",
+                                "email": ""
+                            }
+                    pass
         else:
-            return jsonify({'success': False, 'error': 'Unauthorized role'}), 403
+            return jsonify({"success": False, "error": "Unauthorized role"}), 403
 
-        return jsonify({
-            'success': True,
-            'appointments': response.data
-        }), 200
+        # Ensure response exists and has data attribute
+        if not response:
+            print("⚠️  No response object - creating empty response")
+            response = type('obj', (object,), {'data': []})()
+        elif not hasattr(response, 'data'):
+            print("⚠️  Response has no data attribute - initializing")
+            response.data = []
+        elif response.data is None:
+            print("⚠️  Response.data is None - initializing empty list")
+            response.data = []
+
+        # Enrich appointments with meeting_url from meeting_link column or notes fallback
+        # Also ensure every appointment has a patient object
+        enriched = []
+        for appt in (response.data or []):
+            try:
+                # Ensure patient object exists (safeguard)
+                if "patient" not in appt or not isinstance(appt.get("patient"), dict):
+                    appt["patient"] = {
+                        "first_name": "",
+                        "last_name": "",
+                        "email": ""
+                    }
+                
+                # First try meeting_link column (preferred)
+                meeting_url = appt.get("meeting_link")
+                
+                # Fallback to parsing from notes if meeting_link is not available
+                if not meeting_url:
+                    notes = appt.get("notes") or ""
+                    for line in str(notes).splitlines():
+                        if "Meeting:" in line and "http" in line:
+                            meeting_url = line.split("Meeting:", 1)[1].strip()
+                            break
+                
+                if meeting_url:
+                    appt["meeting_url"] = meeting_url
+                
+                # Final verification: Log patient data being sent to frontend
+                patient = appt.get("patient", {})
+                patient_fname = (patient.get("first_name") or "").strip()
+                patient_lname = (patient.get("last_name") or "").strip()
+                patient_email = (patient.get("email") or "").strip()
+                patient_full = f"{patient_fname} {patient_lname}".strip()
+                
+                if patient_full or patient_email:
+                    print(f"📤 Sending appointment {appt.get('id')} with patient: Name='{patient_full}' Email='{patient_email}'")
+                else:
+                    pfuid = appt.get('patient_firebase_uid')
+                    print(f"⚠️  WARNING: Sending appointment {appt.get('id')} with EMPTY patient data! UID: {pfuid}")
+                    print(f"   Patient object: {patient}")
+                    # Last attempt: Try to get patient info one more time if we have UID
+                    if pfuid and user_role == "doctor":
+                        try:
+                            from auth.firebase_auth import firebase_auth_service
+                            firebase_result = firebase_auth_service.get_user_by_uid(pfuid)
+                            if firebase_result.get("success") and firebase_result.get("user"):
+                                firebase_user = firebase_result["user"]
+                                firebase_email = (firebase_user.get("email") or "").strip()
+                                firebase_display_name = (firebase_user.get("display_name") or "").strip()
+                                
+                                if firebase_display_name:
+                                    name_parts = firebase_display_name.split(" ", 1)
+                                    appt["patient"]["first_name"] = name_parts[0].strip()
+                                    appt["patient"]["last_name"] = name_parts[1].strip() if len(name_parts) > 1 else ""
+                                elif firebase_email:
+                                    appt["patient"]["first_name"] = firebase_email.split("@")[0].strip()
+                                    appt["patient"]["last_name"] = ""
+                                
+                                appt["patient"]["email"] = firebase_email
+                                print(f"✅ Last-minute Firebase fetch succeeded for appointment {appt.get('id')}")
+                        except Exception as last_attempt_error:
+                            print(f"⚠️  Last-minute Firebase fetch failed: {last_attempt_error}")
+            except Exception as enrich_error:
+                print(f"❌ Error enriching appointment {appt.get('id')}: {enrich_error}")
+                import traceback
+                traceback.print_exc()
+                # Ensure patient object exists even if enrichment fails
+                if "patient" not in appt:
+                    appt["patient"] = {
+                        "first_name": "",
+                        "last_name": "",
+                        "email": ""
+                    }
+            enriched.append(appt)
+
+        # Ensure we return appointments even if enrichment had issues
+        if not enriched:
+            if response and hasattr(response, 'data') and response.data:
+                # If enrichment failed but we have data, return it anyway
+                print("⚠️  Enrichment had issues but returning raw appointment data")
+                enriched = response.data
+            else:
+                # No data found - return empty array with helpful message
+                print("ℹ️  No appointments found for user")
+                enriched = []
+                
+                # If we're a doctor and found no appointments, check for UID mismatch
+                if user_role == "doctor" and response:
+                    try:
+                        # Check what UIDs are actually in the database
+                        all_appts_check = supabase.service_client.table("appointments").select("doctor_firebase_uid").limit(100).execute()
+                        if all_appts_check and all_appts_check.data:
+                            db_doctor_uids = set(a.get("doctor_firebase_uid") for a in all_appts_check.data if a.get("doctor_firebase_uid"))
+                            if uid not in db_doctor_uids and db_doctor_uids:
+                                print(f"💡 HINT: Your UID ({uid}) doesn't match any appointments in database")
+                                print(f"💡 Available doctor UIDs in database: {list(db_doctor_uids)[:3]}...")
+                                print(f"💡 This is likely a UID mismatch issue")
+                    except Exception as check_error:
+                        print(f"⚠️  Could not check UID mismatch: {check_error}")
+        
+        # Ensure enriched is a list
+        if not isinstance(enriched, list):
+            print("⚠️  Enriched is not a list, converting...")
+            enriched = list(enriched) if enriched else []
+        
+        print(f"📤 Returning {len(enriched)} appointments to frontend")
+        
+        # Build response with helpful messages
+        response_data = {
+            "success": True, 
+            "appointments": enriched,
+            "count": len(enriched)
+        }
+        
+        # Add helpful message if no appointments found
+        if len(enriched) == 0:
+            if user_role == "doctor":
+                response_data["message"] = "No appointments found for this doctor."
+                response_data["hint"] = "This might be due to a UID mismatch. Check /api/appointments/diagnostic for details."
+            elif user_role == "patient":
+                response_data["message"] = "No appointments found for this patient."
+        
+        return jsonify(response_data), 200
 
     except Exception as e:
+        print(f"❌ CRITICAL ERROR in get_appointments: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
-            'success': False,
-            'error': str(e)
+            "success": False, 
+            "error": str(e),
+            "message": "An error occurred while fetching appointments. Check server logs for details."
         }), 500
 
-@appointments_bp.route('', methods=['POST'])
-@firebase_auth_required
+
+@appointments_bp.route("", methods=["POST"])
+@auth_required
 def create_appointment():
-    """Create a new appointment"""
+    """Create a new appointment and remove booked time from doctor availability"""
     try:
         firebase_user = request.firebase_user
-        uid = firebase_user['uid']
+        uid = firebase_user["uid"]
         data = request.get_json()
 
         # Validate required fields
-        required_fields = ['doctor_firebase_uid', 'appointment_date']
+        required_fields = ["doctor_firebase_uid", "appointment_date", "appointment_time"]
         for field in required_fields:
             if field not in data:
-                return jsonify({'success': False, 'error': f'Missing required field: {field}'}), 400
+                return (
+                    jsonify({"success": False, "error": f"Missing required field: {field}"}),
+                    400,
+                )
 
-        # Get user role
-        user_response = supabase.client.table('user_profiles').select('role').eq('firebase_uid', uid).execute()
+        # Get user role and profile info - use service_client to bypass RLS
+        user_response = supabase.service_client.table("user_profiles").select("role, first_name, last_name, email").eq("firebase_uid", uid).execute()
         if not user_response.data:
-            return jsonify({'success': False, 'error': 'User profile not found'}), 404
+            return jsonify({"success": False, "error": "User profile not found"}), 404
 
-        user_role = user_response.data[0]['role']
+        user_role = user_response.data[0]["role"]
 
-        if user_role == 'patient':
-            # Patients can create appointments for themselves
-            appointment_data = {
-                **data,
-                'patient_firebase_uid': uid
-            }
-        elif user_role == 'doctor':
-            # Doctors can create appointments for patients
-            if 'patient_firebase_uid' not in data:
-                return jsonify({'success': False, 'error': 'Doctors must specify patient_firebase_uid'}), 400
-            appointment_data = data
+        if user_role != "patient":
+            return jsonify({"success": False, "error": "Only patients can book appointments"}), 403
+
+        # Check if the time slot is available in doctor's availability - use service_client to bypass RLS
+        doctor_profile = (
+            supabase.service_client.table("doctor_profiles")
+            .select("availability")
+            .eq("firebase_uid", data["doctor_firebase_uid"])
+            .execute()
+        )
+
+        if not doctor_profile.data:
+            return jsonify({"success": False, "error": "Doctor not found"}), 404
+
+        availability = doctor_profile.data[0].get("availability", {})
+        appointment_date = data["appointment_date"]
+        appointment_time = data["appointment_time"]
+
+        # Check availability based on format
+        # New format: { time_ranges: [{ start_time, end_time, interval }, ...] }
+        # or legacy single range: { start_time, end_time, interval }
+        if isinstance(availability, dict):
+            time_ranges = []
+            # Check for new format with time_ranges array
+            if "time_ranges" in availability and isinstance(availability["time_ranges"], list):
+                time_ranges = availability["time_ranges"]
+            # Legacy single range format
+            elif "start_time" in availability:
+                time_ranges = [{
+                    "start_time": availability.get("start_time", "07:00"),
+                    "end_time": availability.get("end_time", "17:00"),
+                    "interval": availability.get("interval", 30)
+                }]
+            
+            if time_ranges:
+                # Parse appointment time
+                try:
+                    appt_hour, appt_min = map(int, appointment_time.split(":"))
+                    appt_minutes = appt_hour * 60 + appt_min
+                except ValueError:
+                    return jsonify({"success": False, "error": "Invalid appointment time format"}), 400
+                
+                # Check if appointment time matches any range
+                time_found = False
+                for time_range in time_ranges:
+                    start_hour, start_min = map(int, time_range["start_time"].split(":"))
+                    end_hour, end_min = map(int, time_range["end_time"].split(":"))
+                    start_minutes = start_hour * 60 + start_min
+                    end_minutes = end_hour * 60 + end_min
+                    interval = time_range.get("interval", 30)
+                    
+                    # Check if time is within this range
+                    if appt_minutes >= start_minutes and appt_minutes < end_minutes:
+                        # Check if time matches interval
+                        relative_minutes = appt_minutes - start_minutes
+                        if relative_minutes % interval == 0:
+                            time_found = True
+                            break
+                
+                if not time_found:
+                    return jsonify({"success": False, "error": "Selected time is outside doctor's availability hours or doesn't match the interval"}), 400
+                
+                # Check if appointment time is in the past (using Manila timezone)
+                try:
+                    now_manila = get_manila_now()
+                    slot_datetime_naive = datetime.strptime(f"{appointment_date} {appointment_time}", "%Y-%m-%d %H:%M")
+                    
+                    # Localize to Manila timezone
+                    if hasattr(MANILA_TZ, 'localize'):
+                        # pytz timezone
+                        slot_datetime_manila = MANILA_TZ.localize(slot_datetime_naive)
+                    else:
+                        # zoneinfo or timezone offset
+                        slot_datetime_manila = slot_datetime_naive.replace(tzinfo=MANILA_TZ)
+                    
+                    if slot_datetime_manila <= now_manila:
+                        return jsonify({"success": False, "error": "Cannot book appointments in the past"}), 400
+                except ValueError:
+                    return jsonify({"success": False, "error": "Invalid date or time format"}), 400
+        
+        # Old format: array of date slots
+        elif isinstance(availability, list):
+            date_slot = next((slot for slot in availability if slot.get("date") == appointment_date), None)
+            
+            if not date_slot or appointment_time not in date_slot.get("time_slots", []):
+                return jsonify({"success": False, "error": "Selected time slot is not available"}), 400
+        
+        # No availability set
         else:
-            return jsonify({'success': False, 'error': 'Unauthorized role'}), 403
+            return jsonify({"success": False, "error": "Doctor has not set availability"}), 400
 
-        response = supabase.client.table('appointments').insert(appointment_data).execute()
+        # Check if appointment already exists for this time slot - use service_client to bypass RLS
+        existing_appointment = (
+            supabase.service_client.table("appointments")
+            .select("id")
+            .eq("doctor_firebase_uid", data["doctor_firebase_uid"])
+            .eq("appointment_date", appointment_date)
+            .eq("appointment_time", appointment_time)
+            .eq("status", "scheduled")
+            .execute()
+        )
 
-        return jsonify({
-            'success': True,
-            'appointment': response.data[0] if response.data else None
-        }), 201
+        if existing_appointment.data:
+            return jsonify({"success": False, "error": "This time slot has already been booked"}), 400
+
+        # Create Jitsi meeting details
+        import uuid
+        safe_date = appointment_date.replace("-", "")
+        safe_time = appointment_time.replace(":", "")
+        room_suffix = uuid.uuid4().hex[:8]
+        room_name = f"medichain-{data['doctor_firebase_uid']}-{safe_date}-{safe_time}-{room_suffix}"
+        meeting_url = f"https://meet.jit.si/{room_name}#config.prejoinPageEnabled=true"
+
+        # Get patient and doctor names for notifications
+        patient_profile = user_response.data[0]
+        patient_first_name = (patient_profile.get('first_name') or "").strip() if patient_profile.get('first_name') else ""
+        patient_last_name = (patient_profile.get('last_name') or "").strip() if patient_profile.get('last_name') else ""
+        patient_email = (patient_profile.get('email') or "").strip() if patient_profile.get('email') else ""
+        patient_name = f"{patient_first_name} {patient_last_name}".strip()
+        
+        # Ensure patient profile has email (required for display)
+        if not patient_name:
+            if patient_email:
+                patient_name = patient_email.split('@')[0] or patient_email
+            else:
+                patient_name = "Patient"
+        
+        # If patient profile is missing name/email, update it (ensure data consistency)
+        if not patient_first_name and not patient_last_name:
+            print(f"⚠️  WARNING: Patient profile for UID {uid} has no name. Email: {patient_email}")
+        
+        doctor_profile_response = (
+            supabase.service_client.table("user_profiles")
+            .select("first_name, last_name")
+            .eq("firebase_uid", data["doctor_firebase_uid"])
+            .execute()
+        )
+        doctor_name = "Doctor"
+        if doctor_profile_response.data:
+            doctor_profile = doctor_profile_response.data[0]
+            doctor_name = f"Dr. {doctor_profile.get('first_name', '')} {doctor_profile.get('last_name', '')}".strip()
+
+        # Create the appointment with meeting_link properly stored
+        appointment_data = {
+            "patient_firebase_uid": uid,
+            "doctor_firebase_uid": data["doctor_firebase_uid"],
+            "appointment_date": appointment_date,
+            "appointment_time": appointment_time,
+            "appointment_type": data.get("appointment_type", "consultation"),
+            "meeting_link": meeting_url,  # Store in meeting_link column
+            "notes": data.get("notes", "").strip(),
+            "follow_up_checkup": data.get("follow_up_checkup", False),  # Store follow-up checkup flag
+            "status": "scheduled",
+            "symptoms": data.get("symptoms", []),  # Store symptoms array
+            "documents": data.get("documents", []),  # Store documents metadata
+            "ai_diagnosis_processed": False  # Will be processed after booking
+        }
+
+        # Use service_client to bypass RLS policies when inserting appointments
+        response = supabase.service_client.table("appointments").insert(appointment_data).execute()
+
+        if not response.data:
+            return jsonify({"success": False, "error": "Failed to create appointment"}), 500
+        
+        appointment_id = response.data[0].get("id")
+
+        # Process AI diagnosis if symptoms are provided
+        symptoms_list = data.get("symptoms", [])
+        if symptoms_list and len(symptoms_list) > 0:
+            try:
+                print(f"🤖 Processing AI diagnosis for appointment {appointment_id} with symptoms: {symptoms_list}")
+                # Import AI diagnosis system
+                from app import StreamlinedAIDiagnosis
+                
+                # Initialize AI system (it's a singleton, so this should be fast)
+                ai_system = StreamlinedAIDiagnosis()
+                
+                # Convert symptoms list to text
+                symptoms_text = ", ".join(symptoms_list)
+                
+                # Get AI diagnosis
+                predictions = ai_system.predict_conditions(symptoms_text)
+                
+                if predictions and len(predictions) > 0:
+                    # Get detailed results for top conditions
+                    detailed_results = []
+                    for pred in predictions[:3]:  # Top 3 conditions
+                        condition = pred.get('condition', '')
+                        reason = ai_system.get_condition_reason(condition)
+                        action_data = ai_system.get_recommended_action_and_medication(condition)
+                        
+                        detailed_results.append({
+                            'condition': condition,
+                            'confidence': pred.get('confidence', 0),
+                            'confidence_percent': pred.get('confidence_percent', '0%'),
+                            'reason': reason,
+                            'recommended_action': action_data.get('recommended_action', ''),
+                            'medication': action_data.get('medication', ''),
+                            'dosage': action_data.get('dosage', ''),
+                        })
+                    
+                    # Store AI diagnosis in appointment
+                    ai_diagnosis_data = {
+                        'primary_condition': predictions[0].get('condition', ''),
+                        'confidence_score': predictions[0].get('confidence', 0),
+                        'detailed_results': detailed_results,
+                        'symptoms_analyzed': symptoms_list,
+                        'processed_at': datetime.utcnow().isoformat()
+                    }
+                    
+                    # Update appointment with AI diagnosis
+                    supabase.service_client.table("appointments").update({
+                        "ai_diagnosis": ai_diagnosis_data,
+                        "ai_diagnosis_processed": True,
+                        "ai_diagnosis_processed_at": datetime.utcnow().isoformat()
+                    }).eq("id", appointment_id).execute()
+                    
+                    print(f"✅ AI diagnosis processed and stored for appointment {appointment_id}")
+                else:
+                    print(f"⚠️  No predictions returned from AI system for symptoms: {symptoms_text}")
+            except Exception as ai_error:
+                print(f"❌ Error processing AI diagnosis: {ai_error}")
+                import traceback
+                print(traceback.format_exc())
+                # Don't fail the appointment creation if AI processing fails
+                # The appointment is still created successfully
+
+        # For old format only: Remove the booked time slot from doctor's availability
+        # New format doesn't need this since availability is schedule-based
+        if isinstance(availability, list):
+            updated_availability = []
+            for slot in availability:
+                if slot["date"] == appointment_date:
+                    # Remove the booked time
+                    remaining_times = [t for t in slot["time_slots"] if t != appointment_time]
+                    # Only keep the date if there are remaining time slots
+                    if remaining_times:
+                        updated_availability.append({
+                            "date": slot["date"],
+                            "time_slots": remaining_times
+                        })
+                else:
+                    updated_availability.append(slot)
+
+            # Update doctor's availability (old format only) - use service_client to bypass RLS
+            supabase.service_client.table("doctor_profiles").update({
+                "availability": updated_availability
+            }).eq("firebase_uid", data["doctor_firebase_uid"]).execute()
+
+        # Create notifications for both patient and doctor
+        print(f"🔔 Starting notification creation for appointment {appointment_id}")
+        print(f"   Patient UID: {uid}")
+        print(f"   Doctor UID: {data['doctor_firebase_uid']}")
+        print(f"   Patient Name: {patient_name}")
+        print(f"   Doctor Name: {doctor_name}")
+        
+        try:
+            from services.notification_service import notification_service
+            
+            # Check if notification service is available
+            if not notification_service or not notification_service.supabase:
+                print("❌ NotificationService not available or not initialized")
+                raise Exception("NotificationService not available")
+            
+            print("✅ NotificationService is available")
+            
+            # Format date and time for display
+            try:
+                date_obj = datetime.strptime(appointment_date, "%Y-%m-%d")
+                formatted_date = date_obj.strftime("%B %d, %Y")
+            except Exception as date_err:
+                print(f"⚠️  Date formatting error: {date_err}")
+                formatted_date = appointment_date
+            
+            try:
+                time_obj = datetime.strptime(appointment_time, "%H:%M")
+                formatted_time = time_obj.strftime("%I:%M %p")
+            except Exception as time_err:
+                print(f"⚠️  Time formatting error: {time_err}")
+                formatted_time = appointment_time
+            
+            print(f"   Formatted Date: {formatted_date}")
+            print(f"   Formatted Time: {formatted_time}")
+            print(f"   Meeting URL: {meeting_url}")
+            
+            # Patient notification - Appointment created
+            print(f"📤 Creating patient notification...")
+            patient_notification_result = notification_service.create_appointment_notification(
+                user_id=uid,
+                appointment_id=appointment_id,
+                appointment_date=formatted_date,
+                appointment_time=formatted_time,
+                doctor_name=doctor_name,
+                notification_type='appointment_created',
+                meeting_url=meeting_url
+            )
+            print(f"   Patient notification result: {patient_notification_result}")
+            
+            # Doctor notification - New appointment request
+            print(f"📤 Creating doctor notification...")
+            doctor_notification_result = notification_service.create_appointment_notification(
+                user_id=data["doctor_firebase_uid"],
+                appointment_id=appointment_id,
+                appointment_date=formatted_date,
+                appointment_time=formatted_time,
+                patient_name=patient_name,
+                notification_type='appointment_created',
+                meeting_url=meeting_url
+            )
+            print(f"   Doctor notification result: {doctor_notification_result}")
+            
+            # Schedule "Video Consultation Ready" notification for the appointment time
+            if meeting_url:
+                try:
+                    from services.notification_scheduler import schedule_video_consultation_notification
+                    print(f"📅 Scheduling Video Consultation Ready notification for appointment time...")
+                    schedule_video_consultation_notification(
+                appointment_id=appointment_id,
+                appointment_date=appointment_date,
+                appointment_time=appointment_time,
+                        patient_uid=uid,
+                        doctor_uid=data["doctor_firebase_uid"],
+                        doctor_name=doctor_name,
+                patient_name=patient_name,
+                meeting_url=meeting_url,
+                        send_before_minutes=0  # Send at the exact appointment time
+                    )
+                except Exception as scheduler_error:
+                    print(f"⚠️  Error scheduling video consultation notification: {scheduler_error}")
+                    import traceback
+                    traceback.print_exc()
+                    # Don't fail appointment creation if scheduling fails
+            
+            # Verify notifications were created
+            if patient_notification_result.get("success"):
+                print(f"✅ Patient notification created successfully")
+            else:
+                print(f"❌ Patient notification failed: {patient_notification_result.get('error', 'Unknown error')}")
+            
+            if doctor_notification_result.get("success"):
+                print(f"✅ Doctor notification created successfully")
+            else:
+                print(f"❌ Doctor notification failed: {doctor_notification_result.get('error', 'Unknown error')}")
+            
+            print(f"🔔 Notification creation completed for appointment {appointment_id}")
+        except Exception as e:
+            print(f"❌ CRITICAL ERROR creating notifications: {e}")
+            import traceback
+            traceback.print_exc()
+            # Don't fail the appointment creation if notifications fail
+
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "appointment": response.data[0] if response.data else None,
+                    "message": "Appointment booked successfully!",
+                    "meeting_url": meeting_url,
+                }
+            ),
+            201,
+        )
 
     except Exception as e:
+        print(f"Error creating appointment: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@appointments_bp.route("/<appointment_id>", methods=["GET"])
+@auth_required
+def get_appointment_by_id(appointment_id):
+    """Get a single appointment by ID"""
+    try:
+        # Verify Supabase client is available
+        if not supabase or not supabase.service_client:
+            print("❌ ERROR: Supabase service_client is not available")
+            return jsonify({
+                "success": False,
+                "error": "Database connection failed. Please check server configuration.",
+                "details": "Supabase service_client not initialized"
+            }), 500
+        
+        firebase_user = request.firebase_user
+        uid = firebase_user["uid"]
+        
+        print(f"🔍 GET /api/appointments/{appointment_id}: Request from user UID: {uid}")
+        
+        # Get the appointment using service_client (bypasses RLS)
+        appointment_response = supabase.service_client.table("appointments").select("*").eq("id", appointment_id).execute()
+        
+        if not appointment_response.data or len(appointment_response.data) == 0:
+            print(f"❌ Appointment {appointment_id} not found")
+            return jsonify({
+                "success": False,
+                "error": "Appointment not found"
+            }), 404
+        
+        appointment = appointment_response.data[0]
+        
+        # Check if user has access to this appointment (patient or doctor)
+        patient_uid = appointment.get("patient_firebase_uid")
+        doctor_uid = appointment.get("doctor_firebase_uid")
+        
+        if uid != patient_uid and uid != doctor_uid:
+            print(f"❌ User {uid} does not have access to appointment {appointment_id}")
+            return jsonify({
+                "success": False,
+                "error": "Access denied"
+            }), 403
+        
+        # Get patient information
+        patient_info = None
+        if patient_uid:
+            try:
+                patient_response = supabase.service_client.table("user_profiles").select("firebase_uid, first_name, last_name, email").eq("firebase_uid", patient_uid).execute()
+                if patient_response.data:
+                    patient_info = patient_response.data[0]
+            except Exception as patient_err:
+                print(f"⚠️  Could not fetch patient info: {patient_err}")
+        
+        # Get doctor information
+        doctor_info = None
+        if doctor_uid:
+            try:
+                doctor_response = supabase.service_client.table("user_profiles").select("firebase_uid, first_name, last_name, email").eq("firebase_uid", doctor_uid).execute()
+                if doctor_response.data:
+                    doctor_info = doctor_response.data[0]
+            except Exception as doctor_err:
+                print(f"⚠️  Could not fetch doctor info: {doctor_err}")
+        
+        # Enrich appointment with patient and doctor info
+        appointment["patient"] = patient_info
+        appointment["doctor"] = doctor_info
+        
+        print(f"✅ Successfully fetched appointment {appointment_id}")
+        
         return jsonify({
-            'success': False,
-            'error': str(e)
+            "success": True,
+            "appointment": appointment
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error fetching appointment {appointment_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e)
         }), 500
 
-@appointments_bp.route('/<appointment_id>', methods=['PUT'])
+@appointments_bp.route("/<appointment_id>", methods=["PUT"])
 @firebase_auth_required
 def update_appointment(appointment_id):
-    """Update an appointment"""
+    """Update an appointment and send notifications to both parties"""
     try:
         firebase_user = request.firebase_user
-        uid = firebase_user['uid']
+        uid = firebase_user["uid"]
         data = request.get_json()
 
-        # Update appointment (RLS ensures users can only update their own appointments)
-        response = supabase.client.table('appointments').update(data).eq('id', appointment_id).or_(
-            f'patient_firebase_uid.eq.{uid},doctor_firebase_uid.eq.{uid}'
-        ).execute()
+        # First, get the current appointment to compare changes - use service_client to bypass RLS
+        current_appointment = (
+            supabase.service_client.table("appointments")
+            .select("*")
+            .eq("id", appointment_id)
+            .execute()
+        )
 
-        if response.data:
-            return jsonify({
-                'success': True,
-                'appointment': response.data[0]
-            }), 200
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Appointment not found or unauthorized'
-            }), 404
+        if not current_appointment.data:
+            return jsonify({"success": False, "error": "Appointment not found"}), 404
+
+        current_appt = current_appointment.data[0]
+        patient_uid = current_appt.get("patient_firebase_uid")
+        doctor_uid = current_appt.get("doctor_firebase_uid")
+
+        # Verify user has permission (must be patient or doctor for this appointment)
+        if uid not in [patient_uid, doctor_uid]:
+            return jsonify({"success": False, "error": "Unauthorized"}), 403
+
+        # Update appointment - use service_client to bypass RLS
+        response = (
+            supabase.service_client.table("appointments")
+            .update(data)
+            .eq("id", appointment_id)
+            .execute()
+        )
+
+        if not response.data:
+            return jsonify({"success": False, "error": "Failed to update appointment"}), 500
+
+        updated_appt = response.data[0]
+
+        # Create notifications for both patient and doctor based on what changed
+        try:
+            from services.notification_service import notification_service
+            
+            # Get user names for notifications
+            patient_profile = (
+                supabase.service_client.table("user_profiles")
+                .select("first_name, last_name, email")
+                .eq("firebase_uid", patient_uid)
+                .execute()
+            )
+            patient_name = "Patient"
+            if patient_profile.data:
+                p = patient_profile.data[0]
+                patient_name = f"{p.get('first_name', '')} {p.get('last_name', '')}".strip()
+                if not patient_name:
+                    patient_name = p.get('email', 'Patient').split('@')[0]
+
+            doctor_profile = (
+                supabase.service_client.table("user_profiles")
+                .select("first_name, last_name")
+                .eq("firebase_uid", doctor_uid)
+                .execute()
+            )
+            doctor_name = "Doctor"
+            if doctor_profile.data:
+                d = doctor_profile.data[0]
+                doctor_name = f"Dr. {d.get('first_name', '')} {d.get('last_name', '')}".strip()
+
+            # Format dates and times
+            appointment_date = updated_appt.get("appointment_date", current_appt.get("appointment_date", ""))
+            appointment_time = updated_appt.get("appointment_time", current_appt.get("appointment_time", ""))
+            
+            try:
+                date_obj = datetime.strptime(appointment_date, "%Y-%m-%d")
+                formatted_date = date_obj.strftime("%B %d, %Y")
+            except:
+                formatted_date = appointment_date
+            
+            try:
+                time_obj = datetime.strptime(appointment_time, "%H:%M")
+                formatted_time = time_obj.strftime("%I:%M %p")
+            except:
+                formatted_time = appointment_time
+
+            meeting_url = updated_appt.get("meeting_link") or updated_appt.get("meeting_url")
+
+            # Check what changed and create appropriate notifications
+            status_changed = data.get("status") and data.get("status") != current_appt.get("status")
+            date_changed = data.get("appointment_date") and data.get("appointment_date") != current_appt.get("appointment_date")
+            time_changed = data.get("appointment_time") and data.get("appointment_time") != current_appt.get("appointment_time")
+            notes_changed = "notes" in data and data.get("notes") != current_appt.get("notes")
+
+            # Status change notifications
+            if status_changed:
+                new_status = data.get("status")
+                old_status = current_appt.get("status")
+                
+                if new_status == "cancelled":
+                    # Cancellation notification
+                    if uid == patient_uid:
+                        # Patient cancelled - notify doctor
+                        notification_service.create_notification(
+                            user_id=doctor_uid,
+                            title="Appointment Cancelled",
+                            message=f"Patient {patient_name} has cancelled the appointment scheduled for {formatted_date} at {formatted_time}.",
+                            notification_type='warning',
+                            category='appointment',
+                            priority='high',
+                            action_url=f"/appointments",
+                            action_label="View Appointments",
+                            metadata={"appointment_id": str(appointment_id), "old_status": old_status, "new_status": new_status}
+                        )
+                        # Also notify patient
+                        notification_service.create_notification(
+                            user_id=patient_uid,
+                            title="Appointment Cancelled",
+                            message=f"Your appointment with {doctor_name} on {formatted_date} at {formatted_time} has been cancelled.",
+                            notification_type='info',
+                            category='appointment',
+                            priority='normal',
+                            action_url=f"/appointments",
+                            action_label="View Appointments",
+                            metadata={"appointment_id": str(appointment_id), "old_status": old_status, "new_status": new_status}
+                        )
+                elif uid == doctor_uid:
+                    # Doctor cancelled - notify patient
+                    notification_service.create_notification(
+                        user_id=patient_uid,
+                        title="Appointment Cancelled",
+                        message=f"Dr. {doctor_name} has cancelled your appointment scheduled for {formatted_date} at {formatted_time}.",
+                        notification_type='warning',
+                        category='appointment',
+                        priority='high',
+                        action_url=f"/appointments",
+                        action_label="View Appointments",
+                        metadata={"appointment_id": str(appointment_id), "old_status": old_status, "new_status": new_status}
+                    )
+                    # Also notify doctor
+                    notification_service.create_notification(
+                        user_id=doctor_uid,
+                        title="Appointment Cancelled",
+                        message=f"You have cancelled the appointment with {patient_name} on {formatted_date} at {formatted_time}.",
+                        notification_type='info',
+                        category='appointment',
+                        priority='normal',
+                        action_url=f"/appointments",
+                        action_label="View Appointments",
+                        metadata={"appointment_id": str(appointment_id), "old_status": old_status, "new_status": new_status}
+                    )
+                elif new_status == "confirmed":
+                    # Confirmation notification
+                    # Check if appointment is ready for video consultation (within 24 hours or on the appointment date)
+                    try:
+                        # Get raw appointment date and time from the updated appointment
+                        raw_appointment_date = updated_appt.get("appointment_date", "")
+                        raw_appointment_time = updated_appt.get("appointment_time", "")
+                        
+                        if raw_appointment_date and raw_appointment_time:
+                            # Always schedule "Video Consultation Ready" notification for the EXACT appointment time
+                            # The scheduler will handle scheduling it for the future appointment time
+                            if meeting_url:
+                                try:
+                                    from services.notification_scheduler import schedule_video_consultation_notification
+                                    print(f"📅 Scheduling Video Consultation Ready notification for exact appointment time: {raw_appointment_date} {raw_appointment_time}")
+                                    schedule_video_consultation_notification(
+                                        appointment_id=appointment_id,
+                                        appointment_date=raw_appointment_date,
+                                        appointment_time=raw_appointment_time,
+                                        patient_uid=patient_uid,
+                                        doctor_uid=doctor_uid,
+                                        doctor_name=doctor_name,
+                                        patient_name=patient_name,
+                                        meeting_url=meeting_url,
+                                        send_before_minutes=0  # Send at the exact appointment time
+                                    )
+                                except Exception as scheduler_error:
+                                    print(f"⚠️  Error scheduling video consultation notification: {scheduler_error}")
+                                    import traceback
+                                    traceback.print_exc()
+                            
+                            # Send regular confirmation notification
+                            print(f"📅 Sending Appointment Confirmed notifications")
+                            notification_service.create_notification(
+                                user_id=patient_uid,
+                                title="Appointment Confirmed",
+                                message=f"Your appointment with {doctor_name} on {formatted_date} at {formatted_time} has been confirmed.",
+                                notification_type='success',
+                                category='appointment',
+                                priority='high',
+                                action_url=f"/appointments",
+                                action_label="View Appointment",
+                                metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                            )
+                            notification_service.create_notification(
+                                user_id=doctor_uid,
+                                title="Appointment Confirmed",
+                                message=f"Appointment with {patient_name} on {formatted_date} at {formatted_time} has been confirmed.",
+                                notification_type='success',
+                                category='appointment',
+                                priority='high',
+                                action_url=f"/appointments",
+                                action_label="View Appointment",
+                                metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                            )
+                        else:
+                            # No date/time info, send regular confirmation
+                            print(f"⚠️  No appointment date/time found, sending regular confirmation")
+                            notification_service.create_notification(
+                                user_id=patient_uid,
+                                title="Appointment Confirmed",
+                                message=f"Your appointment with {doctor_name} has been confirmed.",
+                                notification_type='success',
+                                category='appointment',
+                                priority='high',
+                                action_url=f"/appointments",
+                                action_label="View Appointment",
+                                metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                            )
+                            notification_service.create_notification(
+                                user_id=doctor_uid,
+                                title="Appointment Confirmed",
+                                message=f"Appointment with {patient_name} has been confirmed.",
+                                notification_type='success',
+                                category='appointment',
+                                priority='high',
+                                action_url=f"/appointments",
+                                action_label="View Appointment",
+                                metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                            )
+                    except Exception as datetime_error:
+                        print(f"⚠️  Error calculating appointment readiness: {datetime_error}")
+                        import traceback
+                        traceback.print_exc()
+                        # Fallback to regular confirmation notification
+                        notification_service.create_notification(
+                            user_id=patient_uid,
+                            title="Appointment Confirmed",
+                            message=f"Your appointment with {doctor_name} on {formatted_date} at {formatted_time} has been confirmed.",
+                            notification_type='success',
+                            category='appointment',
+                            priority='high',
+                            action_url=meeting_url or f"/appointments",
+                            action_label="View Appointment",
+                            metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                        )
+                        notification_service.create_notification(
+                            user_id=doctor_uid,
+                            title="Appointment Confirmed",
+                            message=f"Appointment with {patient_name} on {formatted_date} at {formatted_time} has been confirmed.",
+                            notification_type='success',
+                            category='appointment',
+                            priority='high',
+                            action_url=meeting_url or f"/appointments",
+                            action_label="View Appointment",
+                            metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                        )
+                elif new_status == "completed":
+                    # Cancel any scheduled notifications for this appointment (e.g., video consultation ready)
+                    try:
+                        from services.notification_scheduler import cancel_scheduled_notification
+                        cancel_scheduled_notification(appointment_id)
+                        print(f"✅ Cancelled scheduled notifications for completed appointment {appointment_id}")
+                    except Exception as cancel_error:
+                        print(f"⚠️  Error cancelling scheduled notifications (may not exist): {cancel_error}")
+                    
+                    # Completion notification
+                    notification_service.create_notification(
+                        user_id=patient_uid,
+                        title="Appointment Completed",
+                        message=f"Your video consultation with {doctor_name} has been completed successfully. Thank you!",
+                        notification_type='success',
+                        category='appointment',
+                        priority='high',
+                        action_url=f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+                    notification_service.create_notification(
+                        user_id=doctor_uid,
+                        title="Appointment Completed",
+                        message=f"Your video consultation with {patient_name} has been completed successfully.",
+                        notification_type='success',
+                        category='appointment',
+                        priority='high',
+                        action_url=f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+                    print(f"✅ Completion notifications sent to patient and doctor for appointment {appointment_id}")
+
+            # Date/Time change notifications
+            if date_changed or time_changed:
+                old_date = current_appt.get("appointment_date", "")
+                old_time = current_appt.get("appointment_time", "")
+                
+                try:
+                    old_date_obj = datetime.strptime(old_date, "%Y-%m-%d")
+                    old_formatted_date = old_date_obj.strftime("%B %d, %Y")
+                except:
+                    old_formatted_date = old_date
+                
+                try:
+                    old_time_obj = datetime.strptime(old_time, "%H:%M")
+                    old_formatted_time = old_time_obj.strftime("%I:%M %p")
+                except:
+                    old_formatted_time = old_time
+
+                change_message = ""
+                if date_changed and time_changed:
+                    change_message = f"from {old_formatted_date} at {old_formatted_time} to {formatted_date} at {formatted_time}"
+                elif date_changed:
+                    change_message = f"from {old_formatted_date} to {formatted_date} (time remains {formatted_time})"
+                elif time_changed:
+                    change_message = f"from {old_formatted_time} to {formatted_time} on {formatted_date}"
+
+                if uid == patient_uid:
+                    # Patient rescheduled - notify doctor
+                    notification_service.create_notification(
+                        user_id=doctor_uid,
+                        title="Appointment Rescheduled",
+                        message=f"Patient {patient_name} has rescheduled the appointment {change_message}.",
+                        notification_type='info',
+                        category='appointment',
+                        priority='high',
+                        action_url=meeting_url or f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+                    # Also notify patient
+                    notification_service.create_notification(
+                        user_id=patient_uid,
+                        title="Appointment Rescheduled",
+                        message=f"Your appointment with {doctor_name} has been rescheduled {change_message}.",
+                        notification_type='info',
+                        category='appointment',
+                        priority='high',
+                        action_url=meeting_url or f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+                else:
+                    # Doctor rescheduled - notify patient
+                    notification_service.create_notification(
+                        user_id=patient_uid,
+                        title="Appointment Rescheduled",
+                        message=f"Dr. {doctor_name} has rescheduled your appointment {change_message}.",
+                        notification_type='warning',
+                        category='appointment',
+                        priority='high',
+                        action_url=meeting_url or f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+                    # Also notify doctor
+                    notification_service.create_notification(
+                        user_id=doctor_uid,
+                        title="Appointment Rescheduled",
+                        message=f"You have rescheduled the appointment with {patient_name} {change_message}.",
+                        notification_type='info',
+                        category='appointment',
+                        priority='high',
+                        action_url=meeting_url or f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+
+            # General update notification (if no specific change detected but appointment was updated)
+            if not status_changed and not date_changed and not time_changed:
+                if uid == patient_uid:
+                    notification_service.create_notification(
+                        user_id=doctor_uid,
+                        title="Appointment Updated",
+                        message=f"Patient {patient_name} has updated the appointment scheduled for {formatted_date} at {formatted_time}.",
+                        notification_type='info',
+                        category='appointment',
+                        priority='normal',
+                        action_url=meeting_url or f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+                else:
+                    notification_service.create_notification(
+                        user_id=patient_uid,
+                        title="Appointment Updated",
+                        message=f"Dr. {doctor_name} has updated your appointment scheduled for {formatted_date} at {formatted_time}.",
+                        notification_type='info',
+                        category='appointment',
+                        priority='normal',
+                        action_url=meeting_url or f"/appointments",
+                        action_label="View Appointment",
+                        metadata={"appointment_id": str(appointment_id), "meeting_url": meeting_url}
+                    )
+
+            print(f"🔔 Notifications created for appointment update {appointment_id}")
+            print(f"   ✅ Patient notification sent to: {patient_uid}")
+            print(f"   ✅ Doctor notification sent to: {doctor_uid}")
+        except Exception as e:
+            print(f"⚠️  Error creating update notifications: {e}")
+            import traceback
+            traceback.print_exc()
+            # Don't fail the appointment update if notifications fail
+
+        return jsonify({"success": True, "appointment": updated_appt}), 200
 
     except Exception as e:
+        print(f"❌ Error updating appointment: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# Doctor Availability Routes
+@appointments_bp.route("/availability", methods=["GET"])
+@auth_required
+def get_doctor_availability():
+    """Get current doctor's availability schedule"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user["uid"]
+
+        # Verify user is a doctor - use service_client to bypass RLS
+        user_response = supabase.service_client.table("user_profiles").select("role").eq("firebase_uid", uid).execute()
+        if not user_response.data or user_response.data[0]["role"] != "doctor":
+            return jsonify({"success": False, "error": "Only doctors can access this endpoint"}), 403
+
+        # Get doctor's availability and accepting status (handle gracefully if column doesn't exist)
+        # Use service_client to bypass RLS
+        try:
+            response = (
+                supabase.service_client.table("doctor_profiles")
+                .select("availability, is_accepting_appointments")
+                .eq("firebase_uid", uid)
+                .execute()
+            )
+        except Exception as select_error:
+            # If column doesn't exist, try without it
+            print(f"⚠️  Warning: Error selecting is_accepting_appointments: {select_error}")
+            print(f"⚠️  Falling back to availability only (assuming is_accepting_appointments = True)")
+            response = (
+                supabase.service_client.table("doctor_profiles")
+                .select("availability")
+                .eq("firebase_uid", uid)
+                .execute()
+            )
+        
+        if not response.data:
+            return jsonify({"success": False, "error": "Doctor profile not found"}), 404
+
+        availability = response.data[0].get("availability", {})
+        # Get is_accepting_appointments - check if it exists in the response
+        # CRITICAL: Use a sentinel value to distinguish between "key doesn't exist" and "value is False"
+        is_accepting_appointments_raw = response.data[0].get("is_accepting_appointments")
+        column_exists = "is_accepting_appointments" in response.data[0]
+        
+        print(f"🔍 GET /availability: Doctor {uid}")
+        print(f"🔍 GET: column_exists = {column_exists}")
+        print(f"🔍 GET: is_accepting_appointments_raw = {is_accepting_appointments_raw} (type: {type(is_accepting_appointments_raw)})")
+        print(f"🔍 GET: is_accepting_appointments_raw is None? {is_accepting_appointments_raw is None}")
+        print(f"🔍 GET: is_accepting_appointments_raw == False? {is_accepting_appointments_raw == False}")
+        print(f"🔍 GET: is_accepting_appointments_raw is False? {is_accepting_appointments_raw is False}")
+        
+        # CRITICAL: Only default to True if the value is truly missing (not in response) or NULL
+        # If it's False, we MUST preserve False
+        if not column_exists:
+            # Column doesn't exist or wasn't selected - default to True
+            is_accepting_appointments = True
+            print(f"⚠️  GET /availability: is_accepting_appointments column not found, defaulting to True")
+        elif is_accepting_appointments_raw is None:
+            # Column exists but value is NULL
+            # CRITICAL: After removing DEFAULT TRUE, NULL should only happen if never set
+            # But to be safe, we'll check if this is a new doctor profile
+            # For now, default to True only if NULL (meaning never explicitly set)
+            # If it was explicitly set to False, it should be False, not NULL
+            is_accepting_appointments = True
+            print(f"⚠️  GET /availability: is_accepting_appointments is NULL (never set), defaulting to True")
+        else:
+            # Value exists (could be False or True) - convert to boolean properly, preserving False
+            if isinstance(is_accepting_appointments_raw, str):
+                is_accepting_appointments = is_accepting_appointments_raw.lower() in ('true', '1', 'yes', 'on')
+                print(f"🔄 GET: Converted string '{is_accepting_appointments_raw}' to boolean: {is_accepting_appointments}")
+            else:
+                # Use bool() which correctly converts False to False and True to True
+                is_accepting_appointments = bool(is_accepting_appointments_raw)
+                print(f"✅ GET: Converted {is_accepting_appointments_raw} (type: {type(is_accepting_appointments_raw)}) to boolean: {is_accepting_appointments}")
+        
+        print(f"🔍 GET /availability: Doctor {uid}, FINAL is_accepting_appointments = {is_accepting_appointments} (raw: {is_accepting_appointments_raw}, column_exists: {column_exists}, type: {type(is_accepting_appointments_raw)})")
+        
         return jsonify({
-            'success': False,
-            'error': str(e)
+            "success": True, 
+            "availability": availability,
+            "is_accepting_appointments": is_accepting_appointments
+        }), 200
+
+    except Exception as e:
+        print(f"Error fetching availability: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@appointments_bp.route("/availability", methods=["PUT"])
+@auth_required
+def update_doctor_availability():
+    """Update doctor's availability schedule (new format: time range + interval)"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user["uid"]
+        data = request.get_json()
+        
+        print(f"DEBUG: Received availability update request from user {uid}")
+        print(f"DEBUG: Request data: {data}")
+        print(f"DEBUG: Request Content-Type: {request.content_type}")
+        
+        if data is None:
+            return jsonify({"success": False, "error": "Invalid request. JSON data is required."}), 400
+        
+        # Check if Supabase client is available
+        if supabase is None or supabase.client is None:
+            print("ERROR: Supabase client is not initialized")
+            return jsonify({"success": False, "error": "Database connection failed. Please try again later."}), 500
+
+        # Verify user is a doctor - use service_client to bypass RLS
+        user_response = supabase.service_client.table("user_profiles").select("role").eq("firebase_uid", uid).execute()
+        if not user_response.data or user_response.data[0]["role"] != "doctor":
+            return jsonify({"success": False, "error": "Only doctors can update availability"}), 403
+
+        # Validate availability data - support both old format (array) and new format (object)
+        availability = data.get("availability", {})
+        
+        if not availability:
+            return jsonify({"success": False, "error": "Availability data is required"}), 400
+        
+        print(f"DEBUG: Availability data: {availability}")
+        print(f"DEBUG: Availability type: {type(availability)}")
+        
+        # New format: { time_ranges: [{ start_time, end_time, interval }, ...] }
+        # or legacy single range: { start_time, end_time, interval }
+        if isinstance(availability, dict):
+            # Check for new format with time_ranges array
+            if "time_ranges" in availability and isinstance(availability["time_ranges"], list):
+                if len(availability["time_ranges"]) == 0:
+                    return jsonify({"success": False, "error": "At least one time range is required"}), 400
+                
+                # Validate each time range
+                for i, time_range in enumerate(availability["time_ranges"]):
+                    if not isinstance(time_range, dict):
+                        return jsonify({"success": False, "error": f"Time range {i+1} must be an object"}), 400
+                    
+                    if "start_time" not in time_range or "end_time" not in time_range or "interval" not in time_range:
+                        return jsonify({"success": False, "error": f"Time range {i+1} must include start_time, end_time, and interval"}), 400
+                    
+                    # Validate time format
+                    try:
+                        datetime.strptime(time_range["start_time"], "%H:%M")
+                        datetime.strptime(time_range["end_time"], "%H:%M")
+                    except ValueError:
+                        return jsonify({"success": False, "error": f"Time range {i+1}: Invalid time format. Use HH:MM"}), 400
+                    
+                    # Validate interval
+                    interval = time_range.get("interval")
+                    if interval is None:
+                        return jsonify({"success": False, "error": f"Time range {i+1}: Interval is required"}), 400
+                    
+                    # Convert interval to int if it's a string
+                    try:
+                        interval = int(interval)
+                    except (ValueError, TypeError):
+                        return jsonify({"success": False, "error": f"Time range {i+1}: Interval must be a number"}), 400
+                    
+                    if interval not in [15, 25, 30]:
+                        return jsonify({"success": False, "error": f"Time range {i+1}: Interval must be 15, 25, or 30 minutes"}), 400
+                    
+                    # Validate end time is after start time
+                    start_hour, start_min = map(int, time_range["start_time"].split(":"))
+                    end_hour, end_min = map(int, time_range["end_time"].split(":"))
+                    start_minutes = start_hour * 60 + start_min
+                    end_minutes = end_hour * 60 + end_min
+                    
+                    if end_minutes <= start_minutes:
+                        return jsonify({"success": False, "error": f"Time range {i+1}: End time must be after start time"}), 400
+                
+                # Check for overlaps between ranges
+                for i in range(len(availability["time_ranges"])):
+                    for j in range(i + 1, len(availability["time_ranges"])):
+                        range1 = availability["time_ranges"][i]
+                        range2 = availability["time_ranges"][j]
+                        
+                        start1_hour, start1_min = map(int, range1["start_time"].split(":"))
+                        end1_hour, end1_min = map(int, range1["end_time"].split(":"))
+                        start2_hour, start2_min = map(int, range2["start_time"].split(":"))
+                        end2_hour, end2_min = map(int, range2["end_time"].split(":"))
+                        
+                        start1_minutes = start1_hour * 60 + start1_min
+                        end1_minutes = end1_hour * 60 + end1_min
+                        start2_minutes = start2_hour * 60 + start2_min
+                        end2_minutes = end2_hour * 60 + end2_min
+                        
+                        # Check if ranges overlap
+                        if not (end1_minutes <= start2_minutes or start1_minutes >= end2_minutes):
+                            return jsonify({"success": False, "error": f"Time ranges {i+1} and {j+1} overlap. Please adjust them."}), 400
+            
+            # Legacy single range format: { start_time, end_time, interval }
+            elif "start_time" in availability and "end_time" in availability:
+                # Validate time format
+                try:
+                    datetime.strptime(availability["start_time"], "%H:%M")
+                    datetime.strptime(availability["end_time"], "%H:%M")
+                except ValueError:
+                    return jsonify({"success": False, "error": "Invalid time format. Use HH:MM"}), 400
+                
+                # Validate interval
+                if availability.get("interval") not in [15, 25, 30]:
+                    return jsonify({"success": False, "error": "Interval must be 15, 25, or 30 minutes"}), 400
+                
+                # Validate end time is after start time
+                start_hour, start_min = map(int, availability["start_time"].split(":"))
+                end_hour, end_min = map(int, availability["end_time"].split(":"))
+                start_minutes = start_hour * 60 + start_min
+                end_minutes = end_hour * 60 + end_min
+                
+                if end_minutes <= start_minutes:
+                    return jsonify({"success": False, "error": "End time must be after start time"}), 400
+            
+            else:
+                return jsonify({"success": False, "error": "Availability must include time_ranges array or start_time/end_time/interval"}), 400
+        
+        # Old format: array of date slots (keep for backward compatibility)
+        elif isinstance(availability, list):
+            if not all(isinstance(slot, dict) and "date" in slot and "time_slots" in slot for slot in availability):
+                return jsonify({"success": False, "error": "Invalid availability format"}), 400
+
+        # Get is_accepting_appointments from request (optional, defaults to True if not provided)
+        is_accepting_appointments_raw = data.get("is_accepting_appointments")
+        
+        # CRITICAL: Handle the case where the value might not be provided
+        # If not provided, we should keep the existing value, but for now we'll default to True
+        # However, if False is explicitly sent, we MUST preserve it
+        if is_accepting_appointments_raw is None:
+            # Not provided in request - default to True
+            is_accepting_appointments = True
+        else:
+            # Value provided - convert to boolean properly, preserving False
+            if isinstance(is_accepting_appointments_raw, str):
+                is_accepting_appointments = is_accepting_appointments_raw.lower() in ('true', '1', 'yes', 'on')
+            else:
+                # Use bool() which correctly converts False to False and True to True
+                is_accepting_appointments = bool(is_accepting_appointments_raw)
+        
+        print(f"🔄 PUT /availability: Doctor {uid}, is_accepting_appointments = {is_accepting_appointments} (raw: {is_accepting_appointments_raw}, type: {type(is_accepting_appointments_raw)})")
+        
+        # Update doctor's availability and accepting status
+        try:
+            # CRITICAL: Ensure is_accepting_appointments is explicitly set as a Python boolean
+            # Supabase might convert None to NULL, so we must explicitly pass False as False
+            update_data = {
+                "availability": availability,
+            }
+            
+            # Explicitly set is_accepting_appointments - ensure it's a proper boolean
+            # This prevents Supabase from treating it as NULL
+            print(f"🔍 BEFORE UPDATE: is_accepting_appointments = {is_accepting_appointments} (type: {type(is_accepting_appointments)})")
+            print(f"🔍 BEFORE UPDATE: is_accepting_appointments is False? {is_accepting_appointments is False}")
+            print(f"🔍 BEFORE UPDATE: is_accepting_appointments == False? {is_accepting_appointments == False}")
+            
+            if is_accepting_appointments is False:
+                update_data["is_accepting_appointments"] = False  # Explicit False
+                print(f"✅ Setting is_accepting_appointments to explicit False")
+            elif is_accepting_appointments is True:
+                update_data["is_accepting_appointments"] = True  # Explicit True
+                print(f"✅ Setting is_accepting_appointments to explicit True")
+            else:
+                # Fallback - shouldn't happen, but handle it
+                update_data["is_accepting_appointments"] = bool(is_accepting_appointments)
+                print(f"⚠️  Fallback: Setting is_accepting_appointments to bool({is_accepting_appointments}) = {bool(is_accepting_appointments)}")
+            
+            print(f"🔍 UPDATE DATA: {update_data}")
+            print(f"🔍 UPDATE DATA is_accepting_appointments: {update_data['is_accepting_appointments']} (type: {type(update_data['is_accepting_appointments'])})")
+            
+            response = (
+                supabase.service_client.table("doctor_profiles")
+                .update(update_data)
+                .eq("firebase_uid", uid)
+                .execute()
+            )
+
+            if not response.data:
+                print(f"ERROR: Supabase update returned no data for user {uid}")
+                return jsonify({"success": False, "error": "Failed to update availability. Doctor profile may not exist."}), 400
+
+            print(f"🔍 UPDATE RESPONSE: {response.data}")
+            if response.data and len(response.data) > 0:
+                response_value = response.data[0].get("is_accepting_appointments")
+                print(f"🔍 UPDATE RESPONSE VALUE: {response_value} (type: {type(response_value)})")
+                print(f"🔍 UPDATE RESPONSE VALUE is False? {response_value is False}")
+                print(f"🔍 UPDATE RESPONSE VALUE == False? {response_value == False}")
+
+            # Verify the update was successful by reading back the value
+            verify_response = (
+                supabase.service_client.table("doctor_profiles")
+                .select("is_accepting_appointments")
+                .eq("firebase_uid", uid)
+                .execute()
+            )
+            
+            # CRITICAL: Read back the actual saved value from database
+            verified_value = is_accepting_appointments  # Fallback to what we tried to save
+            if verify_response.data and len(verify_response.data) > 0:
+                saved_raw = verify_response.data[0].get("is_accepting_appointments")
+                # Check if column exists and value is not None
+                if "is_accepting_appointments" in verify_response.data[0]:
+                    print(f"🔍 VERIFY: Column exists in response")
+                    print(f"🔍 VERIFY: saved_raw = {saved_raw} (type: {type(saved_raw)})")
+                    print(f"🔍 VERIFY: saved_raw is None? {saved_raw is None}")
+                    print(f"🔍 VERIFY: saved_raw == False? {saved_raw == False}")
+                    print(f"🔍 VERIFY: saved_raw is False? {saved_raw is False}")
+                    
+                    if saved_raw is None:
+                        # Value is NULL - this shouldn't happen if we saved False, but handle it
+                        print(f"⚠️  WARNING: Saved value is NULL, using attempted value: {is_accepting_appointments}")
+                        verified_value = is_accepting_appointments
+                    else:
+                        # Value exists - convert properly, preserving False
+                        if isinstance(saved_raw, str):
+                            verified_value = saved_raw.lower() in ('true', '1', 'yes', 'on')
+                            print(f"🔄 VERIFY: Converted string '{saved_raw}' to boolean: {verified_value}")
+                        else:
+                            verified_value = bool(saved_raw)
+                            print(f"✅ VERIFY: Converted {saved_raw} (type: {type(saved_raw)}) to boolean: {verified_value}")
+                        print(f"✅ Verified saved value from DB: {verified_value} (raw: {saved_raw}, type: {type(saved_raw)})")
+                else:
+                    # Column doesn't exist
+                    print(f"⚠️  Column doesn't exist in response, using attempted value: {is_accepting_appointments}")
+                    verified_value = is_accepting_appointments
+            else:
+                print(f"⚠️  No data returned from verification query, using attempted value: {is_accepting_appointments}")
+            
+            print(f"🔍 FINAL VERIFIED VALUE: {verified_value} (type: {type(verified_value)})")
+            print(f"DEBUG: Successfully updated availability for user {uid}")
+            print(f"DEBUG: Verified is_accepting_appointments = {verified_value} (attempted: {is_accepting_appointments})")
+            return jsonify({
+                "success": True, 
+                "availability": availability,
+                "is_accepting_appointments": verified_value,  # Return verified value
+                "message": "Availability updated successfully"
+            }), 200
+        
+        except Exception as db_error:
+            print(f"ERROR: Database update failed: {str(db_error)}")
+            # Check if error is about missing column
+            if "is_accepting_appointments" in str(db_error).lower() or "column" in str(db_error).lower():
+                print(f"⚠️  Warning: is_accepting_appointments column may not exist. Updating availability only.")
+                # Try updating without is_accepting_appointments
+                try:
+                    response = (
+                        supabase.service_client.table("doctor_profiles")
+                        .update({"availability": availability})
+                        .eq("firebase_uid", uid)
+                        .execute()
+                    )
+                    if response.data:
+                        return jsonify({
+                            "success": True, 
+                            "availability": availability,
+                            "message": "Availability updated successfully (Note: Please run database migration to enable toggle feature)"
+                        }), 200
+                except Exception as retry_error:
+                    return jsonify({"success": False, "error": f"Database error: {str(retry_error)}"}), 500
+            return jsonify({"success": False, "error": f"Database error: {str(db_error)}"}), 500
+
+    except Exception as e:
+        print(f"ERROR: Exception in update_doctor_availability: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@appointments_bp.route("/pending-reviews-count", methods=["GET"])
+@auth_required
+def get_pending_reviews_count():
+    """Get count of pending reviews (appointments with AI diagnosis not yet reviewed) for the current doctor"""
+    try:
+        firebase_user = request.firebase_user
+        doctor_uid = firebase_user["uid"]
+        doctor_email = firebase_user.get("email", "unknown")
+        
+        print(f"🔍 [Backend] Getting pending reviews count for doctor: {doctor_uid} ({doctor_email})")
+        
+        # Get appointments WITH AI diagnosis for this SPECIFIC doctor using service_client (bypasses RLS)
+        # Only count appointments that have AI diagnosis processed
+        # First get all appointments with ai_diagnosis_processed = True, then filter for non-null ai_diagnosis in Python
+        appointments_result = supabase.service_client.table("appointments").select("id, doctor_firebase_uid, appointment_date, ai_diagnosis").eq("doctor_firebase_uid", doctor_uid).eq("ai_diagnosis_processed", True).execute()
+        
+        # Filter for appointments with non-null ai_diagnosis
+        appointments_with_ai = [apt for apt in (appointments_result.data or []) if apt.get("ai_diagnosis") is not None]
+        appointment_ids = [apt["id"] for apt in appointments_with_ai]
+        print(f"🔍 [Backend] Found {len(appointment_ids)} appointments with AI diagnosis for doctor {doctor_uid}")
+        
+        # Debug: Show appointment details
+        if appointments_result.data:
+            for apt in appointments_result.data:
+                print(f"  - Appointment ID: {apt['id']}, Doctor UID: {apt.get('doctor_firebase_uid')}, Date: {apt.get('appointment_date')}")
+        
+        if len(appointment_ids) == 0:
+            print(f"✅ [Backend] No appointments with AI diagnosis found for doctor {doctor_uid}")
+            return jsonify({
+                "success": True,
+                "pending_reviews": 0,
+                "doctor_uid": doctor_uid
+            }), 200
+        
+        # Get medical reports for these appointments (only for this doctor)
+        reports_result = supabase.service_client.table("medical_records").select("appointment_id, review_status, doctor_firebase_uid").in_("appointment_id", appointment_ids).eq("doctor_firebase_uid", doctor_uid).execute()
+        
+        # Count appointments that don't have a reviewed report
+        reviewed_appointment_ids = set()
+        if reports_result.data:
+            for report in reports_result.data:
+                if report.get("review_status") == "reviewed":
+                    reviewed_appointment_ids.add(report["appointment_id"])
+                    print(f"  - Appointment {report['appointment_id']} has been reviewed")
+        
+        pending_count = len([id for id in appointment_ids if id not in reviewed_appointment_ids])
+        
+        print(f"✅ [Backend] Pending reviews count for doctor {doctor_uid}: {pending_count} (total with AI: {len(appointment_ids)}, reviewed: {len(reviewed_appointment_ids)})")
+        
+        return jsonify({
+            "success": True,
+            "pending_reviews": pending_count,
+            "doctor_uid": doctor_uid,
+            "total_with_ai": len(appointment_ids),
+            "reviewed": len(reviewed_appointment_ids)
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ [Backend] Error getting pending reviews count: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e)
         }), 500
+
+@appointments_bp.route("/ai-diagnosis-reviewed-count", methods=["GET"])
+@auth_required
+def get_ai_diagnosis_reviewed_count():
+    """Get count of AI diagnoses that have been reviewed (medical reports with review_status = 'reviewed') for the current doctor"""
+    try:
+        # Verify Supabase client is available
+        if not supabase or not supabase.service_client:
+            print("❌ ERROR: Supabase service_client is not available")
+            return jsonify({
+                "success": False,
+                "error": "Database connection failed. Please check server configuration.",
+                "details": "Supabase service_client not initialized"
+            }), 500
+        
+        firebase_user = request.firebase_user
+        doctor_uid = firebase_user["uid"]
+        doctor_email = firebase_user.get("email", "unknown")
+        
+        print(f"🔍 [Backend] Getting AI diagnosis reviewed count for doctor: {doctor_uid} ({doctor_email})")
+        
+        # Get medical reports for this doctor using service_client (bypasses RLS)
+        # Include diagnosis field for fallback check if review_status column doesn't exist
+        reports_result = supabase.service_client.table("medical_records").select("id, review_status, appointment_id, doctor_firebase_uid, diagnosis").eq("doctor_firebase_uid", doctor_uid).execute()
+        
+        # Check for errors in the query
+        if not reports_result:
+            print(f"⚠️  [Backend] No result returned from medical_records query")
+            return jsonify({
+                "success": True,
+                "ai_diagnosis_reviewed": 0,
+                "doctor_uid": doctor_uid,
+                "total_reports": 0
+            }), 200
+        
+        # Filter for reviewed reports
+        reviewed_reports = []
+        if reports_result.data:
+            for report in reports_result.data:
+                # Check review_status column if it exists, otherwise assume reviewed if diagnosis exists
+                if report.get("review_status") == "reviewed":
+                    reviewed_reports.append(report)
+                    print(f"  - Medical report {report['id']} for appointment {report.get('appointment_id')} has been reviewed")
+                elif not report.get("review_status") and report.get("diagnosis"):
+                    # Fallback: if no review_status column, consider reviewed if diagnosis exists
+                    reviewed_reports.append(report)
+                    print(f"  - Medical report {report['id']} for appointment {report.get('appointment_id')} has diagnosis (fallback to reviewed)")
+        
+        reviewed_count = len(reviewed_reports)
+        
+        print(f"✅ [Backend] AI diagnosis reviewed count for doctor {doctor_uid}: {reviewed_count} (total reports: {len(reports_result.data) if reports_result.data else 0})")
+        
+        return jsonify({
+            "success": True,
+            "ai_diagnosis_reviewed": reviewed_count,
+            "doctor_uid": doctor_uid,
+            "total_reports": len(reports_result.data) if reports_result.data else 0
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ [Backend] Error getting AI diagnosis reviewed count: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@appointments_bp.route("/availability/<doctor_firebase_uid>", methods=["GET"])
+@auth_required
+def get_doctor_availability_by_uid(doctor_firebase_uid):
+    """Get specific doctor's availability (for patients booking appointments)
+    Returns availability in format that can be used to generate date-time slots"""
+    try:
+        print(f"🔍 Getting availability for doctor: {doctor_firebase_uid}")
+        
+        # Get doctor's availability and accepting status (handle gracefully if column doesn't exist)
+        try:
+            response = (
+                supabase.client.table("doctor_profiles")
+                .select("availability, is_accepting_appointments")
+                .eq("firebase_uid", doctor_firebase_uid)
+                .execute()
+            )
+        except Exception as select_error:
+            # If column doesn't exist, try without it
+            print(f"⚠️  Warning: Error selecting is_accepting_appointments: {select_error}")
+            print(f"⚠️  Falling back to availability only (assuming is_accepting_appointments = True)")
+            response = (
+                supabase.client.table("doctor_profiles")
+                .select("availability")
+                .eq("firebase_uid", doctor_firebase_uid)
+                .execute()
+            )
+
+        if not response.data:
+            print(f"❌ Doctor not found: {doctor_firebase_uid}")
+            return jsonify({"success": False, "error": "Doctor not found"}), 404
+
+        availability = response.data[0].get("availability", {})
+        is_accepting_appointments = response.data[0].get("is_accepting_appointments", True)
+        
+        print(f"🔍 Doctor availability data: {availability}")
+        print(f"🔍 Is accepting appointments: {is_accepting_appointments}")
+        
+        # If doctor is not accepting appointments, return empty availability
+        if not is_accepting_appointments:
+            print(f"⚠️  Doctor {doctor_firebase_uid} is not accepting appointments")
+            return jsonify({
+                "success": True,
+                "availability": {},
+                "schedule": availability,
+                "message": "Doctor is currently not accepting appointments"
+            }), 200
+        
+        # New format with multiple ranges: { time_ranges: [{ start_time, end_time, interval }, ...] }
+        # or legacy single range: { start_time, end_time, interval }
+        if isinstance(availability, dict):
+            time_ranges = []
+            
+            # Check for new format with time_ranges array
+            if "time_ranges" in availability and isinstance(availability["time_ranges"], list):
+                time_ranges = availability["time_ranges"]
+            # Legacy single range format
+            elif "start_time" in availability:
+                time_ranges = [{
+                    "start_time": availability.get("start_time", "07:00"),
+                    "end_time": availability.get("end_time", "17:00"),
+                    "interval": availability.get("interval", 30)
+                }]
+            
+            if time_ranges:
+                # Generate time slots for next 30 days based on Asia/Manila timezone
+                time_slots_per_date = {}
+                now_manila = get_manila_now()
+                today_manila = now_manila.date()
+                
+                for day_offset in range(30):
+                    date = today_manila + timedelta(days=day_offset)
+                    date_str = date.isoformat()
+                    
+                    # Generate time slots for this date from all ranges
+                    all_slots = []
+                    
+                    for time_range in time_ranges:
+                        start_time = time_range.get("start_time", "07:00")
+                        end_time = time_range.get("end_time", "17:00")
+                        interval = time_range.get("interval", 30)
+                        
+                        # Parse times
+                        start_hour, start_min = map(int, start_time.split(":"))
+                        end_hour, end_min = map(int, end_time.split(":"))
+                        start_minutes = start_hour * 60 + start_min
+                        end_minutes = end_hour * 60 + end_min
+                        
+                        # Generate time slots for this range
+                        current_minutes = start_minutes
+                        
+                        while current_minutes < end_minutes:
+                            hour = current_minutes // 60
+                            minute = current_minutes % 60
+                            time_str = f"{hour:02d}:{minute:02d}"
+                            
+                            # Check if this time slot is in the future (for today only)
+                            if day_offset == 0:
+                                # Create datetime in Manila timezone for this slot
+                                slot_time = datetime.strptime(time_str, "%H:%M").time()
+                                slot_datetime_naive = datetime.combine(date, slot_time)
+                                
+                                # Localize to Manila timezone
+                                if hasattr(MANILA_TZ, 'localize'):
+                                    # pytz timezone
+                                    slot_datetime_manila = MANILA_TZ.localize(slot_datetime_naive)
+                                else:
+                                    # zoneinfo or timezone offset
+                                    slot_datetime_manila = slot_datetime_naive.replace(tzinfo=MANILA_TZ)
+                                
+                                # Only include if slot is in the future
+                                if slot_datetime_manila > now_manila:
+                                    if time_str not in all_slots:
+                                        all_slots.append(time_str)
+                            else:
+                                # For future dates, include all slots
+                                if time_str not in all_slots:
+                                    all_slots.append(time_str)
+                            
+                            current_minutes += interval
+                    
+                    if all_slots:
+                        time_slots_per_date[date_str] = sorted(all_slots)
+                
+                return jsonify({
+                    "success": True, 
+                    "availability": time_slots_per_date,
+                    "schedule": availability  # Include original schedule for reference
+                }), 200
+        
+        # Old format: array of date slots (backward compatibility)
+        elif isinstance(availability, list):
+            return jsonify({"success": True, "availability": availability}), 200
+        
+        # Empty or invalid format
+        else:
+            return jsonify({"success": True, "availability": {}}), 200
+
+    except Exception as e:
+        print(f"Error fetching doctor availability: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500

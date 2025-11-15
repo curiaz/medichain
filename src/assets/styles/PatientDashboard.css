@@ -27,6 +27,11 @@
   margin-bottom: 30px;
 }
 
+/* Appointment Icon Styling */
+.action-icon.appointment-icon {
+  background: linear-gradient(135deg, #4CAF50, #8BC34A);
+}
+
 /* Health Summary Card - Patient Specific */
 .health-summary-card {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

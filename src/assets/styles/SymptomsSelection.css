@@ -1,0 +1,334 @@
+/* Symptoms Selection Styles */
+.symptoms-search-container {
+  margin: 24px 0;
+  width: 100%;
+  max-width: 600px;
+}
+
+.symptoms-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  transition: all 0.3s ease;
+}
+
+.symptoms-search-wrapper:focus-within {
+  border-color: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.symptoms-search-icon {
+  color: #666;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.symptoms-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  color: #333;
+  background: transparent;
+}
+
+.symptoms-search-input::placeholder {
+  color: #999;
+}
+
+.clear-search-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.clear-search-btn:hover {
+  color: #333;
+}
+
+.selected-symptoms-container {
+  margin: 24px 0;
+  padding: 20px;
+  background: #f5f9ff;
+  border-radius: 12px;
+  border: 2px solid #e3f2fd;
+}
+
+.selected-symptoms-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1976D2;
+  margin-bottom: 12px;
+}
+
+.selected-symptoms-bubbles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.selected-symptom-bubble {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+  color: white;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.remove-symptom-btn {
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  padding: 0;
+}
+
+.remove-symptom-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.symptoms-grid-container {
+  margin: 32px 0;
+}
+
+.symptoms-grid-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16px;
+}
+
+.symptoms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 24px;
+  width: 100%;
+  /* Ensure no dead space - fill all available columns */
+  grid-auto-flow: dense;
+}
+
+.symptom-bubble {
+  position: relative;
+  padding: 10px 14px;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.symptom-bubble:hover {
+  border-color: #2196F3;
+  background: #f5f9ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.15);
+}
+
+.symptom-bubble.selected {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+  color: white;
+  border-color: #1976D2;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.symptom-bubble.selected .check-icon {
+  color: white;
+}
+
+.check-icon {
+  flex-shrink: 0;
+}
+
+.no-symptoms-found {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.clear-search-button {
+  margin-top: 16px;
+  padding: 10px 20px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.clear-search-button:hover {
+  background: #1976D2;
+}
+
+.symptoms-navigation {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.back-button-symptoms,
+.next-button-symptoms {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-button-symptoms {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.back-button-symptoms:hover {
+  background: #e0e0e0;
+}
+
+.next-button-symptoms {
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+  color: white;
+  margin-left: auto;
+}
+
+.next-button-symptoms:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1976D2, #1565C0);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.next-button-symptoms:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Loading and Error States */
+.symptoms-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+.symptoms-loading .spinning {
+  animation: spin 1s linear infinite;
+  color: #2196F3;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.symptoms-error {
+  padding: 40px 20px;
+  text-align: center;
+  color: #c62828;
+  background: #ffebee;
+  border-radius: 12px;
+  margin: 20px 0;
+}
+
+.symptoms-error button {
+  margin-top: 16px;
+  padding: 10px 20px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.symptoms-error button:hover {
+  background: #1976D2;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .symptoms-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .symptoms-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+  }
+
+  .symptom-bubble {
+    padding: 8px 10px;
+    font-size: 12px;
+    min-height: 40px;
+  }
+
+  .symptoms-navigation {
+    flex-direction: column;
+  }
+
+  .next-button-symptoms {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .symptoms-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 6px;
+  }
+
+  .symptom-bubble {
+    padding: 8px;
+    font-size: 11px;
+    min-height: 38px;
+  }
+}
+

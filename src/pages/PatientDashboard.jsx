@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react"
 import Header from "./Header"
-import { Plus, Activity, Brain, FileText, Heart, Calendar, User, RefreshCw } from "lucide-react"
+import { Plus, Activity, FileText, Calendar, User } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"
@@ -17,7 +17,7 @@ const toast = {
 const PatientDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
+  const [, setStats] = useState({
     totalConsultations: 0,
     aiDiagnoses: 0,
     lastCheckup: 0,
@@ -59,12 +59,12 @@ const PatientDashboard = () => {
     navigate('/health-record')
   }
 
-  const handleAIDiagnosis = () => {
-    navigate('/ai-health')
+  const handleNewAppointment = () => {
+    navigate('/book-appointment')
   }
 
-  const handleNewAppointment = () => {
-    toast.info("Appointment booking feature coming soon!")
+  const handleMyAppointments = () => {
+    navigate('/my-appointments')
   }
   
   return (
@@ -84,76 +84,56 @@ const PatientDashboard = () => {
         <div className="dashboard-header-section">
           <div className="dashboard-title-section">
             <h1 className="dashboard-title">PATIENT DASHBOARD</h1>
-            {user && user.profile && (
+            {user && (
               <div className="user-welcome">
-                <span>Welcome back, <strong>{user.profile.first_name || user.profile.name}</strong></span>
-                <span className="user-role">Patient Portal</span>
+                {(() => {
+                  const p = user.profile || user;
+                  const first = p.first_name || p.firstName || '';
+                  const last = p.last_name || p.lastName || '';
+                  const name = (first || last) ? `${first} ${last}`.trim() : (p.name || user.displayName || 'User');
+                  return (
+                    <>
+                      <span>Welcome back, <strong>{name}</strong></span>
+                      <span className="user-role">Patient</span>
+                    </>
+                  );
+                })()}
               </div>
             )}
             {error && (
-              <div className="error-message" style={{ color: '#e74c3c', fontSize: '0.9rem', marginTop: '8px' }}>
+              <div className="error-message" style={{ color: '#e74c3c', fontSize: '0.9rem' }}>
                 {error} - Using offline data
-              </div>
-            )}
-          </div>
-          <div className="dashboard-actions">
-            <button className="primary-action-btn" onClick={handleNewAppointment}>
-              <Plus size={20} /> Book Appointment
-            </button>
-            {loading && (
-              <div className="loading-indicator" style={{ marginLeft: '10px', fontSize: '0.9rem', color: '#666' }}>
-                <RefreshCw size={16} className="spinning" /> Loading stats...
               </div>
             )}
           </div>
         </div>
 
         <div className="dashboard-grid">
-          <div className="stats-cards-row">
-            <div className="stat-card patient-stat">
-              <div className="stat-icon">
-                <Activity size={32} />
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">Total Consultations</span>
-                <span className="stat-value">{stats.totalConsultations}</span>
-              </div>
-            </div>
-            
-            <div className="stat-card patient-stat">
-              <div className="stat-icon">
-                <Brain size={32} />
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">AI Diagnoses</span>
-                <span className="stat-value">{stats.aiDiagnoses}</span>
-              </div>
-            </div>
-            
-            <div className="stat-card patient-stat">
-              <div className="stat-icon">
-                <Calendar size={32} />
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">Last Checkup</span>
-                <span className="stat-value">{stats.lastCheckup} days ago</span>
-              </div>
-            </div>
-            
-            <div className="stat-card patient-stat">
-              <div className="stat-icon">
-                <Heart size={32} />
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">Health Score</span>
-                <span className="stat-value">{stats.healthScore}%</span>
-              </div>
-            </div>
-          </div>
-
           <div className="main-and-sidebar-grid">
             <div className="main-content-area">
               <div className="patient-actions-grid">
+                <div className="action-card" onClick={handleNewAppointment}>
+                  <div className="action-icon appointment-icon">
+                    <Calendar size={48} />
+                  </div>
+                  <div className="action-content">
+                    <h3>Book an Appointment</h3>
+                    <p>Schedule a consultation with our verified doctors</p>
+                    <span className="action-status available">Available Now</span>
+                  </div>
+                </div>
+
+                <div className="action-card" onClick={handleMyAppointments}>
+                  <div className="action-icon">
+                    <Calendar size={48} />
+                  </div>
+                  <div className="action-content">
+                    <h3>My Appointments</h3>
+                    <p>View scheduled consultations and join video calls</p>
+                    <span className="action-status available">Available Now</span>
+                  </div>
+                </div>
+
                 <div className="action-card" onClick={handleHealthRecord}>
                   <div className="action-icon">
                     <FileText size={48} />
@@ -162,17 +142,6 @@ const PatientDashboard = () => {
                     <h3>My Health Record</h3>
                     <p>View your complete medical history, prescriptions, and health reports</p>
                     <span className="action-status">Coming Soon</span>
-                  </div>
-                </div>
-
-                <div className="action-card" onClick={handleAIDiagnosis}>
-                  <div className="action-icon ai-icon">
-                    <Brain size={48} />
-                  </div>
-                  <div className="action-content">
-                    <h3>AI Health Assistant</h3>
-                    <p>Get instant AI-powered health insights and symptom analysis</p>
-                    <span className="action-status available">Available Now</span>
                   </div>
                 </div>
               </div>
@@ -203,54 +172,40 @@ const PatientDashboard = () => {
             </div>
 
             <div className="sidebar-area">
-              <div className="health-summary-card">
-                <h3 className="card-title">
-                  <Heart size={20} />
-                  Health Summary
-                </h3>
-                <div className="health-metrics">
-                  <div className="health-metric">
-                    <span className="metric-label">Overall Health</span>
-                    <div className="metric-value">
-                      <div className="health-score-bar">
-                        <div 
-                          className="health-score-fill" 
-                          style={{ width: `${stats.healthScore}%` }}
-                        ></div>
-                      </div>
-                      <span className="metric-text">{stats.healthScore}%</span>
-                    </div>
-                  </div>
-                  <div className="health-metric">
-                    <span className="metric-label">Last AI Consultation</span>
-                    <span className="metric-text">2 days ago</span>
-                  </div>
-                  <div className="health-metric">
-                    <span className="metric-label">Next Appointment</span>
-                    <span className="metric-text">Not scheduled</span>
-                  </div>
-                </div>
-              </div>
-
               <div className="user-info-card">
                 <h3 className="card-title">
                   <User size={20} />
                   My Information
                 </h3>
-                {user && user.profile ? (
+                {user ? (
                   <div className="user-details">
-                    <div className="user-detail">
-                      <strong>Name:</strong> {user.profile.first_name ? `${user.profile.first_name} ${user.profile.last_name}` : (user.profile.name || 'N/A')}
-                    </div>
-                    <div className="user-detail">
-                      <strong>Email:</strong> {user.profile.email || user.email || 'N/A'}
-                    </div>
-                    <div className="user-detail">
-                      <strong>Role:</strong> {user.profile.role ? user.profile.role.charAt(0).toUpperCase() + user.profile.role.slice(1) : 'N/A'}
-                    </div>
-                    <div className="user-detail">
-                      <strong>Member since:</strong> {user.profile.created_at ? new Date(user.profile.created_at).toLocaleDateString() : 'Today'}
-                    </div>
+                    {(() => {
+                      const p = user.profile || user;
+                      const name = p.first_name || p.firstName
+                        ? `${p.first_name || p.firstName} ${p.last_name || p.lastName || ''}`.trim()
+                        : (p.name || user.displayName || 'N/A');
+                      const email = p.email || user.email || 'N/A';
+                      const role = (p.role || user.role || 'N/A');
+                      const roleCap = typeof role === 'string' ? role.charAt(0).toUpperCase() + role.slice(1) : 'N/A';
+                      const createdAt = p.created_at || p.createdAt;
+                      const memberSince = createdAt ? new Date(createdAt).toLocaleDateString() : 'Today';
+                      return (
+                        <>
+                          <div className="user-detail">
+                            <strong>Name:</strong> {name}
+                          </div>
+                          <div className="user-detail">
+                            <strong>Email:</strong> {email}
+                          </div>
+                          <div className="user-detail">
+                            <strong>Role:</strong> {roleCap}
+                          </div>
+                          <div className="user-detail">
+                            <strong>Member since:</strong> {memberSince}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 ) : (
                   <div className="user-details">
@@ -265,10 +220,6 @@ const PatientDashboard = () => {
                   Quick Actions
                 </h3>
                 <div className="quick-actions">
-                  <button className="quick-action-btn" onClick={handleAIDiagnosis}>
-                    <Brain size={16} />
-                    Start AI Consultation
-                  </button>
                   <button className="quick-action-btn" onClick={handleHealthRecord}>
                     <FileText size={16} />
                     View Health Record

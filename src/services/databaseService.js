@@ -9,51 +9,232 @@ export class DatabaseService {
   // Dashboard Statistics
   static async getDoctorStats(doctorId) {
     try {
-      // Get total patients assigned to this doctor
-      const { data: patients, error: patientsError } = await supabase
-        .from('medical_records')
-        .select('patient_firebase_uid', { count: 'exact' })
-        .eq('doctor_firebase_uid', doctorId);
+      // Get pending reviews: Count ALL appointments that haven't been reviewed yet
+      // Use backend endpoint to bypass RLS and get accurate count
+      let pendingReviews = 0;
+      let pendingReviewsError = null;
+      try {
+        console.log(`🔍 [Pending Reviews] Fetching pending reviews count for doctor: ${doctorId}`);
+        
+        // Try to get Firebase token for backend API call
+        let token = null;
+        try {
+          const currentUser = auth.currentUser;
+          if (currentUser) {
+            token = await currentUser.getIdToken();
+          } else {
+            token = localStorage.getItem('medichain_token') || localStorage.getItem('firebase_id_token');
+          }
+        } catch (tokenErr) {
+          console.warn('⚠️  Could not get auth token, trying fallback:', tokenErr);
+          token = localStorage.getItem('medichain_token') || localStorage.getItem('firebase_id_token');
+        }
+        
+        if (token) {
+          // Use backend endpoint which uses service_client to bypass RLS
+          const response = await fetch('http://localhost:5000/api/appointments/pending-reviews-count', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              pendingReviews = data.pending_reviews || 0;
+              console.log(`✅ [Pending Reviews] Got count from backend: ${pendingReviews}`);
+            } else {
+              console.warn('⚠️  Backend returned error:', data.error);
+              pendingReviewsError = new Error(data.error || 'Failed to get pending reviews count');
+            }
+          } else {
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            console.error(`❌ [Pending Reviews] Backend error (${response.status}):`, errorData);
+            pendingReviewsError = new Error(errorData.error || `HTTP ${response.status}`);
+          }
+        } else {
+          console.warn('⚠️  No auth token available, falling back to direct Supabase query');
+          // Fallback to direct Supabase query (may be subject to RLS)
+          const appointmentsResult = await supabase
+            .from('appointments')
+            .select('id')
+            .eq('doctor_firebase_uid', doctorId);
+          
+          if (appointmentsResult.error) {
+            pendingReviewsError = appointmentsResult.error;
+          } else {
+            const appointmentIds = (appointmentsResult.data || []).map(apt => apt.id);
+            
+            if (appointmentIds.length > 0) {
+              const reportsResult = await supabase
+                .from('medical_records')
+                .select('appointment_id, review_status')
+                .in('appointment_id', appointmentIds)
+                .eq('doctor_firebase_uid', doctorId);
+              
+              if (!reportsResult.error && reportsResult.data) {
+                const reviewedAppointmentIds = new Set(
+                  (reportsResult.data || [])
+                    .filter(r => r.review_status === 'reviewed')
+                    .map(r => r.appointment_id)
+                );
+                pendingReviews = appointmentIds.filter(id => !reviewedAppointmentIds.has(id)).length;
+              } else {
+                pendingReviews = appointmentIds.length;
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('❌ [Pending Reviews] Exception:', err);
+        pendingReviewsError = null;
+        // Don't throw, just set to 0 on error
+        pendingReviews = 0;
+      }
 
-      if (patientsError) throw patientsError;
-
-      // Get pending AI reviews (AI diagnoses not yet reviewed by doctor)
-      const { data: pendingReviews, error: reviewsError } = await supabase
-        .from(TABLES.AI_DIAGNOSES)
-        .select('*', { count: 'exact' })
-        .is('doctor_review_status', null)
-        .eq('assigned_doctor_uid', doctorId);
-
-      if (reviewsError) throw reviewsError;
-
-      // Get total AI consultations this doctor has reviewed
-      const { data: aiConsultations, error: consultationsError } = await supabase
-        .from(TABLES.AI_DIAGNOSES)
-        .select('*', { count: 'exact' })
-        .eq('assigned_doctor_uid', doctorId)
-        .not('doctor_review_status', 'is', null);
-
-      if (consultationsError) throw consultationsError;
-
-      // Get recent activity (records created in last 7 days)
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      if (pendingReviewsError) {
+        console.error(`❌ [Pending Reviews] Error:`, pendingReviewsError);
+        // Don't throw, just set to 0
+        pendingReviews = 0;
+      }
       
-      const { data: recentActivity, error: activityError } = await supabase
-        .from('medical_records')
-        .select('*', { count: 'exact' })
-        .eq('doctor_firebase_uid', doctorId)
-        .gte('created_at', sevenDaysAgo.toISOString());
+      console.log(`✅ [Pending Reviews] Final count: ${pendingReviews}`);
+
+      // Get AI Diagnosis Reviewed count (medical reports with review_status = 'reviewed')
+      // Use backend endpoint to bypass RLS and get accurate count
+      let aiDiagnosisReviewed = 0;
+      let aiDiagnosisError = null;
+      try {
+        console.log(`🔍 [AI Diagnosis Reviewed] Fetching reviewed count for doctor: ${doctorId}`);
+        
+        // Try to get Firebase token for backend API call
+        let token = null;
+        try {
+          const currentUser = auth.currentUser;
+          if (currentUser) {
+            token = await currentUser.getIdToken();
+          } else {
+            token = localStorage.getItem('medichain_token') || localStorage.getItem('firebase_id_token');
+          }
+        } catch (tokenErr) {
+          console.warn('⚠️  Could not get auth token, trying fallback:', tokenErr);
+          token = localStorage.getItem('medichain_token') || localStorage.getItem('firebase_id_token');
+        }
+        
+        if (token) {
+          // Use backend endpoint which uses service_client to bypass RLS
+          const response = await fetch('http://localhost:5000/api/appointments/ai-diagnosis-reviewed-count', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              aiDiagnosisReviewed = data.ai_diagnosis_reviewed || 0;
+              console.log(`✅ [AI Diagnosis Reviewed] Got count from backend: ${aiDiagnosisReviewed}`);
+            } else {
+              console.warn('⚠️  Backend returned error:', data.error);
+              aiDiagnosisError = new Error(data.error || 'Failed to get AI diagnosis reviewed count');
+            }
+          } else {
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            console.error(`❌ [AI Diagnosis Reviewed] Backend error (${response.status}):`, errorData);
+            aiDiagnosisError = new Error(errorData.error || `HTTP ${response.status}`);
+          }
+        } else {
+          console.warn('⚠️  No auth token available, falling back to direct Supabase query');
+          // Fallback to direct Supabase query (may be subject to RLS)
+          let result = await supabase
+            .from('medical_records')
+            .select('id, review_status, diagnosis')
+            .eq('doctor_firebase_uid', doctorId);
+          
+          if (result.error) {
+            aiDiagnosisError = result.error;
+          } else if (result && result.data) {
+            // Filter for reviewed reports: check review_status = 'reviewed' OR (if no review_status column, check if diagnosis exists)
+            const reviewedReports = result.data.filter(report => {
+              if (report.hasOwnProperty('review_status')) {
+                return report.review_status === 'reviewed';
+              }
+              return report.diagnosis && report.diagnosis.trim() !== '';
+            });
+            aiDiagnosisReviewed = reviewedReports.length;
+          }
+        }
+      } catch (err) {
+        console.error('❌ [AI Diagnosis Reviewed] Exception:', err);
+        aiDiagnosisError = null;
+        // Don't throw, just set to 0 on error
+        aiDiagnosisReviewed = 0;
+      }
+
+      if (aiDiagnosisError) {
+        console.error(`❌ [AI Diagnosis Reviewed] Error:`, aiDiagnosisError);
+        // Don't throw, just set to 0
+        aiDiagnosisReviewed = 0;
+      }
+      
+      console.log(`✅ [AI Diagnosis Reviewed] Final count: ${aiDiagnosisReviewed}`);
+
+      // Get today's activity (medical reports with review_status = 'reviewed' created/updated today)
+      // Only count reviewed reports, not pending ones
+      let todaysActivity = 0;
+      let activityError = null;
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayISO = today.toISOString();
+        
+        // First try with review_status column
+        let result = await supabase
+          .from('medical_records')
+          .select('id', { count: 'exact' })
+          .eq('doctor_firebase_uid', doctorId)
+          .eq('review_status', 'reviewed')
+          .gte('updated_at', todayISO);
+        
+        if (result.error) {
+          // If review_status column doesn't exist, fallback to checking diagnosis
+          if (result.error.code === 'PGRST116' || result.error.message?.includes('column') || result.error.message?.includes('does not exist')) {
+            console.log('ℹ️  review_status column not available, using diagnosis check');
+            result = await supabase
+              .from('medical_records')
+              .select('id', { count: 'exact' })
+              .eq('doctor_firebase_uid', doctorId)
+              .not('diagnosis', 'is', null)
+              .neq('diagnosis', '')
+              .gte('updated_at', todayISO);
+          } else if (result.error.code === 'PGRST116' || result.error.message?.includes('relation') || result.error.message?.includes('does not exist')) {
+            console.log('ℹ️  medical_records table not available');
+            activityError = null;
+          } else {
+            activityError = result.error;
+          }
+        }
+        
+        if (!activityError && result && !result.error) {
+          todaysActivity = result.count || result.data?.length || 0;
+        }
+      } catch (err) {
+        console.log('ℹ️  Could not fetch today\'s activity:', err.message);
+        activityError = null;
+      }
 
       if (activityError) throw activityError;
 
       return {
         success: true,
         data: {
-          totalPatients: patients?.length || 0,
-          pendingReviews: pendingReviews?.length || 0,
-          aiConsultations: aiConsultations?.length || 0,
-          recentActivity: recentActivity?.length || 0
+          pendingReviews: pendingReviews,
+          aiDiagnosisReviewed: aiDiagnosisReviewed,
+          todaysActivity: todaysActivity
         }
       };
     } catch (error) {
@@ -63,10 +244,9 @@ export class DatabaseService {
         error: error.message,
         // Return fallback data if database fails
         data: {
-          totalPatients: 0,
           pendingReviews: 0,
-          aiConsultations: 0,
-          recentActivity: 0
+          aiDiagnosisReviewed: 0,
+          todaysActivity: 0
         }
       };
     }
@@ -86,13 +266,33 @@ export class DatabaseService {
       const aiDiagnoses = consultations?.length || 0;
 
       // Get last checkup (most recent medical record)
-      const { data: lastCheckup, error: checkupError } = await supabase
-        .from('medical_records')
-        .select('created_at')
-        .eq('patient_firebase_uid', patientId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      // Note: medical_records table may not exist yet, so handle gracefully
+      let lastCheckup = null;
+      let checkupError = null;
+      try {
+        const result = await supabase
+          .from('medical_records')
+          .select('created_at')
+          .eq('patient_firebase_uid', patientId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors if no records
+        
+        if (result.error) {
+          // If table doesn't exist or RLS blocks, just log and continue
+          if (result.error.code === 'PGRST116' || result.error.message?.includes('relation') || result.error.message?.includes('does not exist')) {
+            console.log('ℹ️  medical_records table not available or no records found');
+            checkupError = null; // Don't treat as error
+          } else {
+            checkupError = result.error;
+          }
+        } else {
+          lastCheckup = result.data;
+        }
+      } catch (err) {
+        console.log('ℹ️  Could not fetch medical records (table may not exist):', err.message);
+        checkupError = null; // Don't treat as error - table may not be set up yet
+      }
 
       let daysSinceCheckup = 0;
       if (lastCheckup && !checkupError) {
@@ -306,6 +506,33 @@ export class DatabaseService {
       return { success: true, data: doctors };
     } catch (error) {
       console.error('Error fetching doctors:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  }
+
+  // Get all patients in the system
+  static async getAllPatients() {
+    try {
+      const { data, error } = await supabase
+        .from(TABLES.USER_PROFILES)
+        .select('firebase_uid, first_name, last_name, email, created_at, avatar_url')
+        .eq('role', 'patient')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const patients = data?.map(patient => ({
+        id: patient.firebase_uid,
+        name: `${patient.first_name || ''} ${patient.last_name || ''}`.trim(),
+        email: patient.email,
+        joined: patient.created_at,
+        avatar_url: patient.avatar_url
+      })) || [];
+
+      return { success: true, data: patients };
+    } catch (error) {
+      console.error('Error fetching all patients:', error);
       return { success: false, error: error.message, data: [] };
     }
   }

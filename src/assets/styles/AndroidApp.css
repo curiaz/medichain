@@ -1,0 +1,319 @@
+/* Android App-Specific Styles */
+
+/* Android Material Design Variables */
+:root {
+  --android-primary: #2196F3;
+  --android-primary-dark: #1565C0;
+  --android-accent: #00BCD4;
+  --android-surface: #FFFFFF;
+  --android-background: #FAFAFA;
+  --android-text-primary: rgba(0, 0, 0, 0.87);
+  --android-text-secondary: rgba(0, 0, 0, 0.60);
+  --android-divider: rgba(0, 0, 0, 0.12);
+  --android-elevation-1: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --android-elevation-2: 0 4px 8px rgba(0, 0, 0, 0.12);
+  --android-elevation-3: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Android Phone Resolutions */
+/* Common: 360x640, 375x667, 414x896, 360x800, 412x915 */
+
+/* Android Tablet Resolutions */
+/* Common: 600x960, 768x1024, 800x1280, 1024x1366 */
+
+/* Mobile-first Android styling */
+@media (max-width: 768px) {
+  /* Android app-like full screen */
+  html, body {
+    height: 100%;
+    height: -webkit-fill-available;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #root {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .App {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Add padding bottom for bottom navigation */
+  main.dashboard-main-content,
+  .dashboard-main-content,
+  .dashboard-container {
+    padding-bottom: 80px !important; /* Space for bottom nav */
+  }
+
+  /* Android Material Design cards */
+  .card,
+  .stat-card,
+  .action-card,
+  .content-card,
+  .doctor-card,
+  .appointment-type-card {
+    border-radius: 12px;
+    box-shadow: var(--android-elevation-1);
+    background: var(--android-surface);
+    border: none;
+  }
+
+  /* Android-style buttons */
+  button,
+  .btn,
+  .primary-action-btn,
+  .new-patient-btn,
+  .select-doctor-button {
+    border-radius: 24px;
+    text-transform: none;
+    font-weight: 500;
+    letter-spacing: 0.15px;
+    box-shadow: var(--android-elevation-1);
+    transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+
+  button:active,
+  .btn:active {
+    box-shadow: var(--android-elevation-2);
+    transform: scale(0.98);
+  }
+
+  /* Android Material Design ripple effect */
+  button,
+  .btn,
+  .icon-button,
+  .bottom-nav-item {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Android-safe area handling */
+  @supports (padding: env(safe-area-inset-bottom)) {
+    body {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .dashboard-header {
+      padding-top: env(safe-area-inset-top);
+    }
+  }
+
+  /* Android status bar spacing */
+  .dashboard-header {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  /* Android-style input fields */
+  input,
+  textarea,
+  select {
+    border-radius: 4px;
+    font-size: 16px; /* Prevents zoom on iOS/Android */
+    padding: 12px 16px;
+    background: var(--android-surface);
+    border: 1px solid var(--android-divider);
+    transition: border-color 0.2s ease;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    border-color: var(--android-primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+  }
+
+  /* Android Material Design typography */
+  h1 {
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: 0.15px;
+    line-height: 32px;
+  }
+
+  h2 {
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0.15px;
+    line-height: 28px;
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+  }
+
+  p, span {
+    font-size: 14px;
+    letter-spacing: 0.25px;
+    line-height: 20px;
+  }
+
+  /* Android-style list items */
+  .list-item,
+  .doctor-card,
+  .appointment-type-card {
+    transition: background-color 0.15s ease;
+  }
+
+  .list-item:active,
+  .doctor-card:active,
+  .appointment-type-card:active {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+
+  /* Android Material Design elevation */
+  .elevation-1 {
+    box-shadow: var(--android-elevation-1);
+  }
+
+  .elevation-2 {
+    box-shadow: var(--android-elevation-2);
+  }
+
+  .elevation-3 {
+    box-shadow: var(--android-elevation-3);
+  }
+
+  /* Android-style spacing */
+  .android-spacing {
+    padding: 16px;
+  }
+
+  .android-spacing-small {
+    padding: 8px 16px;
+  }
+
+  .android-spacing-large {
+    padding: 24px;
+  }
+
+  /* Prevent text selection on UI elements */
+  button,
+  .icon-button,
+  .bottom-nav-item {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Android-style scrollbars */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Android Phone Specific (360px - 480px) */
+@media (max-width: 480px) {
+  /* Compact spacing for phones */
+  .android-spacing {
+    padding: 12px;
+  }
+
+  .android-spacing-small {
+    padding: 6px 12px;
+  }
+
+  .android-spacing-large {
+    padding: 16px;
+  }
+
+  /* Smaller font sizes for phones */
+  h1 {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  h2 {
+    font-size: 18px;
+    line-height: 24px;
+  }
+
+  h3 {
+    font-size: 16px;
+    line-height: 22px;
+  }
+}
+
+/* Android Tablet Specific (768px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Tablet-optimized spacing */
+  .android-spacing {
+    padding: 24px;
+  }
+
+  /* Tablet grid layouts */
+  .doctors-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Android-specific optimizations */
+@supports (-webkit-touch-callout: none) {
+  /* iOS-specific */
+  body {
+    -webkit-touch-callout: none;
+  }
+}
+
+/* Android Chrome specific */
+@media screen and (max-width: 768px) {
+  /* Optimize for Android Chrome */
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Prevent pull-to-refresh on Android */
+  body {
+    overscroll-behavior-y: contain;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (max-width: 768px) and (orientation: landscape) {
+  .dashboard-header {
+    height: 56px;
+  }
+
+  .bottom-navigation {
+    height: 56px;
+  }
+
+  main.dashboard-main-content,
+  .dashboard-main-content,
+  .dashboard-container {
+    padding-bottom: 72px !important;
+  }
+}
+

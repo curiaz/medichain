@@ -9,7 +9,13 @@ import json
 from datetime import datetime
 
 profile_bp = Blueprint('profile', __name__, url_prefix='/api/profile')
-supabase = SupabaseClient()
+# Initialize Supabase client with error handling
+try:
+    supabase = SupabaseClient()
+    print("✅ Supabase client initialized for profile routes")
+except Exception as e:
+    print(f"⚠️  Warning: Supabase client initialization failed in profile routes: {e}")
+    supabase = None
 
 @profile_bp.route('/complete', methods=['GET'])
 @firebase_auth_required

@@ -1,0 +1,274 @@
+import React from 'react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import PatientList from '../pages/PatientList';
+import DatabaseService from '../services/databaseService';
+
+// Mock the DatabaseService
+jest.mock('../services/databaseService', () => ({
+  getAllPatients: jest.fn()
+}));
+
+// Mock Firebase
+jest.mock('firebase/auth', () => ({
+  signInWithEmailAndPassword: jest.fn(),
+  createUserWithEmailAndPassword: jest.fn(),
+  signOut: jest.fn(),
+  onAuthStateChanged: jest.fn((auth, callback) => {
+    callback(null);
+    return jest.fn();
+  })
+}));
+
+jest.mock('../config/firebase', () => ({
+  auth: {}
+}));
+
+// Mock axios
+jest.mock('axios', () => ({
+  default: {
+    post: jest.fn(),
+    get: jest.fn(),
+    put: jest.fn(),
+    delete: jest.fn()
+  }
+}));
+
+// Mock the AuthContext with a doctor user
+const mockUser = {
+  uid: 'test-doctor-uid',
+  email: 'doctor@test.com',
+  profile: {
+    id: 'doctor-profile-id',
+    first_name: 'John',
+    last_name: 'Doctor',
+    role: 'doctor'
+  }
+};
+
+// Mock AuthContext
+jest.mock('../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: mockUser,
+    isAuthenticated: true,
+    loading: false,
+    error: null
+  }),
+  AuthProvider: ({ children }) => <div>{children}</div>
+}));
+
+const renderWithProviders = (component) => {
+  return render(
+    <BrowserRouter>
+      {component}
+    </BrowserRouter>
+  );
+};
+
+describe('PatientList Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders patient list page with stats', async () => {
+    DatabaseService.getAllPatients.mockResolvedValue({
+      success: true,
+      data: []
+    });
+
+    renderWithProviders(<PatientList />);
+    
+    // Check for stats cards that are now part of the UI
+    await waitFor(() => {
+      expect(screen.getByText('Total Patients')).toBeInTheDocument();
+    });
+  });
+
+  it('displays loading state initially', async () => {
+    DatabaseService.getAllPatients.mockImplementation(() => 
+      new Promise(resolve => setTimeout(() => resolve({ success: true, data: [] }), 100))
+    );
+
+    renderWithProviders(<PatientList />);
+    
+    expect(screen.getByText('Loading patients...')).toBeInTheDocument();
+  });
+
+  it('displays patient cards when data is loaded', async () => {
+    const mockPatients = [
+      {
+        id: 'patient1',
+        name: 'John Doe',
+        email: 'john.doe@example.com',
+        joined: '2024-01-15T10:30:00Z',
+        avatar_url: null
+      },
+      {
+        id: 'patient2',
+        name: 'Jane Smith', 
+        email: 'jane.smith@example.com',
+        joined: '2024-02-20T14:45:00Z',
+        avatar_url: null
+      }
+    ];
+
+    DatabaseService.getAllPatients.mockResolvedValue({
+      success: true,
+      data: mockPatients
+    });
+
+    renderWithProviders(<PatientList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+      expect(screen.getByText('john.doe@example.com')).toBeInTheDocument();
+      expect(screen.getByText('jane.smith@example.com')).toBeInTheDocument();
+    });
+  });
+
+  it('filters patients based on search input', async () => {
+    const mockPatients = [
+      {
+        id: 'patient1',
+        name: 'John Doe',
+        email: 'john.doe@example.com',
+        joined: '2024-01-15T10:30:00Z',
+        avatar_url: null
+      },
+      {
+        id: 'patient2',
+        name: 'Jane Smith',
+        email: 'jane.smith@example.com', 
+        joined: '2024-02-20T14:45:00Z',
+        avatar_url: null
+      }
+    ];
+
+    DatabaseService.getAllPatients.mockResolvedValue({
+      success: true,
+      data: mockPatients
+    });
+
+    renderWithProviders(<PatientList />);
+
+    // Wait for patients to load
+    await waitFor(() => {
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+    });
+
+    // Test search functionality
+    const searchInput = screen.getByPlaceholderText('Search patients by name or email...');
+    fireEvent.change(searchInput, { target: { value: 'John' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.queryByText('Jane Smith')).not.toBeInTheDocument();
+    });
+  });
+
+  it('displays search stats correctly', async () => {
+    const mockPatients = [
+      {
+        id: 'patient1',
+        name: 'John Doe', 
+        email: 'john.doe@example.com',
+        joined: '2024-01-15T10:30:00Z',
+        avatar_url: null
+      },
+      {
+        id: 'patient2',
+        name: 'Jane Smith',
+        email: 'jane.smith@example.com',
+        joined: '2024-02-20T14:45:00Z', 
+        avatar_url: null
+      }
+    ];
+
+    DatabaseService.getAllPatients.mockResolvedValue({
+      success: true,
+      data: mockPatients
+    });
+
+    renderWithProviders(<PatientList />);
+
+    await waitFor(() => {
+      // Check for stats cards that show patient counts
+      expect(screen.getByText('Total Patients')).toBeInTheDocument();
+      expect(screen.getByText('Filtered Results')).toBeInTheDocument();
+      // Check that patient count appears in the stats
+      const totalPatientsCard = screen.getByText('Total Patients').closest('.stat-card');
+      expect(totalPatientsCard).toBeInTheDocument();
+      // The number 2 should appear in the stat-number div
+      expect(screen.getAllByText('2').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('displays empty state when no patients found', async () => {
+    DatabaseService.getAllPatients.mockResolvedValue({
+      success: true,
+      data: []
+    });
+
+    renderWithProviders(<PatientList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No patients found')).toBeInTheDocument();
+    });
+  });
+
+  it('displays error message when database fails', async () => {
+    DatabaseService.getAllPatients.mockResolvedValue({
+      success: false,
+      error: 'Database connection failed'
+    });
+
+    renderWithProviders(<PatientList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to load patient list')).toBeInTheDocument();
+    });
+  });
+
+  it('shows patient initials when no avatar is provided', async () => {
+    const mockPatients = [
+      {
+        id: 'patient1',
+        name: 'John Doe',
+        email: 'john.doe@example.com', 
+        joined: '2024-01-15T10:30:00Z',
+        avatar_url: null
+      }
+    ];
+
+    DatabaseService.getAllPatients.mockResolvedValue({
+      success: true,
+      data: mockPatients
+    });
+
+    renderWithProviders(<PatientList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('JD')).toBeInTheDocument(); // Initials for John Doe
+    });
+  });
+
+  it('handles refresh button click', async () => {
+    DatabaseService.getAllPatients.mockResolvedValue({
+      success: true,
+      data: []
+    });
+
+    renderWithProviders(<PatientList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Refresh')).toBeInTheDocument();
+    });
+
+    const refreshButton = screen.getByText('Refresh');
+    fireEvent.click(refreshButton);
+
+    // DatabaseService.getAllPatients should be called again
+    expect(DatabaseService.getAllPatients).toHaveBeenCalledTimes(2);
+  });
+});

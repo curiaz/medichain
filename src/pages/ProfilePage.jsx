@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../config/supabase';
 import { 
   User, Heart, FileText, Lock, Key, History, 
-  Edit3, Save, X, Camera, Plus, Trash2, 
-  AlertCircle, CheckCircle, UploadIcon, ArrowLeft
+  Edit3, Save, X, Camera,
+  AlertCircle, CheckCircle, ArrowLeft
 } from 'lucide-react';
 import './ProfilePage.css';
 
@@ -31,7 +31,7 @@ const ProfilePage = () => {
     medical_notes: ''
   });
 
-  const [privacySettings, setPrivacySettings] = useState({
+  const [privacySettings] = useState({
     profile_visibility: 'private',
     medical_info_visible_to_doctors: true,
     medical_info_visible_to_hospitals: false,
@@ -44,9 +44,10 @@ const ProfilePage = () => {
     data_export_enabled: true
   });
 
-  const [documents, setDocuments] = useState([]);
+  const [documents, setDocuments] = useState([]); // eslint-disable-line no-unused-vars
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+<<<<<<< HEAD
   const [auditTrail, setAuditTrail] = useState([]);
   
   // Delete Account Modal States
@@ -55,35 +56,11 @@ const ProfilePage = () => {
   const [deletePassword, setDeletePassword] = useState('');
   const [passwordVerifying, setPasswordVerifying] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+=======
+  const [auditTrail, setAuditTrail] = useState([]); // eslint-disable-line no-unused-vars
+>>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
 
-  useEffect(() => {
-    if (user) {
-      loadProfile();
-    }
-  }, [user]);
-
-  const createBasicFallback = (user) => {
-    console.log('🔧 Creating fallback for user:', user);
-    const firstName = user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'User';
-    const lastName = user.displayName?.split(' ')[1] || '';
-    const email = user.email || '';
-    
-    console.log('🔧 Generated data:', { firstName, lastName, email });
-    
-    return {
-      first_name: firstName,
-      last_name: lastName,
-      phone: '',
-      email: email,
-      medical_conditions: [],
-      allergies: [],
-      current_medications: [],
-      blood_type: '',
-      medical_notes: ''
-    };
-  };
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     console.log('🚀 LOADING PROFILE - ENHANCED MODE');
     console.log('👤 User object:', user);
     
@@ -97,6 +74,7 @@ const ProfilePage = () => {
         setLoading(false);
         return;
       }
+<<<<<<< HEAD
       
       // Check if user is a patient
       if (user.profile?.role === 'doctor') {
@@ -106,119 +84,108 @@ const ProfilePage = () => {
       }
       
       // Debug: Log the complete user object structure
+=======
+
+>>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
       console.log('🔍 Complete user object structure:', JSON.stringify(user, null, 2));
       console.log('🔍 User properties:', Object.keys(user));
       
-      // Extract profile data from the nested structure
-      const profile = user.profile || {};
-      console.log('🔍 Profile data:', profile);
+      // Extract profile from multiple possible sources
+      const p = user.profile || user;
+      console.log('🔍 Profile data:', p);
       
-      // Parse name more intelligently
-      let firstName = '';
-      let lastName = '';
+      // Robustly parse first/last name
+      let firstName = p.first_name || p.firstName || '';
+      let lastName = p.last_name || p.lastName || '';
       
-      // Try different name sources - profile data first, then fallback to Firebase data
-      if (profile.first_name && profile.last_name) {
-        firstName = profile.first_name;
-        lastName = profile.last_name;
-      } else if (profile.full_name) {
-        const nameParts = profile.full_name.split(' ');
-        firstName = nameParts[0] || '';
-        lastName = nameParts.slice(1).join(' ') || '';
-      } else if (user.displayName) {
-        const nameParts = user.displayName.split(' ');
-        firstName = nameParts[0] || '';
-        lastName = nameParts.slice(1).join(' ') || '';
-      } else if (user.name) {
-        const nameParts = user.name.split(' ');
-        firstName = nameParts[0] || '';
-        lastName = nameParts.slice(1).join(' ') || '';
-      } else if (user.email) {
-        firstName = user.email.split('@')[0] || 'User';
-        lastName = '';
-      } else {
-        firstName = 'User';
-        lastName = '';
+      // Fallback to full_name or displayName split
+      if (!firstName && !lastName) {
+        const fullName = p.full_name || p.name || user.displayName || '';
+        if (fullName) {
+          const parts = String(fullName).split(' ');
+          firstName = parts[0] || '';
+          lastName = parts.slice(1).join(' ') || '';
+        }
+      }
+      
+      // Last resort: email username
+      if (!firstName && !lastName && (user.email || p.email)) {
+        firstName = (user.email || p.email).split('@')[0] || 'User';
       }
       
       console.log('🎯 Parsed names - First:', firstName, 'Last:', lastName);
       
-      // Start with user data from AuthContext (Firebase + Backend)
+      // Build unified profile object
       let userData = {
         first_name: firstName,
         last_name: lastName,
-        phone: profile.phone || user.phone || user.phoneNumber || '',
-        email: user.email || profile.email || '',
-        role: profile.role || user.role || 'patient',
-        patient_id: profile.patient_id || user.patient_id || user.uid || null,
-        avatar_url: profile.avatar_url || user.avatar_url || user.photoURL || null,
-        created_at: profile.created_at || user.created_at || user.metadata?.creationTime || null,
-        last_login: profile.last_login || user.last_login || user.metadata?.lastSignInTime || null,
-        medical_conditions: profile.medical_conditions || user.medical_conditions || [],
-        allergies: profile.allergies || user.allergies || [],
-        current_medications: profile.current_medications || user.current_medications || [],
-        blood_type: profile.blood_type || user.blood_type || '',
-        medical_notes: profile.medical_notes || user.medical_notes || ''
+        phone: p.phone || user.phone || user.phoneNumber || '',
+        email: user.email || p.email || '',
+        role: p.role || user.role || 'patient',
+        patient_id: p.patient_id || p.patientId || user.uid || '',
+        avatar_url: p.avatar_url || p.avatarUrl || user.photoURL || '',
+        created_at: p.created_at || p.createdAt || user.metadata?.creationTime || '',
+        last_login: p.last_login || p.lastLogin || user.metadata?.lastSignInTime || '',
+        medical_conditions: p.medical_conditions || p.medicalConditions || [],
+        allergies: p.allergies || [],
+        current_medications: p.current_medications || p.currentMedications || [],
+        blood_type: p.blood_type || p.bloodType || '',
+        medical_notes: p.medical_notes || p.medicalNotes || ''
       };
       
       console.log('📋 Initial userData:', userData);
       
-      // Try to fetch additional profile data from Supabase (only if we don't already have it)
-      console.log('🔍 Fetching additional profile data from Supabase...');
+      // Optional: Fetch extended data from Supabase
       const userId = user.uid || user.profile?.firebase_uid;
-      console.log('🆔 Using user ID for Supabase fetch:', userId);
-      
-      try {
-        const profileResult = await SupabaseService.getUserProfile(userId);
-        if (profileResult.success && profileResult.data) {
-          console.log('📊 Supabase profile data:', profileResult.data);
-          // Merge Supabase data with existing user data, but don't overwrite what we already have
-          userData = {
-            ...profileResult.data,
-            ...userData,
-            // Keep Firebase auth data as primary for email and user ID
-            email: user.email,
-            firebase_uid: userId
-          };
-          console.log('🔄 Merged profile data:', userData);
-        } else {
-          console.log('ℹ️ No additional profile data found in Supabase, using auth data only');
-          console.log('ℹ️ Profile result:', profileResult);
+      if (userId) {
+        console.log('🔍 Fetching from Supabase with ID:', userId);
+        try {
+          const profileResult = await SupabaseService.getUserProfile(userId);
+          if (profileResult.success && profileResult.data) {
+            console.log('📊 Supabase profile:', profileResult.data);
+            userData = { ...profileResult.data, ...userData, email: user.email, firebase_uid: userId };
+            console.log('🔄 Merged with Supabase:', userData);
+          }
+        } catch (err) {
+          console.warn('⚠️ Supabase fetch skipped:', err);
         }
-      } catch (supabaseError) {
-        console.warn('⚠️ Could not fetch Supabase profile data:', supabaseError);
-        // Continue with auth data only
       }
       
-      console.log('🎯 Final user data:', userData);
+      console.log('🎯 Final userData:', userData);
       
       setProfile(userData);
       setFormData({
-        first_name: userData.first_name,
-        last_name: userData.last_name,
-        phone: userData.phone,
-        email: userData.email
+        first_name: userData.first_name || '',
+        last_name: userData.last_name || '',
+        phone: userData.phone || '',
+        email: userData.email || ''
       });
       setMedicalInfo({
-        medical_conditions: userData.medical_conditions,
-        allergies: userData.allergies,
-        current_medications: userData.current_medications,
-        blood_type: userData.blood_type,
-        medical_notes: userData.medical_notes
+        medical_conditions: userData.medical_conditions || [],
+        allergies: userData.allergies || [],
+        current_medications: userData.current_medications || [],
+        blood_type: userData.blood_type || '',
+        medical_notes: userData.medical_notes || ''
       });
       setDocuments([]);
       setAuditTrail([]);
       setSuccess('Profile loaded successfully!');
       setTimeout(() => setSuccess(''), 3000);
       
-      console.log('✅ PROFILE LOADED SUCCESSFULLY!');
+      console.log('✅ PROFILE LOADED');
     } catch (error) {
       console.error('❌ Error loading profile:', error);
       setError('Failed to load profile. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+    }
+  }, [user, loadProfile]);
 
   const handlePersonalInfoUpdate = async () => {
     try {
@@ -231,6 +198,7 @@ const ProfilePage = () => {
         first_name: formData.first_name,
         last_name: formData.last_name,
         phone: formData.phone,
+        firebase_uid: user.uid || user.profile?.firebase_uid,
         role: profile?.role || 'patient'
       };
 
@@ -279,6 +247,7 @@ const ProfilePage = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleMedicalInfoUpdate = async () => {
     try {
       setSaving(true);
@@ -333,6 +302,7 @@ const ProfilePage = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handlePrivacySettingsUpdate = async () => {
     try {
       setSaving(true);
@@ -367,6 +337,100 @@ const ProfilePage = () => {
     }
   };
 
+  const handleAvatarUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size must be less than 5MB');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setError('');
+      
+      console.log('📷 Uploading avatar...');
+      
+      // Convert image to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64String = reader.result;
+          
+          // Send to backend
+          const token = localStorage.getItem('medichain_token');
+          if (!token) {
+            setError('Authentication token not found. Please log in again.');
+            return;
+          }
+
+          const updateData = {
+            firebase_uid: user.uid || user.profile?.firebase_uid,
+            avatar_url: base64String
+          };
+
+          console.log('📤 Sending avatar update:', {
+            firebase_uid: updateData.firebase_uid,
+            avatar_url_length: base64String?.length,
+            avatar_url_preview: base64String?.substring(0, 50)
+          });
+
+          const response = await fetch('http://localhost:5000/api/auth/profile', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(updateData)
+          });
+
+          console.log('📥 Backend response status:', response.status);
+          console.log('📥 Backend response headers:', response.headers);
+
+          const result = await response.json();
+          
+          if (result.success) {
+            // Update local state
+            const updatedProfile = { ...profile, avatar_url: base64String };
+            setProfile(updatedProfile);
+            setSuccess('Profile photo updated successfully!');
+            setTimeout(() => setSuccess(''), 3000);
+            console.log('✅ Avatar uploaded successfully!');
+          } else {
+            setError(result.error || 'Failed to upload photo');
+            console.log('❌ Backend upload failed:', result.error);
+          }
+        } catch (err) {
+          console.error('❌ Error uploading avatar:', err);
+          setError('Failed to upload photo. Please try again.');
+        } finally {
+          setUploading(false);
+        }
+      };
+      
+      reader.onerror = () => {
+        setError('Failed to read image file');
+        setUploading(false);
+      };
+      
+      reader.readAsDataURL(file);
+      
+    } catch (err) {
+      console.error('❌ Error uploading avatar:', err);
+      setError('Failed to upload photo. Please try again.');
+      setUploading(false);
+    }
+  };
+
+  // eslint-disable-next-line no-unused-vars
   const handleDocumentUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -391,6 +455,7 @@ const ProfilePage = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleDocumentDelete = async (documentId) => {
     try {
       setError('');
@@ -558,7 +623,18 @@ const ProfilePage = () => {
   }
 
   // Use profile directly since we're setting it correctly in loadProfile
-  const userProfile = profile || {};
+  const userProfile = (() => {
+    const p = profile || user?.profile || user || {};
+    return {
+      first_name: p.first_name || p.firstName || (p.name ? String(p.name).split(' ')[0] : ''),
+      last_name: p.last_name || p.lastName || (p.name ? String(p.name).split(' ').slice(1).join(' ') : ''),
+      email: p.email || user?.email || '',
+      role: p.role || user?.role || 'Patient',
+      avatar_url: p.avatar_url || p.avatarUrl || '',
+      patient_id: p.patient_id || p.patientId || '',
+      created_at: p.created_at || p.createdAt || ''
+    };
+  })();
 
   return (
     <div className="profile-page">
@@ -604,18 +680,20 @@ const ProfilePage = () => {
                 </div>
                 <label className="profile-avatar-upload">
                   <Camera size={16} />
-                  <span className="profile-avatar-upload-label">Upload Photo</span>
+                  <span className="profile-avatar-upload-label">{uploading ? 'Uploading...' : 'Upload Photo'}</span>
                   <input
                     type="file"
                     accept="image/*"
+                    onChange={handleAvatarUpload}
+                    disabled={uploading}
                   />
                 </label>
               </div>
               <div className="profile-info">
                 <h2 className="profile-name">
-                  {userProfile.first_name || 'Loading...'} {userProfile.last_name || ''}
+                  {(userProfile.first_name || 'Loading...') + ' ' + (userProfile.last_name || '')}
                 </h2>
-                <p className="profile-role">{userProfile.role || 'Patient'}</p>
+                <p className="profile-role">{typeof userProfile.role === 'string' ? (userProfile.role.charAt(0).toUpperCase() + userProfile.role.slice(1)) : 'Patient'}</p>
                 {userProfile.patient_id && (
                   <p className="profile-specialization">Patient ID: {userProfile.patient_id}</p>
                 )}

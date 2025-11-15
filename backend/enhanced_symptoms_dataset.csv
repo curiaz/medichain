@@ -1,0 +1,680 @@
+fever,cough,fatigue,shortness_of_breath,headache,sore_throat,diagnosis
+1,1,1,0,1,1,Flu
+1,1,1,0,1,0,Flu
+1,1,1,0,0,1,Flu
+1,0,1,0,1,0,Flu
+1,1,0,0,1,1,Flu
+1,1,1,0,0,0,Flu
+1,0,1,1,0,0,Pneumonia
+1,0,1,1,1,0,Pneumonia
+1,0,0,1,0,0,Pneumonia
+1,1,1,1,0,0,Pneumonia
+0,1,0,0,1,1,Common Cold
+0,1,0,0,0,1,Common Cold
+0,1,1,0,1,1,Common Cold
+0,1,0,0,1,0,Common Cold
+0,0,0,0,0,1,Common Cold
+1,1,1,1,0,0,COVID-19
+1,1,0,1,0,0,COVID-19
+1,1,0,1,1,0,COVID-19
+1,1,1,1,1,0,COVID-19
+1,0,1,1,0,0,COVID-19
+0,0,1,0,1,0,Migraine
+1,0,0,0,1,0,Migraine
+0,0,1,0,1,1,Migraine
+0,0,0,0,1,0,Migraine
+0,0,0,0,1,1,Migraine
+1,0,0,0,1,1,Tonsillitis
+1,0,0,0,0,1,Tonsillitis
+0,0,0,0,0,1,Tonsillitis
+1,0,1,0,0,1,Tonsillitis
+0,1,1,0,0,1,Bronchitis
+0,1,1,0,0,0,Bronchitis
+0,1,1,1,0,0,Bronchitis
+0,1,1,0,1,0,Bronchitis
+0,1,0,0,0,1,Bronchitis
+1,1,0,1,1,0,Asthma
+0,1,0,1,1,0,Asthma
+0,1,0,1,0,0,Asthma
+1,1,0,1,0,0,Asthma
+0,0,0,1,0,0,Asthma
+0,1,1,0,1,0,Sinusitis
+0,1,0,0,1,0,Sinusitis
+0,0,1,0,1,0,Sinusitis
+1,0,0,0,1,0,Sinusitis
+1,0,0,0,0,1,Strep Throat
+1,1,0,0,0,1,Strep Throat
+1,0,1,0,0,1,Strep Throat
+0,0,1,1,0,0,Anemia
+0,0,1,1,1,0,Anemia
+0,0,1,0,0,0,Anemia
+0,0,1,0,1,0,Anemia
+1,1,1,1,1,1,Severe Infection
+1,0,1,1,1,1,Severe Infection
+1,1,1,1,1,0,Severe Infection
+1,1,0,1,1,1,Severe Infection
+1,1,1,1,0,1,Severe Infection
+0,1,0,0,0,0,Allergies
+0,1,0,1,1,1,Allergies
+0,0,0,1,0,0,Allergies
+0,0,1,0,0,0,Chronic Fatigue
+0,0,1,0,1,0,Chronic Fatigue
+0,0,1,1,0,0,Chronic Fatigue
+1,0,0,1,0,0,Heart Condition
+1,0,0,1,1,0,Heart Condition
+0,0,0,1,0,0,Heart Condition
+0,0,1,1,0,0,Heart Condition
+0,0,0,1,1,0,Anxiety Disorder
+0,0,0,1,0,0,Anxiety Disorder
+0,0,0,0,1,0,Anxiety Disorder
+0,0,1,1,1,0,Anxiety Disorder
+0,1,1,1,0,1,Upper Respiratory Infection
+0,1,1,1,1,0,Upper Respiratory Infection
+1,1,1,0,0,0,Upper Respiratory Infection
+0,1,1,0,1,1,Upper Respiratory Infection
+0,0,0,1,0,0,Panic Attack
+0,0,0,1,1,0,Panic Attack
+0,0,0,1,1,1,Panic Attack
+0,0,1,1,0,0,Panic Attack
+1,0,0,0,0,0,Fever
+1,0,1,0,0,0,Fever
+1,0,0,0,1,0,Fever
+1,0,1,0,0,0,Gastroenteritis
+1,1,0,0,0,0,Gastroenteritis
+1,0,1,0,1,0,Gastroenteritis
+1,0,0,0,0,0,Gastroenteritis
+0,0,0,0,0,0,Dehydration
+0,0,1,0,0,0,Dehydration
+0,0,0,1,0,0,Dehydration
+0,0,0,0,1,0,Tension Headache
+0,0,1,0,1,0,Tension Headache
+0,0,0,0,1,1,Tension Headache
+1,0,1,0,0,0,Stomach Flu
+1,0,1,0,1,0,Stomach Flu
+1,1,1,0,1,0,Stomach Flu
+0,0,1,0,1,0,Hypertension
+0,0,1,1,1,0,Hypertension
+0,0,1,0,1,0,Diabetes
+0,0,1,1,1,0,Diabetes
+1,1,1,0,0,0,COVID Variant
+1,1,1,1,0,0,COVID Variant
+1,1,1,0,1,0,COVID Variant
+1,1,1,1,1,0,COVID Variant
+0,1,1,0,1,1,Seasonal Allergies
+0,1,1,0,0,1,Seasonal Allergies
+0,1,1,0,1,0,Seasonal Allergies
+0,1,0,0,1,1,Seasonal Allergies
+0,0,1,0,1,0,Food Poisoning
+1,0,1,0,1,0,Food Poisoning
+1,0,1,0,0,0,Food Poisoning
+0,0,1,0,1,0,Gastritis
+0,0,1,0,1,0,Heat Exhaustion
+1,0,1,0,1,0,Heat Exhaustion
+0,0,1,1,1,0,Heat Exhaustion
+1,1,1,0,0,0,Tuberculosis
+1,1,1,0,1,0,Tuberculosis
+1,1,1,1,0,0,Tuberculosis
+1,1,1,1,1,0,Tuberculosis
+0,0,1,0,1,1,Severe Sinus Infection
+0,1,1,0,1,1,Severe Sinus Infection
+0,1,1,0,1,0,Severe Sinus Infection
+1,1,0,0,1,0,Flu
+0,0,0,0,0,0,Food Poisoning
+0,0,1,0,0,1,Common Cold
+0,1,1,0,0,0,Flu
+0,0,0,0,0,0,Acid Reflux
+0,0,0,0,0,1,Acid Reflux
+0,0,0,1,0,0,Acid Reflux
+1,0,0,0,0,0,Acid Reflux
+0,0,1,1,0,0,Acid Reflux
+0,0,1,0,0,0,Acid Reflux
+0,0,0,1,0,1,Acid Reflux
+1,0,0,0,0,1,Acid Reflux
+0,1,0,0,1,0,Acid Reflux
+0,1,1,0,0,0,Allergies
+0,0,0,0,0,0,Allergies
+0,0,1,0,1,0,Allergies
+0,0,1,0,0,0,Allergies
+0,1,0,0,1,0,Allergies
+1,0,1,0,1,0,Anemia
+0,0,0,0,0,0,Anemia
+0,1,0,0,0,0,Anemia
+0,0,0,1,0,0,Anemia
+1,0,0,0,0,0,Anemia
+0,0,1,0,0,1,Anemia
+1,0,1,0,0,0,Anemia
+1,0,0,0,1,0,Anemia
+0,0,0,1,0,1,Anemia
+1,0,0,1,0,0,Anemia
+0,0,1,0,0,1,Anxiety
+0,0,0,0,1,0,Anxiety
+0,0,1,1,1,0,Anxiety
+0,1,0,1,0,0,Anxiety
+0,0,0,1,0,1,Anxiety
+0,0,0,0,0,1,Anxiety
+1,0,0,0,0,0,Anxiety
+0,0,1,1,0,0,Anxiety
+1,1,0,1,1,0,Anxiety
+0,0,1,0,0,0,Anxiety
+0,0,1,0,1,0,Anxiety
+0,0,0,1,0,0,Anxiety
+0,0,1,0,1,0,Appendicitis
+0,0,0,0,0,0,Appendicitis
+0,0,0,0,0,1,Appendicitis
+0,0,0,0,1,0,Appendicitis
+0,0,0,1,0,1,Appendicitis
+0,1,1,0,0,1,Appendicitis
+0,1,0,0,0,1,Appendicitis
+0,0,1,1,0,0,Appendicitis
+1,0,0,0,0,0,Appendicitis
+1,0,0,1,1,0,Appendicitis
+1,0,1,0,0,0,Arthritis
+0,1,1,0,1,0,Arthritis
+1,0,0,0,1,0,Arthritis
+0,0,0,0,1,0,Arthritis
+0,0,1,1,1,0,Arthritis
+1,1,1,0,0,0,Arthritis
+0,1,0,0,0,1,Arthritis
+0,0,0,1,1,0,Arthritis
+0,0,0,0,0,0,Arthritis
+0,0,0,0,0,1,Arthritis
+0,0,1,0,1,1,Arthritis
+1,1,0,0,1,0,Arthritis
+0,1,1,1,0,0,Asthma
+0,1,0,0,0,0,Asthma
+0,1,0,0,0,0,Back Pain
+0,0,0,0,0,0,Back Pain
+0,0,0,0,0,1,Back Pain
+0,0,0,1,0,0,Back Pain
+0,0,1,1,0,0,Back Pain
+1,0,0,0,1,0,Back Pain
+0,1,0,1,1,0,Back Pain
+1,0,0,1,0,1,Back Pain
+0,1,1,0,0,0,Back Pain
+0,0,1,0,0,0,Back Pain
+1,0,0,0,0,1,Back Pain
+0,0,0,1,0,1,Bronchitis
+0,0,0,0,0,0,Bronchitis
+0,1,0,1,0,1,Bronchitis
+0,0,1,0,1,0,Bronchitis
+1,0,0,1,0,0,Bronchitis
+0,0,1,1,0,0,Bronchitis
+0,0,0,0,1,0,Bronchitis
+1,0,0,0,0,0,Bronchitis
+0,0,1,0,0,0,Bronchitis
+1,0,0,1,1,0,Bronchitis
+0,1,1,0,0,0,COVID-19
+1,1,0,1,0,1,COVID-19
+1,1,0,0,0,0,COVID-19
+1,1,1,0,0,0,COVID-19
+0,0,1,0,1,0,COVID-19
+0,1,1,0,0,1,Chronic Fatigue
+0,0,1,1,1,0,Chronic Fatigue
+0,0,0,0,0,0,Chronic Fatigue
+1,0,0,0,0,0,Chronic Fatigue
+0,1,0,0,0,0,Chronic Fatigue
+1,0,1,0,0,0,Chronic Fatigue
+0,0,0,1,0,1,Chronic Fatigue
+0,1,0,0,1,0,Chronic Fatigue
+0,0,0,0,0,1,Chronic Fatigue
+1,1,0,0,1,0,Chronic Fatigue
+0,1,1,0,1,0,Chronic Fatigue
+0,0,0,0,1,0,Chronic Fatigue
+0,0,0,0,1,1,Chronic Fatigue
+0,0,0,0,1,1,Common Cold
+0,1,1,0,0,1,Common Cold
+0,0,0,1,0,1,Conjunctivitis
+0,1,0,1,0,0,Conjunctivitis
+0,0,0,0,0,0,Conjunctivitis
+0,1,0,1,0,1,Conjunctivitis
+1,0,0,0,1,0,Conjunctivitis
+0,1,1,0,0,0,Conjunctivitis
+1,0,0,0,0,1,Conjunctivitis
+1,0,1,0,0,1,Conjunctivitis
+1,0,0,1,0,0,Conjunctivitis
+1,0,0,0,1,1,Conjunctivitis
+0,0,0,0,0,1,Conjunctivitis
+0,0,1,0,1,1,Conjunctivitis
+0,0,0,0,0,0,Constipation
+0,1,0,1,0,1,Constipation
+1,0,0,0,1,0,Constipation
+0,0,0,0,1,0,Constipation
+0,0,1,0,0,0,Constipation
+0,1,0,1,0,0,Constipation
+0,1,0,0,0,0,Constipation
+0,0,0,0,0,1,Constipation
+0,1,0,0,0,1,Constipation
+1,0,1,0,1,0,Constipation
+0,0,0,0,1,1,Constipation
+1,0,0,0,0,0,Constipation
+0,0,0,1,1,0,Dehydration
+0,0,0,1,0,1,Dehydration
+1,0,0,0,0,0,Dehydration
+0,1,0,0,0,1,Dehydration
+1,0,0,0,0,1,Dehydration
+1,0,1,0,0,0,Dehydration
+0,1,0,0,1,0,Dehydration
+0,0,0,0,1,0,Dehydration
+0,1,0,0,0,0,Dehydration
+1,0,1,0,0,1,Depression
+0,1,1,0,0,0,Depression
+1,0,0,1,0,0,Depression
+1,0,0,0,0,0,Depression
+0,0,0,0,0,0,Depression
+0,1,0,0,0,0,Depression
+0,0,1,0,0,1,Depression
+1,1,1,0,0,0,Depression
+0,0,1,0,0,0,Depression
+1,0,1,0,0,0,Depression
+0,1,0,0,0,0,Diabetes
+0,0,0,0,1,1,Diabetes
+0,0,0,0,1,0,Diabetes
+1,0,0,0,0,1,Diabetes
+0,1,0,0,0,1,Diabetes
+0,0,0,0,0,1,Diabetes
+0,0,0,0,0,0,Diabetes
+0,0,1,0,0,0,Diabetes
+1,0,0,0,0,0,Diabetes
+1,0,0,1,0,0,Diabetes
+0,1,1,0,0,1,Diabetes
+0,0,0,1,0,0,Diarrhea
+1,0,0,0,0,0,Diarrhea
+1,0,0,1,1,0,Diarrhea
+0,0,0,0,0,0,Diarrhea
+0,0,1,0,0,1,Diarrhea
+0,0,0,0,1,0,Diarrhea
+0,1,0,0,0,1,Diarrhea
+0,0,1,0,1,0,Diarrhea
+0,0,0,1,0,1,Diarrhea
+1,0,1,0,0,0,Diarrhea
+1,0,0,0,1,0,Diarrhea
+0,0,0,1,1,0,Diarrhea
+0,0,0,0,1,0,Ear Infection
+0,0,1,1,1,0,Ear Infection
+0,0,0,0,0,1,Ear Infection
+1,0,0,0,1,1,Ear Infection
+0,1,0,0,1,0,Ear Infection
+0,0,1,1,0,1,Ear Infection
+1,0,0,0,0,1,Ear Infection
+0,1,0,0,0,0,Ear Infection
+0,0,1,0,0,1,Ear Infection
+0,0,0,0,0,0,Ear Infection
+0,1,1,0,0,0,Ear Infection
+1,0,0,0,0,0,Eczema
+1,0,0,0,0,1,Eczema
+0,0,0,0,0,0,Eczema
+0,0,1,0,1,0,Eczema
+0,0,0,0,1,0,Eczema
+1,1,0,1,0,1,Eczema
+0,0,0,1,0,0,Eczema
+1,1,0,0,0,1,Eczema
+0,1,1,0,0,0,Eczema
+0,0,1,0,0,0,Eczema
+0,1,0,0,1,0,Eczema
+1,0,1,1,0,0,Eczema
+1,0,0,0,1,1,Flu
+0,1,1,0,0,1,Flu
+0,0,1,0,1,0,Flu
+0,0,1,0,1,1,Flu
+0,1,1,0,1,1,Flu
+1,0,1,0,1,1,Flu
+1,0,0,0,0,0,Food Poisoning
+0,0,0,0,1,0,Food Poisoning
+1,0,0,1,1,0,Gastritis
+1,1,0,0,0,0,Gastritis
+0,1,0,1,0,0,Gastritis
+0,1,0,0,0,0,Gastritis
+0,1,0,0,1,0,Gastritis
+1,0,0,0,0,0,Gastritis
+0,0,0,0,0,1,Gastritis
+0,0,0,0,0,0,Gastritis
+0,0,1,0,0,0,Gastritis
+0,1,0,1,1,0,Gastritis
+1,0,1,0,1,0,Gastritis
+0,0,0,1,0,0,Gastroenteritis
+0,1,0,0,0,1,Gastroenteritis
+0,0,0,0,1,0,Gastroenteritis
+0,0,0,0,0,0,Gastroenteritis
+0,0,1,0,0,0,Gastroenteritis
+0,1,0,0,0,0,Gastroenteritis
+0,1,0,1,0,0,Gastroenteritis
+0,1,1,0,0,0,Gastroenteritis
+1,0,0,0,1,0,Gastroenteritis
+0,0,1,0,1,0,Gastroenteritis
+0,0,0,0,0,0,GERD
+0,1,1,0,0,0,GERD
+0,0,1,0,0,0,GERD
+1,0,0,1,0,1,GERD
+0,1,0,1,0,1,GERD
+0,0,0,1,0,0,GERD
+0,0,0,1,1,1,GERD
+1,0,0,0,0,0,GERD
+0,0,0,0,1,0,GERD
+0,1,0,1,0,0,GERD
+0,1,0,1,0,0,Gout
+0,0,0,0,1,0,Gout
+0,0,1,1,0,0,Gout
+1,1,0,0,0,0,Gout
+0,0,1,0,0,0,Gout
+1,0,1,0,0,0,Gout
+1,0,0,0,1,0,Gout
+1,0,0,0,0,0,Gout
+1,1,1,0,0,0,Gout
+0,0,1,0,0,1,Gout
+0,0,0,1,1,1,Gout
+0,1,0,0,0,0,Gout
+0,0,0,0,0,1,Gout
+0,1,1,0,0,0,Hay Fever
+0,0,0,0,1,0,Hay Fever
+0,1,0,0,0,0,Hay Fever
+1,0,0,0,0,0,Hay Fever
+0,0,1,0,0,0,Hay Fever
+0,0,0,0,0,1,Hay Fever
+1,1,1,0,0,0,Hay Fever
+1,0,1,0,0,1,Hay Fever
+0,0,0,0,0,0,Hay Fever
+0,0,0,1,0,1,Hay Fever
+1,1,0,0,0,0,Hay Fever
+1,0,0,0,0,0,Heart Condition
+0,0,0,0,0,0,Heart Condition
+0,0,0,0,0,1,Heart Condition
+0,0,0,0,1,0,Heart Condition
+0,1,0,1,0,1,Heart Condition
+0,0,0,1,0,1,Heart Condition
+1,0,0,0,0,1,Heart Condition
+1,1,1,0,0,0,Heat Exhaustion
+0,0,0,0,1,1,Heat Exhaustion
+0,0,0,0,0,1,Heat Exhaustion
+1,0,1,0,0,0,Heat Exhaustion
+0,0,1,0,0,0,Heat Exhaustion
+1,0,0,1,0,0,Heat Exhaustion
+0,0,0,0,0,0,Heat Exhaustion
+0,1,0,0,0,0,Heat Exhaustion
+0,0,0,1,0,0,Heat Exhaustion
+0,0,0,0,1,0,Heat Exhaustion
+0,1,0,1,0,0,Heat Exhaustion
+0,0,0,1,1,0,Heat Exhaustion
+0,0,0,0,0,0,Hemorrhoids
+1,0,1,0,0,0,Hemorrhoids
+0,0,0,1,0,0,Hemorrhoids
+0,1,0,0,0,0,Hemorrhoids
+0,0,1,0,0,0,Hemorrhoids
+0,0,1,1,1,0,Hemorrhoids
+0,0,1,1,0,0,Hemorrhoids
+0,0,0,0,1,0,Hemorrhoids
+0,1,0,0,1,0,Hemorrhoids
+0,1,0,0,1,0,Hypertension
+0,1,0,1,0,0,Hypertension
+0,0,0,0,1,0,Hypertension
+1,0,1,0,0,0,Hypertension
+0,1,1,1,0,0,Hypertension
+0,0,0,1,0,0,Hypertension
+0,0,1,0,0,0,Hypertension
+0,0,0,0,1,1,Hypertension
+0,0,0,0,0,0,Hypertension
+0,0,0,0,0,1,Hypertension
+0,0,0,1,1,0,Hypoglycemia
+1,0,0,1,0,0,Hypoglycemia
+0,0,0,0,0,1,Hypoglycemia
+0,0,0,0,1,0,Hypoglycemia
+0,0,0,0,0,0,Hypoglycemia
+0,0,0,1,0,1,Hypoglycemia
+0,0,0,0,1,1,Hypoglycemia
+1,0,1,0,1,1,Hypoglycemia
+0,0,1,0,0,0,Hypoglycemia
+1,1,0,0,0,0,Hypoglycemia
+0,0,0,1,0,0,Hypoglycemia
+1,0,0,0,0,1,Hypoglycemia
+0,1,1,0,1,0,Insomnia
+0,1,1,0,0,0,Insomnia
+0,0,0,0,1,1,Insomnia
+0,0,1,1,0,1,Insomnia
+0,0,0,0,0,0,Insomnia
+0,1,0,0,0,0,Insomnia
+0,0,0,0,0,1,Insomnia
+1,0,0,1,0,1,Insomnia
+0,0,1,0,1,0,Insomnia
+0,0,1,0,0,0,Insomnia
+0,1,0,0,0,1,Insomnia
+0,0,1,0,0,1,Kidney Stones
+1,0,0,1,1,0,Kidney Stones
+1,0,0,0,0,0,Kidney Stones
+0,0,0,0,0,0,Kidney Stones
+1,0,0,1,0,0,Kidney Stones
+0,0,0,0,1,0,Kidney Stones
+0,1,0,0,1,0,Kidney Stones
+0,1,1,0,0,0,Kidney Stones
+0,0,0,0,0,1,Kidney Stones
+1,1,0,1,0,0,Laryngitis
+0,0,0,0,0,0,Laryngitis
+0,0,0,1,1,0,Laryngitis
+0,1,1,1,0,0,Laryngitis
+0,1,0,0,0,0,Laryngitis
+0,0,1,1,0,1,Laryngitis
+1,0,1,1,0,0,Laryngitis
+1,0,0,1,0,0,Laryngitis
+1,0,1,0,0,0,Laryngitis
+0,0,0,1,0,1,Laryngitis
+1,0,0,0,1,0,Laryngitis
+0,1,1,0,0,1,Lyme Disease
+0,0,0,0,1,0,Lyme Disease
+0,0,0,1,0,0,Lyme Disease
+0,0,0,0,0,1,Lyme Disease
+0,0,0,0,0,0,Lyme Disease
+1,0,0,1,0,0,Lyme Disease
+0,0,1,0,1,0,Lyme Disease
+0,1,0,0,0,0,Lyme Disease
+0,0,1,0,0,0,Lyme Disease
+0,0,1,1,0,1,Lyme Disease
+0,0,0,0,0,0,Migraine
+1,0,0,0,0,0,Osteoarthritis
+0,0,1,0,1,0,Osteoarthritis
+0,0,0,0,0,0,Osteoarthritis
+0,1,0,0,1,0,Osteoarthritis
+0,1,0,0,1,1,Osteoarthritis
+0,0,0,1,1,1,Osteoarthritis
+0,0,1,1,0,0,Osteoarthritis
+0,1,0,0,0,0,Osteoarthritis
+0,0,0,0,1,0,Osteoarthritis
+0,0,0,1,0,0,Osteoarthritis
+1,1,0,0,0,1,Panic Attack
+0,1,0,0,0,0,Panic Attack
+0,0,0,0,0,0,Panic Attack
+1,0,1,0,0,0,Panic Attack
+0,0,1,0,1,0,Panic Attack
+1,0,0,1,0,0,Panic Attack
+1,1,0,0,1,0,Panic Attack
+0,1,1,0,0,0,Panic Attack
+0,1,0,1,0,0,Pneumonia
+1,1,0,1,0,0,Pneumonia
+1,1,1,1,1,0,Pneumonia
+1,1,1,0,1,0,Pneumonia
+0,1,1,1,0,0,Pneumonia
+1,1,0,0,0,0,Pneumonia
+0,0,1,0,0,0,Pregnancy
+0,0,0,1,1,0,Pregnancy
+0,0,0,0,0,0,Pregnancy
+0,1,0,0,1,0,Pregnancy
+1,1,0,1,0,0,Pregnancy
+1,0,0,0,0,1,Pregnancy
+1,1,0,0,0,0,Pregnancy
+0,1,0,1,0,0,Pregnancy
+0,0,0,0,0,1,Pregnancy
+0,0,1,1,0,0,Seasonal Allergies
+0,0,0,0,0,1,Seasonal Allergies
+0,0,0,0,1,0,Seasonal Allergies
+0,1,0,0,0,0,Seasonal Allergies
+0,0,0,0,0,0,Seasonal Allergies
+1,0,0,1,1,0,Seasonal Allergies
+1,0,0,1,0,0,Seasonal Allergies
+0,1,0,0,1,0,Seasonal Allergies
+0,0,0,1,0,0,Seasonal Allergies
+0,0,1,1,1,0,Seasonal Allergies
+1,0,0,0,0,0,Severe Infection
+0,0,1,0,0,0,Severe Infection
+0,1,0,0,0,1,Severe Infection
+0,1,0,0,0,0,Severe Infection
+1,0,0,0,1,0,Severe Infection
+0,0,1,1,0,1,Severe Infection
+0,1,0,0,1,0,Severe Infection
+0,0,0,1,0,0,Severe Infection
+0,0,0,1,0,1,Severe Infection
+0,0,0,0,0,0,Severe Infection
+0,0,0,0,0,0,Severe Sinus Infection
+0,0,1,1,1,0,Severe Sinus Infection
+1,0,0,0,0,1,Severe Sinus Infection
+0,1,0,0,1,0,Severe Sinus Infection
+0,0,0,1,0,0,Severe Sinus Infection
+0,1,0,0,0,0,Severe Sinus Infection
+0,0,0,0,1,0,Severe Sinus Infection
+0,0,1,0,0,0,Severe Sinus Infection
+0,0,1,0,0,1,Severe Sinus Infection
+0,1,0,0,0,1,Sinusitis
+0,0,1,0,0,0,Sinusitis
+0,1,1,0,0,0,Sinusitis
+0,0,0,0,0,1,Sinusitis
+1,1,0,0,1,0,Sinusitis
+0,0,0,0,0,0,Sinusitis
+0,1,0,0,0,0,Sinusitis
+0,1,0,1,1,0,Sinusitis
+0,1,0,1,0,0,Skin Allergy
+0,0,0,1,0,0,Skin Allergy
+0,0,1,1,1,0,Skin Allergy
+1,0,0,0,1,0,Skin Allergy
+0,0,0,0,1,0,Skin Allergy
+0,0,0,0,0,0,Skin Allergy
+1,0,1,0,1,0,Skin Allergy
+0,1,0,0,0,1,Skin Allergy
+0,0,1,0,1,1,Skin Allergy
+1,1,0,0,1,0,Skin Allergy
+0,0,0,0,0,1,Stomach Flu
+0,0,0,0,1,1,Stomach Flu
+0,1,0,1,0,1,Stomach Flu
+0,1,0,0,0,0,Stomach Flu
+0,1,0,1,0,0,Stomach Flu
+1,0,0,1,0,0,Stomach Flu
+0,0,1,1,1,0,Stomach Flu
+0,1,0,0,1,0,Stomach Flu
+0,0,0,1,1,0,Stomach Flu
+1,0,0,0,0,1,Stomach Flu
+0,1,0,0,0,0,Strep Throat
+1,0,0,0,0,0,Strep Throat
+1,0,1,0,0,0,Strep Throat
+0,1,0,1,0,0,Strep Throat
+0,0,0,0,1,0,Strep Throat
+1,0,1,1,0,0,Strep Throat
+0,0,0,0,0,0,Strep Throat
+0,0,1,0,0,0,Strep Throat
+0,1,1,0,1,0,Strep Throat
+0,0,0,1,0,0,Strep Throat
+0,0,1,0,1,0,Strep Throat
+0,0,0,0,0,1,Strep Throat
+0,1,0,0,1,0,Tension Headache
+1,0,0,1,1,0,Tension Headache
+1,0,0,0,0,0,Tension Headache
+1,1,0,1,1,0,Tension Headache
+0,0,0,0,0,0,Tension Headache
+0,0,0,1,0,0,Tension Headache
+1,0,0,0,1,0,Tension Headache
+0,1,0,0,0,0,Tension Headache
+0,0,1,1,0,0,Tension Headache
+1,1,0,0,0,0,Tension Headache
+0,1,0,0,0,0,Thyroid Disorder
+1,0,1,0,0,0,Thyroid Disorder
+0,0,0,0,0,1,Thyroid Disorder
+0,1,0,1,0,0,Thyroid Disorder
+0,0,0,0,0,0,Thyroid Disorder
+0,1,1,0,1,0,Thyroid Disorder
+1,0,0,0,1,0,Thyroid Disorder
+1,0,0,1,0,0,Thyroid Disorder
+0,0,0,0,1,0,Thyroid Disorder
+0,0,0,1,0,1,Thyroid Disorder
+0,0,1,0,0,0,Thyroid Disorder
+0,0,1,1,1,0,Thyroid Disorder
+0,1,0,0,1,0,Thyroid Disorder
+1,1,0,0,0,0,Tonsillitis
+0,1,1,0,0,0,Tonsillitis
+0,1,0,0,1,0,Tonsillitis
+0,0,0,0,0,0,Tonsillitis
+0,0,0,0,1,0,Tonsillitis
+0,0,0,1,0,0,Tonsillitis
+0,0,0,1,1,1,Tonsillitis
+0,0,0,1,0,1,Tonsillitis
+0,0,0,0,1,0,Tuberculosis
+0,0,0,0,0,1,Tuberculosis
+1,0,1,0,0,0,Tuberculosis
+0,0,1,0,0,0,Tuberculosis
+0,0,0,1,0,0,Tuberculosis
+0,1,1,0,1,0,Tuberculosis
+1,0,0,0,0,0,Tuberculosis
+0,1,0,1,1,0,Tuberculosis
+0,1,0,1,0,0,Tuberculosis
+0,1,1,0,0,1,Tuberculosis
+0,1,0,0,0,0,Tuberculosis
+0,0,0,1,0,0,Upper Respiratory Infection
+0,0,0,0,0,0,Upper Respiratory Infection
+0,1,0,0,0,0,Upper Respiratory Infection
+0,0,0,0,0,1,Upper Respiratory Infection
+0,0,0,0,1,0,Upper Respiratory Infection
+0,0,0,1,1,0,Upper Respiratory Infection
+0,0,0,1,1,1,Upper Respiratory Infection
+1,0,1,0,0,0,Upper Respiratory Infection
+0,0,0,1,0,1,Upper Respiratory Infection
+0,0,1,0,0,0,Upper Respiratory Infection
+1,1,1,0,1,0,Urinary Tract Infection
+0,0,1,1,0,0,Urinary Tract Infection
+0,0,0,0,1,0,Urinary Tract Infection
+0,0,1,0,0,1,Urinary Tract Infection
+0,1,0,0,1,0,Urinary Tract Infection
+0,0,0,0,0,1,Urinary Tract Infection
+0,0,0,0,0,0,Urinary Tract Infection
+0,0,1,0,1,0,Urinary Tract Infection
+0,0,1,1,1,1,Urinary Tract Infection
+0,0,0,0,0,0,Viral Infection
+0,1,1,0,0,0,Viral Infection
+0,0,0,0,1,0,Viral Infection
+1,0,1,0,0,0,Viral Infection
+0,0,1,0,0,0,Viral Infection
+0,1,0,0,0,0,Viral Infection
+0,0,1,0,1,0,Viral Infection
+1,0,0,1,0,0,Viral Infection
+0,0,0,1,1,0,Viral Infection
+1,0,0,0,0,0,Viral Infection
+0,1,0,0,1,0,Viral Infection
+0,0,1,1,0,0,Viral Infection
+0,0,0,0,1,1,Viral Infection
+0,0,0,1,0,0,Viral Infection
+1,0,1,1,0,1,Whooping Cough
+0,0,0,0,1,0,Whooping Cough
+1,0,0,1,0,0,Whooping Cough
+0,1,0,0,0,0,Whooping Cough
+0,0,0,0,0,0,Whooping Cough
+0,0,0,1,0,0,Whooping Cough
+0,0,1,0,0,0,Whooping Cough
+0,1,0,0,0,1,Whooping Cough
+1,1,1,0,0,0,Whooping Cough
+0,0,0,0,0,1,Whooping Cough
+0,0,1,0,1,0,Whooping Cough
+1,0,0,0,0,1,Whooping Cough
+0,1,0,0,0,1,Upper Respiratory Infection
+0,1,0,0,0,0,Allergic Rhinitis
+0,0,0,0,0,1,Pharyngitis
+1,0,1,0,1,1,Viral Pharyngitis
+0,0,1,0,1,0,Stomach Flu
+1,0,1,0,0,0,Cellulitis
+0,0,0,0,0,0,Contact Dermatitis
+1,0,1,0,1,0,Bacterial Skin Infection
+1,0,1,0,0,0,Urinary Tract Infection
+0,0,1,0,0,0,Bladder Infection
+1,0,1,0,1,0,Kidney Infection
+0,0,1,0,1,0,Cluster Headache
+1,0,1,0,0,0,Minor Bacterial Infection
+1,0,1,0,1,0,Dehydration
+0,0,1,0,0,0,Vitamin Deficiency
+1,0,0,0,1,0,Ear Infection
+0,0,1,0,1,0,Eye Infection
+0,0,1,0,1,0,Muscle Strain
+0,0,1,0,1,0,Joint Pain
+0,0,1,0,1,0,Stress
+0,0,1,0,1,0,Thyroid Disorder
+1,0,1,0,1,0,Hormonal Imbalance
