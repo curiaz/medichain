@@ -133,6 +133,7 @@ const SelectGP = () => {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user, navigate, location.state]);
 
   useEffect(() => {

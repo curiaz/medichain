@@ -10,7 +10,7 @@ import "../assets/styles/ModernDashboard.css"
 
 const DoctorSchedule = () => {
   const navigate = useNavigate()
-  const { user, isAuthenticated, getFirebaseToken } = useAuth()
+  const { user, getFirebaseToken } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [appointments, setAppointments] = useState([])

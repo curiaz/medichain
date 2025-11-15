@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Menu, X, User, LogOut, Home, Users, FileText, Calendar, Activity, ChevronDown, TrendingUp, Brain, Database, Bell, Shield, Settings } from 'lucide-react';
+import { X, User, LogOut, Home, Users, FileText, Calendar, Activity, ChevronDown, TrendingUp, Brain, Database, Bell, Settings } from 'lucide-react';
 
 const DashboardLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);

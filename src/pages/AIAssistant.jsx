@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Brain, User, Activity, FileText, RefreshCw, Plus, AlertCircle, ThumbsUp, ThumbsDown, Info, LogIn, UserPlus } from 'lucide-react';
+import { Brain, RefreshCw, AlertCircle, ThumbsUp, ThumbsDown, Info, LogIn, UserPlus } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import AIProgressBar from '../components/AIProgressBar';
 import { showToast } from '../components/CustomToast';
@@ -19,7 +19,6 @@ const AIAssistant = () => {
   const [progress, setProgress] = useState(0);
   const [progressStatus, setProgressStatus] = useState('');
   const [aiStatus, setAiStatus] = useState('checking');
-  const [modelInfo, setModelInfo] = useState(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();

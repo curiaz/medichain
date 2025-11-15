@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "./Header";
-import { Calendar, Clock, Plus, Trash2, Save, AlertCircle } from "lucide-react";
+import { Clock, Plus, Trash2, Save, AlertCircle } from "lucide-react";
 import axios from "axios";
 import { auth } from "../config/firebase";
 import "../assets/styles/ModernDashboard.css";
@@ -323,7 +323,7 @@ const DoctorAvailability = ({ embedded = false }) => {
         return;
       }
 
-      const slots = [];
+      // Generate slots for this time range
       const [startHour, startMin] = range.start_time.split(':').map(Number);
       const [endHour, endMin] = range.end_time.split(':').map(Number);
       

@@ -7,12 +7,6 @@ import DatabaseService from "../services/databaseService"
 import "../assets/styles/ModernDashboard.css"
 import "../assets/styles/PatientDashboard.css"
 
-// Simple toast replacement
-const toast = {
-  info: (message) => {
-    alert(`ℹ️ ${message}`);
-  }
-};
 
 const PatientDashboard = () => {
   const { user } = useAuth();
@@ -23,7 +17,7 @@ const PatientDashboard = () => {
     lastCheckup: 0,
     healthScore: 0
   })
-  const [loading, setLoading] = useState(true)
+  const [, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {

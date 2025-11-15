@@ -19,6 +19,7 @@ const UserManagementTable = () => {
 
   useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roleFilter, statusFilter, pagination.page, searchTerm]);
 
   // Close action menu when clicking outside

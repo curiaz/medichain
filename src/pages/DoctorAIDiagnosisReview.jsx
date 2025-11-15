@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Header from './Header';
-import { Brain, ChevronLeft, ChevronRight, Save, X, Edit2, Check, Search, User, Clock, AlertCircle } from 'lucide-react';
+import { Brain, ChevronLeft, ChevronRight, Save, X, Edit2, Check, Search, User, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { auth } from '../config/firebase';
@@ -12,7 +12,7 @@ const DoctorAIDiagnosisReview = () => {
   const { appointmentId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, getFirebaseToken } = useAuth();
+  const { getFirebaseToken } = useAuth();
   
   const [currentSlide, setCurrentSlide] = useState(0);
   const [appointment, setAppointment] = useState(location.state?.appointment || null);
@@ -29,6 +29,7 @@ const DoctorAIDiagnosisReview = () => {
   const [showPatientSearch, setShowPatientSearch] = useState(!appointmentId);
   const [patients, setPatients] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  // eslint-disable-next-line no-unused-vars
   const [reviewStatus, setReviewStatus] = useState('pending'); // pending or reviewed
   
   // Edited values
@@ -258,12 +259,6 @@ const DoctorAIDiagnosisReview = () => {
     }
   };
 
-  const handlePatientSelect = async (patient) => {
-    if (patient.appointments.length === 1) {
-      // Auto-select if only one appointment
-      handleAppointmentSelect(patient.appointments[0]);
-    }
-  };
 
   const handleAppointmentSelect = async (apt) => {
     setAppointment(apt);

@@ -68,7 +68,7 @@ const MedichainSignup = () => {
   }
 
   const validateForm = () => {
-    const { firstName, lastName, email, password, confirmPassword, userType, specialization, verificationFile } = formData
+    const { firstName, lastName, email, password, confirmPassword, userType, verificationFile } = formData
     
     if (!firstName?.trim()) {
       showToast.error("Please enter your first name")

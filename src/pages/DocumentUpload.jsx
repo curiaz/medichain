@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "./Header";
-import { Upload, X, File, ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { Upload, X, File, ArrowLeft, ArrowRight } from "lucide-react";
 import "../assets/styles/ModernDashboard.css";
 import "../assets/styles/DocumentUpload.css";
 

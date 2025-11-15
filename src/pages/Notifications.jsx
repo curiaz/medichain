@@ -570,7 +570,7 @@ const Notifications = () => {
                                   // Internal route - handle different cases
                                   if (urlToUse.startsWith('/appointments/')) {
                                     // Extract appointment ID
-                                    const appointmentId = urlToUse.replace('/appointments/', '');
+                                    urlToUse.replace('/appointments/', '');
                                     // Navigate based on user role
                                     const userProfile = user?.profile || user;
                                     const userRole = userProfile?.role;

@@ -70,6 +70,7 @@ const HealthRecord = () => {
     if (user?.uid) {
       loadHealthRecords();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadHealthRecords = async () => {
@@ -215,7 +216,7 @@ const HealthRecord = () => {
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const margin = 20;
-      const bottomMargin = 50; // Space reserved for footer (QR, signature, ID)
+      // Space reserved for footer (QR, signature, ID)
       let yPos = margin;
 
       // Header - MediChain branding (compact)

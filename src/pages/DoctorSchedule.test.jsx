@@ -6,6 +6,8 @@ import DoctorSchedule from '../pages/DoctorSchedule';
 import axios from 'axios';
 import { auth } from '../config/firebase';
 
+import { AuthProvider } from '../context/AuthContext';
+
 // Mock dependencies
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -39,8 +41,6 @@ jest.mock('../context/AuthContext', () => ({
   useAuth: () => mockUseAuth(),
   AuthProvider: ({ children }) => children,
 }));
-
-import { AuthProvider } from '../context/AuthContext';
 
 const TestWrapper = ({ children }) => (
   <BrowserRouter>

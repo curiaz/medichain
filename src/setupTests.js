@@ -45,7 +45,6 @@ Object.defineProperty(window, 'navigator', {
 
 // Mock IntersectionObserver
 global.IntersectionObserver = class IntersectionObserver {
-  constructor() {}
   observe() {
     return null;
   }

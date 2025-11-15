@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "./Header";
-import { Calendar, Clock, User, Stethoscope, ArrowLeft, Check, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, ArrowLeft, Check, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { auth } from "../config/firebase";
@@ -642,7 +642,6 @@ const SelectDateTime = () => {
                 <div className="calendar-grid">
                   {getCalendarDays().map((day, index) => {
                     const isSelected = selectedDate === day.fullDate;
-                    const isAvailable = day.hasSlots;
                     const isCurrentMonth = day.isCurrentMonth;
                     
                     // Get today's date

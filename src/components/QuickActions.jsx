@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Eye, Calendar, Upload, Heart, Brain, FileText, Users } from 'lucide-react';
+import { Plus, Eye, Calendar, Upload, Brain, FileText } from 'lucide-react';
 
 const QuickActions = ({ userRole }) => {
   const doctorActions = [

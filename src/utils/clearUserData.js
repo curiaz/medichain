@@ -167,10 +167,12 @@ export const devReset = async () => {
 };
 
 // Export default function for easy import
-export default {
+const clearUserData = {
   clearLocalData,
   signOutCurrentUser,
   clearSupabaseUserData,
   completeUserDataReset,
   devReset
 };
+
+export default clearUserData;

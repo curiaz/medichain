@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Eye, FileText, Clock, Stethoscope, User } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, Stethoscope } from 'lucide-react';
 import adminService from '../services/adminService';
 import DoctorDetailsModal from './DoctorDetailsModal';
 import './DoctorVerificationTable.css';

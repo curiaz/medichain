@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { 
-  User, Mail, Phone, Calendar, MapPin, Heart, Shield, Star, 
-  Clock, GraduationCap, Award, Languages, Edit3, Save, X, 
-  Camera, Plus, Trash2, AlertCircle, CheckCircle, UserCheck,
-  Settings, Upload, FileText, Lock, Eye, EyeOff, Key, 
-  Database, History, Download, Upload as UploadIcon
+  User, Heart, Edit3, Save, X, 
+  Camera, AlertCircle, CheckCircle,
+  Lock, Key, 
+  History
 } from 'lucide-react';
 
 // Import tab components
@@ -25,7 +24,9 @@ import './ProfileManagement.css';
 const API_URL = 'http://localhost:5000/api';
 
 const ProfileManagement = () => {
-  const { user, updateUser } = useAuth();
+  // User context available if needed (not directly used but may be needed for auth)
+  // eslint-disable-next-line no-unused-vars
+  useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

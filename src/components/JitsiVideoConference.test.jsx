@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { BrowserRouter, useParams, useNavigate } from 'react-router-dom';
 import '@testing-library/jest-dom';
 import JitsiVideoConference from './JitsiVideoConference';

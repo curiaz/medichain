@@ -1,7 +1,7 @@
 /* Patients.jsx */
 import { useState, useEffect } from "react"
 import Header from "./Header"
-import { Search, ClipboardCopy, Eye, AlertCircle, CheckCircle, Plus } from "lucide-react"
+import { Search, Eye, AlertCircle, CheckCircle, Plus } from "lucide-react"
 import "../assets/styles/Patients.css"
 import { patientService } from "../services/patientService"
 import { useAuth } from "../context/AuthContext"

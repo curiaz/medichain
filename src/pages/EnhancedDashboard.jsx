@@ -7,7 +7,7 @@ import { Activity, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 const EnhancedDashboard = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState({
+  const [stats] = useState({
     totalPatients: 1247,
     recentDiagnoses: 89,
     blockchainRecords: 3421,

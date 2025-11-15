@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Send, Bot, User, Loader2, CheckCircle } from 'lucide-react';
+import { MessageCircle, Send, Bot, User, Loader2 } from 'lucide-react';
 import { aiService } from '../services/aiService';
 
 const ConversationalAI = ({ onDiagnosisComplete }) => {

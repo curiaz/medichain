@@ -18,14 +18,13 @@ const JitsiVideoConference = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [appointmentInfo, setAppointmentInfo] = useState(null);
-  const [countdown, setCountdown] = useState(null);
   const [canJoin, setCanJoin] = useState(false);
   const [timeUntilAppointment, setTimeUntilAppointment] = useState(null);
+  // eslint-disable-next-line no-unused-vars
   const [participants, setParticipants] = useState(new Set());
   const [hasMarkedCompleted, setHasMarkedCompleted] = useState(false);
   const [isDoctor, setIsDoctor] = useState(false);
   const [inLobby, setInLobby] = useState(false);
-  const [lobbyParticipants, setLobbyParticipants] = useState([]);
 
   // Fetch appointment information based on room name
   useEffect(() => {
@@ -146,7 +145,7 @@ const JitsiVideoConference = () => {
     };
 
     fetchAppointmentInfo();
-  }, [roomName, getFirebaseToken]);
+  }, [roomName, getFirebaseToken, user?.firebase_uid, user?.uid]);
 
   // Format countdown time
   const formatCountdown = (ms) => {
@@ -581,6 +580,7 @@ const JitsiVideoConference = () => {
         }
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canJoin, roomName, user]);
 
   // Handle participant leaving
