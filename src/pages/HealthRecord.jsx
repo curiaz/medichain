@@ -261,6 +261,41 @@ const HealthRecord = () => {
         ? `${firstName} ${lastName}`.trim()
         : profileData?.profile?.name || profileData?.name || profileData?.displayName || profileData?.email?.split('@')[0] || 'Patient';
 
+      // Get patient date of birth
+      let patientDOB = 'N/A';
+      if (record.appointment_id) {
+        try {
+          let token = null;
+          if (getFirebaseToken) {
+            token = await getFirebaseToken();
+          } else if (auth.currentUser) {
+            token = await auth.currentUser.getIdToken(true);
+          } else {
+            token = localStorage.getItem('medichain_token');
+          }
+
+          if (token) {
+            const appointmentResponse = await axios.get(
+              `http://localhost:5000/api/appointments/${record.appointment_id}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            
+            if (appointmentResponse.data?.success && appointmentResponse.data.appointment?.patient) {
+              const patient = appointmentResponse.data.appointment.patient;
+              if (patient.date_of_birth) {
+                patientDOB = new Date(patient.date_of_birth).toLocaleDateString('en-US', {
+                  month: '2-digit',
+                  day: '2-digit',
+                  year: 'numeric'
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('Could not fetch patient DOB:', err);
+        }
+      }
+
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.text('Patient Information:', margin, yPos);
@@ -269,6 +304,8 @@ const HealthRecord = () => {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(`Name: ${patientName}`, margin, yPos);
+      yPos += 6;
+      doc.text(`Date of Birth: ${patientDOB}`, margin, yPos);
       yPos += 6;
       doc.text(`Date: ${formatDate(record.date, record.time)}`, margin, yPos);
 

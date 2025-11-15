@@ -32,6 +32,7 @@ const BookAppointmentForm = () => {
   const [availability, setAvailability] = useState([]);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [notes, setNotes] = useState("");
   const [followUpCheckup, setFollowUpCheckup] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -241,6 +242,11 @@ const BookAppointmentForm = () => {
       return;
     }
 
+    if (!dateOfBirth) {
+      setError("Please enter your date of birth");
+      return;
+    }
+
     if (!doctor) {
       setError("Doctor information is missing. Please go back and select a doctor again.");
       return;
@@ -350,6 +356,7 @@ const BookAppointmentForm = () => {
           appointment_date: selectedDate,
           appointment_time: selectedTime,
           appointment_type: location.state?.appointmentType || "general-practitioner",
+          date_of_birth: dateOfBirth,
           notes: notes,
           follow_up_checkup: followUpCheckup,
           symptoms: location.state?.symptomKeys || location.state?.symptoms || [],
@@ -613,6 +620,30 @@ const BookAppointmentForm = () => {
                 </>
               )}
 
+              {/* Date of Birth */}
+              <div className="form-group">
+                <label className="form-label">Date of Birth <span style={{ color: '#ef4444' }}>*</span></label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  required
+                  max={new Date().toISOString().split('T')[0]}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontFamily: 'inherit'
+                  }}
+                />
+                <small style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '4px', display: 'block' }}>
+                  Required for medical records and prescriptions
+                </small>
+              </div>
+
               {/* Follow-up Checkup */}
               <div className="form-group">
                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
@@ -684,7 +715,7 @@ const BookAppointmentForm = () => {
                 <button
                   className="book-button"
                   onClick={handleBookAppointment}
-                  disabled={!selectedDate || !selectedTime || booking}
+                  disabled={!selectedDate || !selectedTime || !dateOfBirth || booking}
                 >
                   {booking ? (
                     <>

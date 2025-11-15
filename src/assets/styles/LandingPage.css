@@ -521,11 +521,12 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #1976d2, #1565c0, #0d47a1);
-  color: white;
-  box-shadow: 0 8px 25px rgba(25, 118, 210, 0.3);
+  background: linear-gradient(135deg, #1976d2, #1565c0, #0d47a1) !important;
+  color: white !important;
+  box-shadow: 0 8px 25px rgba(25, 118, 210, 0.3) !important;
   position: relative;
   z-index: 1;
+  border: none !important;
 }
 
 .btn-primary::before {
@@ -538,12 +539,13 @@ body {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
   transition: left 0.6s;
   z-index: 2;
+  border-radius: inherit;
 }
 
 .btn-primary:hover {
-  transform: translateY(-4px) scale(1.05);
-  box-shadow: 0 15px 40px rgba(25, 118, 210, 0.5);
-  background: linear-gradient(135deg, #1e88e5, #1976d2, #1565c0);
+  transform: translateY(-4px) scale(1.05) !important;
+  box-shadow: 0 15px 40px rgba(25, 118, 210, 0.5) !important;
+  background: linear-gradient(135deg, #1e88e5, #1976d2, #1565c0) !important;
 }
 
 .btn-primary:hover::before {
@@ -551,8 +553,8 @@ body {
 }
 
 .btn-primary:active {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 10px 30px rgba(25, 118, 210, 0.4);
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 10px 30px rgba(25, 118, 210, 0.4) !important;
 }
 
 /* Enhanced hover and active effects for extra-large button */
@@ -569,9 +571,9 @@ body {
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.9);
-  color: #2196f3;
-  border: 1px solid rgba(33, 150, 243, 0.3);
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: #2196f3 !important;
+  border: 1px solid rgba(33, 150, 243, 0.3) !important;
   position: relative;
   z-index: 1;
 }
@@ -586,13 +588,14 @@ body {
   background: linear-gradient(90deg, transparent, rgba(33, 150, 243, 0.1), transparent);
   transition: left 0.6s;
   z-index: 2;
+  border-radius: inherit;
 }
 
 .btn-secondary:hover {
-  background: white;
+  background: white !important;
   transform: translateY(-4px) scale(1.05);
   box-shadow: 0 15px 40px rgba(33, 150, 243, 0.3);
-  border-color: rgba(33, 150, 243, 0.5);
+  border-color: rgba(33, 150, 243, 0.5) !important;
 }
 
 .btn-secondary:hover::before {
@@ -1308,13 +1311,13 @@ body {
   padding: 14px 36px;
   font-size: 16px;
   font-weight: 600;
-  border: none;
+  border: none !important;
   border-radius: 12px;
-  background: linear-gradient(135deg, #1976d2, #1565c0, #0d47a1);
-  color: white;
+  background: linear-gradient(135deg, #1976d2, #1565c0, #0d47a1) !important;
+  color: white !important;
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 8px 25px rgba(25, 118, 210, 0.3);
+  box-shadow: 0 8px 25px rgba(25, 118, 210, 0.3) !important;
   position: relative;
   overflow: hidden;
   z-index: 1;
@@ -1338,12 +1341,13 @@ body {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
   transition: left 0.6s;
   z-index: 2;
+  border-radius: inherit;
 }
 
 .contact-form button:hover {
-  background: linear-gradient(135deg, #1e88e5, #1976d2, #1565c0);
-  transform: translateY(-4px) scale(1.05);
-  box-shadow: 0 15px 40px rgba(25, 118, 210, 0.5);
+  background: linear-gradient(135deg, #1e88e5, #1976d2, #1565c0) !important;
+  transform: translateY(-4px) scale(1.05) !important;
+  box-shadow: 0 15px 40px rgba(25, 118, 210, 0.5) !important;
 }
 
 .contact-form button:hover::before {
@@ -1351,8 +1355,8 @@ body {
 }
 
 .contact-form button:active {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 10px 30px rgba(25, 118, 210, 0.4);
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 10px 30px rgba(25, 118, 210, 0.4) !important;
 }
 
 /* Mobile Responsiveness */
@@ -1620,13 +1624,14 @@ body {
   }
 
   .mobile-nav-content .mobile-cta .btn-secondary {
-    background: transparent !important;
+    background: rgba(255, 255, 255, 0.9) !important;
     color: #2196f3 !important;
-    border-color: #2196f3 !important;
+    border: 1px solid rgba(33, 150, 243, 0.3) !important;
   }
 
   .mobile-nav-content .mobile-cta .btn-secondary:hover {
-    background: rgba(33, 150, 243, 0.1) !important;
+    background: white !important;
+    border-color: rgba(33, 150, 243, 0.5) !important;
     transform: translateY(-1px);
   }
   

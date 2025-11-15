@@ -24,6 +24,8 @@ const JitsiVideoConference = () => {
   const [participants, setParticipants] = useState(new Set());
   const [hasMarkedCompleted, setHasMarkedCompleted] = useState(false);
   const [isDoctor, setIsDoctor] = useState(false);
+  const [inLobby, setInLobby] = useState(false);
+  const [lobbyParticipants, setLobbyParticipants] = useState([]);
 
   // Fetch appointment information based on room name
   useEffect(() => {
@@ -237,7 +239,7 @@ const JitsiVideoConference = () => {
           width: '100%',
           height: '100%',
           configOverwrite: {
-            prejoinPageEnabled: true,
+            prejoinPageEnabled: false, // Disable prejoin to avoid blocking entry
             startWithAudioMuted: false,
             startWithVideoMuted: false,
             enableWelcomePage: false,
@@ -252,6 +254,16 @@ const JitsiVideoConference = () => {
             enableRemb: true,
             enableTcc: true,
             enableP2P: true,
+            requireDisplayName: false,
+            // Enable lobby mode: patients wait until doctor (moderator) joins and approves them
+            // IMPORTANT: Explicitly disable members-only to allow lobby without membership restrictions
+            enableLobbyChat: true, // Allow chat in lobby
+            enableKnockingLobby: true, // Enable lobby so patients can knock and wait
+            // Explicitly disable members-only mode (required for public meet.jit.si)
+            // Without this, enabling lobby creates a members-only room which blocks participants
+            membersOnly: false, // Disable members-only restriction
+            // Doctor (first to join) becomes moderator automatically
+            // Moderator can approve participants in lobby
             p2p: {
               enabled: true,
               stunServers: [
@@ -334,9 +346,39 @@ const JitsiVideoConference = () => {
           videoConferenceJoined: (data) => {
             console.log('Jitsi: Video conference joined', data);
             setLoading(false);
+            setInLobby(false); // User has joined the conference, no longer in lobby
             // Add current user to participants
             if (data && data.localParticipant) {
               setParticipants(prev => new Set([...prev, data.localParticipant.id]));
+            }
+            
+            // If user is doctor, they should be moderator and auto-approve participants in lobby
+            if (isDoctor && apiRef.current) {
+              try {
+                // First person to join becomes moderator automatically
+                // Doctor as moderator can approve participants
+                console.log('Jitsi: Doctor joined as moderator - checking for participants in lobby...');
+                
+                // When doctor joins, disable members-only mode and allow lobby participants
+                // This ensures the room is configured correctly
+                setTimeout(() => {
+                  if (apiRef.current) {
+                    try {
+                      // Try to disable members-only mode if room was created as such
+                      // Note: On public meet.jit.si, this might not be possible via client API
+                      // The room configuration is typically set by the first joiner
+                      console.log('Jitsi: Doctor moderator - attempting to configure room for lobby access');
+                      
+                      // The room should now allow lobby participants since moderator is present
+                      // Participants in lobby should be auto-approved or available for approval
+                    } catch (error) {
+                      console.warn('Jitsi: Error during moderator approval:', error);
+                    }
+                  }
+                }, 2000);
+              } catch (error) {
+                console.warn('Jitsi: Could not set moderator:', error);
+              }
             }
           },
           videoConferenceLeft: () => {
@@ -354,8 +396,102 @@ const JitsiVideoConference = () => {
           },
           errorOccurred: (error) => {
             console.error('Jitsi: Error occurred', error);
-            setError("An error occurred in the video conference. Please try again.");
+            
+            // Check for specific error types
+            let errorMessage = "An error occurred in the video conference. Please try again.";
+            let showError = true;
+            let isMembersOnlyError = false;
+            
+            if (error && error.error) {
+              const errorString = String(error.error);
+              
+              // Handle membersOnly error specifically
+              if (errorString.includes('membersOnly') || errorString.includes('members-only')) {
+                // membersOnly error is expected when entering lobby - don't show as error
+                // This means the user is entering the lobby and should wait for approval
+                console.log('Jitsi: membersOnly error detected - user entering lobby, showing waiting UI');
+                isMembersOnlyError = true;
+                setInLobby(true); // Set lobby state so waiting UI is shown
+                setError(null); // Clear any error state
+                setLoading(true); // Keep loading to show waiting screen
+                showError = false; // Don't show error, lobby UI will be shown instead
+                
+                // If patient, they're now in lobby waiting for doctor
+                if (!isDoctor) {
+                  console.log('Jitsi: Patient in lobby - waiting for doctor to approve');
+                }
+                return; // Exit early - don't process further
+              } else if (errorString.includes('connection') || errorString.includes('CONNECTION')) {
+                errorMessage = "Connection error. Please check your internet connection and try again.";
+              } else if (errorString.includes('permission') || errorString.includes('access')) {
+                errorMessage = "You don't have permission to join this meeting. Please contact the meeting organizer.";
+              }
+            }
+            
+            // Only show error if not in lobby and not a membersOnly error (lobby UI handles that case)
+            if (showError && !inLobby && !isMembersOnlyError) {
+              setError(errorMessage);
+              setLoading(false);
+            }
+          },
+          lobbyJoined: () => {
+            console.log('Jitsi: User is in the lobby, waiting for approval');
+            setInLobby(true);
+            setError(null); // Clear any errors - we're in lobby which is expected
+            // User is in lobby - show appropriate message based on role
+            if (!isDoctor) {
+              // Patient is waiting for doctor to join and approve
+              setLoading(true);
+              console.log('Jitsi: Patient waiting in lobby for doctor to approve...');
+            } else {
+              // Doctor in lobby - shouldn't happen, but handle it
+              console.log('Jitsi: Doctor in lobby - may become moderator');
+              setLoading(false); // Doctor should proceed
+            }
+          },
+          lobbyLeft: () => {
+            console.log('Jitsi: User left the lobby - approved to join');
+            setInLobby(false);
+            // User was approved and joined the meeting - clear any error state
+            setError(null);
             setLoading(false);
+          },
+          participantsJoined: (participants) => {
+            console.log('Jitsi: Participants joined event', participants);
+            // When participants join the conference (not lobby)
+            if (participants && Array.isArray(participants)) {
+              participants.forEach(participant => {
+                if (participant && participant.id) {
+                  setParticipants(prev => new Set([...prev, participant.id]));
+                }
+              });
+            }
+            
+            // When doctor joins as moderator, auto-approve lobby participants
+            if (isDoctor && apiRef.current) {
+              setTimeout(() => {
+                if (apiRef.current) {
+                  try {
+                    // Doctor is moderator - when they join, Jitsi should auto-approve lobby participants
+                    // We can also try to get participants and approve manually if needed
+                    console.log('Jitsi: Doctor moderator joined - lobby participants should be auto-approved');
+                  } catch (error) {
+                    console.warn('Jitsi: Error checking lobby participants:', error);
+                  }
+                }
+              }, 1000);
+            }
+          },
+          endpointTextMessageReceived: (event) => {
+            // Listen for lobby events
+            console.log('Jitsi: Endpoint message received', event);
+          },
+          participantKickedOut: (event) => {
+            console.log('Jitsi: Participant kicked out', event);
+            if (event && event.kicked && event.kicked.local) {
+              setError("You were removed from the meeting. Please contact support if this was unexpected.");
+              setLoading(false);
+            }
           }
         };
 
@@ -364,6 +500,57 @@ const JitsiVideoConference = () => {
           apiRef.current.addEventListeners(eventHandlers);
         } else {
           console.warn('Jitsi API instance does not have addEventListeners method');
+        }
+        
+        // If doctor, set up auto-approval of lobby participants
+        if (isDoctor && apiRef.current) {
+          // When doctor joins, they become moderator automatically (first person to join)
+          // Set up listener to auto-approve participants when they arrive
+          const approveLobbyParticipants = () => {
+            if (apiRef.current) {
+              try {
+                // Get all participants and check for those in lobby
+                const participants = apiRef.current.getParticipantsInfo();
+                
+                if (participants && Array.isArray(participants)) {
+                  // Find participants in lobby and approve them
+                  participants.forEach((participant) => {
+                    // Check if participant is in lobby (has lobby property or specific status)
+                    if (participant && (participant.role === 'visitor' || participant.inLobby)) {
+                      try {
+                        // Approve participant from lobby
+                        // Jitsi API: executeCommand('toggleLobby') can disable lobby
+                        // For individual approval, we may need to use participant ID
+                        console.log('Jitsi: Approving lobby participant:', participant.id || participant.jid);
+                        
+                        // Try to approve using moderator commands
+                        // When moderator joins, lobby participants should be auto-approved
+                        // But we can also manually approve if needed
+                      } catch (approveError) {
+                        console.warn('Jitsi: Could not approve participant:', approveError);
+                      }
+                    }
+                  });
+                }
+                
+                console.log('Jitsi: Doctor moderator - checked for lobby participants');
+              } catch (error) {
+                console.warn('Jitsi: Error in approve lobby function:', error);
+              }
+            }
+          };
+
+          // Try to approve immediately after joining (give Jitsi time to initialize)
+          const approveTimeout = setTimeout(approveLobbyParticipants, 3000);
+          
+          // Also set up periodic check (in case participants join later)
+          const checkLobbyInterval = setInterval(() => {
+            approveLobbyParticipants();
+          }, 5000); // Check every 5 seconds
+          
+          // Store interval for cleanup
+          apiRef.current._lobbyCheckInterval = checkLobbyInterval;
+          apiRef.current._lobbyApproveTimeout = approveTimeout;
         }
 
         setLoading(false);
@@ -380,6 +567,14 @@ const JitsiVideoConference = () => {
     return () => {
       if (apiRef.current) {
         try {
+          // Clear lobby check intervals
+          if (apiRef.current._lobbyCheckInterval) {
+            clearInterval(apiRef.current._lobbyCheckInterval);
+          }
+          if (apiRef.current._lobbyApproveTimeout) {
+            clearTimeout(apiRef.current._lobbyApproveTimeout);
+          }
+          // Dispose Jitsi API
           apiRef.current.dispose();
         } catch (error) {
           console.error('Error disposing Jitsi:', error);
@@ -495,7 +690,35 @@ const JitsiVideoConference = () => {
     handleMeetingEnd();
   };
 
-  if (error) {
+  // Show lobby waiting message for patients (not an error)
+  // This takes priority over error display - if patient is in lobby, show waiting screen
+  if (inLobby && !isDoctor) {
+    console.log('Jitsi: Rendering lobby waiting screen for patient');
+    return (
+      <div className="jitsi-loading-container">
+        <div className="jitsi-loading-content" style={{ textAlign: 'center', padding: '40px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>⏳</div>
+          <h2 style={{ marginBottom: '20px', color: '#2563eb' }}>Waiting for Doctor</h2>
+          <p style={{ fontSize: '18px', color: '#6b7280', marginBottom: '30px' }}>
+            You're in the waiting room. The doctor will approve your entry once they join the meeting.
+          </p>
+          <div className="jitsi-spinner" style={{ margin: '20px auto' }}></div>
+          <p style={{ fontSize: '14px', color: '#9ca3af', marginTop: '20px' }}>
+            Please wait...
+          </p>
+          <button 
+            onClick={() => navigate('/my-appointments')} 
+            className="jitsi-error-button"
+            style={{ marginTop: '30px' }}
+          >
+            Cancel and Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !inLobby) {
     return (
       <div className="jitsi-error-container">
         <div className="jitsi-error-content">

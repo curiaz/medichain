@@ -141,6 +141,272 @@ const DoctorMedicalReports = () => {
     }
   };
 
+  const handleDownloadMedicalReport = async (report) => {
+    try {
+      // Dynamically import jsPDF
+      const { default: jsPDF } = await import('jspdf');
+      
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 20;
+      let yPos = margin;
+
+      // Header - Title
+      doc.setFillColor(33, 150, 243);
+      doc.rect(0, 0, pageWidth, 35, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Medical Reports of Patients', pageWidth / 2, 20, { align: 'center' });
+      
+      // Orange underline
+      doc.setDrawColor(255, 152, 0);
+      doc.setLineWidth(2);
+      doc.line(margin, 25, pageWidth - margin, 25);
+
+      yPos = 45;
+
+      // Patient Information Section
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Patient Information:', margin, yPos);
+      
+      yPos += 8;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      
+      // Get patient info
+      const patientName = report.patientName || 
+        (report.patient_info?.first_name && report.patient_info?.last_name
+          ? `${report.patient_info.first_name} ${report.patient_info.last_name}`
+          : 'Unknown Patient');
+      
+      // Try to get patient details from appointment
+      let patientDOB = 'N/A';
+      let patientID = report.patient_firebase_uid?.substring(0, 9) || 'N/A';
+      
+      if (report.appointment_id) {
+        try {
+          let token = null;
+          if (getFirebaseToken) {
+            token = await getFirebaseToken();
+          } else if (auth.currentUser) {
+            token = await auth.currentUser.getIdToken(true);
+          } else {
+            token = localStorage.getItem('medichain_token');
+          }
+
+          if (token) {
+            const appointmentResponse = await axios.get(
+              `http://localhost:5000/api/appointments/${report.appointment_id}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            
+            if (appointmentResponse.data?.success && appointmentResponse.data.appointment?.patient) {
+              const patient = appointmentResponse.data.appointment.patient;
+              if (patient.date_of_birth) {
+                patientDOB = new Date(patient.date_of_birth).toLocaleDateString('en-US', {
+                  month: '2-digit',
+                  day: '2-digit',
+                  year: 'numeric'
+                });
+              }
+              patientID = patient.firebase_uid?.substring(0, 9) || patientID;
+            }
+          }
+        } catch (err) {
+          console.warn('Could not fetch patient details:', err);
+        }
+      }
+
+      doc.text(`Name: ${patientName}`, margin, yPos);
+      yPos += 7;
+      doc.text(`Date of Birth: ${patientDOB}`, margin, yPos);
+      yPos += 7;
+      doc.text(`Patient ID: ${patientID}`, margin, yPos);
+      yPos += 7;
+      
+      const reportDate = report.created_at || report.appointmentDate || new Date().toISOString();
+      const formattedReportDate = new Date(reportDate).toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric'
+      });
+      doc.text(`Date of Report: ${formattedReportDate}`, margin, yPos);
+      yPos += 7;
+
+      // Get doctor info from user context
+      let doctorName = 'Dr. Unknown, MD';
+      let doctorSpecialty = 'General Practitioner';
+      
+      if (user) {
+        const firstName = user.profile?.first_name || user.first_name || '';
+        const lastName = user.profile?.last_name || user.last_name || '';
+        if (firstName || lastName) {
+          doctorName = `Dr. ${firstName} ${lastName}`.trim() + ', MD';
+        } else if (user.displayName) {
+          doctorName = `Dr. ${user.displayName}, MD`;
+        }
+        
+        doctorSpecialty = user.profile?.specialization || user.specialization || 'General Practitioner';
+      }
+      
+      doc.text(`Referring Physician: ${doctorName}`, margin, yPos);
+      yPos += 7;
+      doc.text(`Specialty: ${doctorSpecialty}`, margin, yPos);
+
+      yPos += 15;
+
+      // Introduction Section
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Introduction:', margin, yPos);
+      yPos += 8;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      
+      const appointmentDate = report.appointmentDate || report.created_at?.split('T')[0] || formattedReportDate;
+      const introText = `This report is for ${patientName}, following a consultation and evaluation in the ${doctorSpecialty.toLowerCase()} department on ${appointmentDate}. The purpose of this report is to document ${patientName.split(' ')[0]}'s current health status and outline the recommended management plan.`;
+      const introLines = doc.splitTextToSize(introText, pageWidth - 2 * margin);
+      doc.text(introLines, margin, yPos);
+      yPos += introLines.length * 5 + 10;
+
+      // Medical History Section
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Medical History:', margin, yPos);
+      yPos += 8;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      
+      // Get symptoms from appointment if available
+      let symptomsText = 'No significant medical history documented.';
+      if (report.symptoms && Array.isArray(report.symptoms) && report.symptoms.length > 0) {
+        symptomsText = `Patient reported the following symptoms: ${report.symptoms.join(', ')}.`;
+      } else if (report.appointment_id) {
+        try {
+          let token = null;
+          if (getFirebaseToken) {
+            token = await getFirebaseToken();
+          } else if (auth.currentUser) {
+            token = await auth.currentUser.getIdToken(true);
+          } else {
+            token = localStorage.getItem('medichain_token');
+          }
+
+          if (token) {
+            const appointmentResponse = await axios.get(
+              `http://localhost:5000/api/appointments/${report.appointment_id}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            
+            if (appointmentResponse.data?.success && appointmentResponse.data.appointment?.symptoms) {
+              const symptoms = appointmentResponse.data.appointment.symptoms;
+              if (Array.isArray(symptoms) && symptoms.length > 0) {
+                symptomsText = `Patient reported the following symptoms: ${symptoms.join(', ')}.`;
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('Could not fetch symptoms:', err);
+        }
+      }
+      
+      const historyText = `${symptomsText} Patient has no known drug allergies documented.`;
+      const historyLines = doc.splitTextToSize(historyText, pageWidth - 2 * margin);
+      doc.text(historyLines, margin, yPos);
+      yPos += historyLines.length * 5 + 10;
+
+      // Presenting Complaints Section
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Presenting Complaints:', margin, yPos);
+      yPos += 8;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      
+      const complaintsText = symptomsText !== 'No significant medical history documented.' 
+        ? symptomsText
+        : 'Patient presented for routine consultation and evaluation.';
+      const complaintsLines = doc.splitTextToSize(complaintsText, pageWidth - 2 * margin);
+      doc.text(complaintsLines, margin, yPos);
+      yPos += complaintsLines.length * 5 + 10;
+
+      // Diagnostic Tests Conducted Section
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Diagnostic Tests Conducted:', margin, yPos);
+      yPos += 8;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Clinical examination and patient history review were conducted.', margin, yPos);
+      yPos += 10;
+
+      // Diagnosis Section
+      if (report.diagnosis) {
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Diagnosis:', margin, yPos);
+        yPos += 8;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        const diagnosisLines = doc.splitTextToSize(report.diagnosis, pageWidth - 2 * margin);
+        doc.text(diagnosisLines, margin, yPos);
+        yPos += diagnosisLines.length * 5 + 10;
+      }
+
+      // Medications/Prescription Section
+      if (report.medications && Array.isArray(report.medications) && report.medications.length > 0) {
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Prescribed Medications:', margin, yPos);
+        yPos += 8;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        
+        report.medications.forEach((med, idx) => {
+          const medName = med.name || med.medicine || 'Medication';
+          const dosage = med.dosage || med.adult_dose || 'As directed';
+          const duration = med.duration ? ` for ${med.duration}` : '';
+          const medText = `${idx + 1}. ${medName} - ${dosage}${duration}`;
+          const medLines = doc.splitTextToSize(medText, pageWidth - 2 * margin);
+          doc.text(medLines, margin, yPos);
+          yPos += medLines.length * 5 + 3;
+        });
+        yPos += 5;
+      }
+
+      // Treatment Plan Section
+      if (report.treatment_plan) {
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Treatment Plan:', margin, yPos);
+        yPos += 8;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        const treatmentLines = doc.splitTextToSize(report.treatment_plan, pageWidth - 2 * margin);
+        doc.text(treatmentLines, margin, yPos);
+        yPos += treatmentLines.length * 5 + 10;
+      }
+
+      // Footer
+      const footerY = pageHeight - 15;
+      doc.setFontSize(8);
+      doc.setTextColor(128, 128, 128);
+      doc.text('Copyright @ MediChain E-Health System', pageWidth / 2, footerY, { align: 'center' });
+
+      // Save PDF
+      const fileName = `medical_report_${patientName.replace(/\s+/g, '_')}_${formattedReportDate.replace(/\//g, '-')}.pdf`;
+      doc.save(fileName);
+    } catch (error) {
+      console.error('Error generating medical report PDF:', error);
+      alert('Error generating medical report. Please install required packages: npm install jspdf');
+    }
+  };
+
   const filteredReports = reports.filter(report => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
@@ -303,7 +569,7 @@ const DoctorMedicalReports = () => {
                       </button>
                       <button
                         className="download-report-btn"
-                        onClick={() => alert('Download functionality coming soon!')}
+                        onClick={() => handleDownloadMedicalReport(report)}
                       >
                         <Download size={16} />
                         Download

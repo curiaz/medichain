@@ -709,7 +709,7 @@ def get_appointments():
                         profiles_resp = (
                             supabase.service_client
                             .table("user_profiles")
-                            .select("firebase_uid, first_name, last_name, email")
+                            .select("firebase_uid, first_name, last_name, email, date_of_birth")
                             .in_("firebase_uid", patient_uids)
                             .execute()
                         )
@@ -732,6 +732,7 @@ def get_appointments():
                                 "first_name": first_name,
                                 "last_name": last_name,
                                 "email": email,
+                                "date_of_birth": p.get("date_of_birth"),
                                 "from_db": True  # Flag to indicate this came from database
                             }
                             
@@ -749,7 +750,8 @@ def get_appointments():
                                 appt["patient"] = {
                                     "first_name": "",
                                     "last_name": "",
-                                    "email": ""
+                                    "email": "",
+                                    "date_of_birth": None
                                 }
                                 continue
                             
@@ -798,10 +800,13 @@ def get_appointments():
                                             last_name = ""
                                         
                                         # Create patient info from Firebase data
+                                        # Preserve date_of_birth from cache if available
+                                        cached_dob = cached_patient.get("date_of_birth")
                                         patient_info = {
                                             "first_name": first_name,
                                             "last_name": last_name,
                                             "email": firebase_email,
+                                            "date_of_birth": cached_dob,  # Preserve DOB from database if available
                                             "from_firebase": True  # Flag to indicate this came from Firebase
                                         }
                                         
@@ -835,13 +840,15 @@ def get_appointments():
                                         appt["patient"] = {
                                             "first_name": cached_fname,
                                             "last_name": cached_lname,
-                                            "email": cached_email
+                                            "email": cached_email,
+                                            "date_of_birth": cached_patient.get("date_of_birth")
                                         }
                                     else:
                                         appt["patient"] = {
                                             "first_name": "",
                                             "last_name": "",
-                                            "email": ""
+                                            "email": "",
+                                            "date_of_birth": None
                                         }
                             else:
                                 # No fallback needed, use cached data
@@ -849,13 +856,15 @@ def get_appointments():
                                     appt["patient"] = {
                                         "first_name": cached_fname,
                                         "last_name": cached_lname,
-                                        "email": cached_email
+                                        "email": cached_email,
+                                        "date_of_birth": cached_patient.get("date_of_birth")
                                     }
                                 else:
                                     appt["patient"] = {
                                         "first_name": "",
                                         "last_name": "",
-                                        "email": ""
+                                        "email": "",
+                                        "date_of_birth": None
                                     }
                                 if cached_full_name or cached_email:
                                     print(f"✅ Enriched appointment {appt.get('id')} with patient: Name='{cached_full_name}' Email='{cached_email}'")
@@ -870,7 +879,8 @@ def get_appointments():
                             appt["patient"] = {
                                 "first_name": "",
                                 "last_name": "",
-                                "email": ""
+                                "email": "",
+                                "date_of_birth": None
                             }
                     pass
         else:
@@ -1158,7 +1168,10 @@ def create_appointment():
         safe_time = appointment_time.replace(":", "")
         room_suffix = uuid.uuid4().hex[:8]
         room_name = f"medichain-{data['doctor_firebase_uid']}-{safe_date}-{safe_time}-{room_suffix}"
-        meeting_url = f"https://meet.jit.si/{room_name}#config.prejoinPageEnabled=true"
+        # Enable lobby mode: patients wait until doctor (moderator) joins and approves them
+        # First person to join becomes moderator automatically (should be doctor)
+        # IMPORTANT: Explicitly disable membersOnly to allow lobby without membership restrictions
+        meeting_url = f"https://meet.jit.si/{room_name}#config.prejoinPageEnabled=false&config.enableKnockingLobby=true&config.enableLobbyChat=true&config.membersOnly=false"
 
         # Get patient and doctor names for notifications
         patient_profile = user_response.data[0]
@@ -1188,6 +1201,16 @@ def create_appointment():
         if doctor_profile_response.data:
             doctor_profile = doctor_profile_response.data[0]
             doctor_name = f"Dr. {doctor_profile.get('first_name', '')} {doctor_profile.get('last_name', '')}".strip()
+
+        # Update user profile with date_of_birth if provided
+        if data.get("date_of_birth"):
+            try:
+                supabase.service_client.table("user_profiles").update({
+                    "date_of_birth": data.get("date_of_birth")
+                }).eq("firebase_uid", uid).execute()
+                print(f"✅ Updated date_of_birth for user {uid}")
+            except Exception as dob_error:
+                print(f"⚠️  Could not update date_of_birth: {dob_error}")
 
         # Create the appointment with meeting_link properly stored
         appointment_data = {
@@ -1461,7 +1484,7 @@ def get_appointment_by_id(appointment_id):
         patient_info = None
         if patient_uid:
             try:
-                patient_response = supabase.service_client.table("user_profiles").select("firebase_uid, first_name, last_name, email").eq("firebase_uid", patient_uid).execute()
+                patient_response = supabase.service_client.table("user_profiles").select("firebase_uid, first_name, last_name, email, date_of_birth").eq("firebase_uid", patient_uid).execute()
                 if patient_response.data:
                     patient_info = patient_response.data[0]
             except Exception as patient_err:
