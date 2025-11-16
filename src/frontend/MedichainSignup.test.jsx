@@ -58,8 +58,21 @@ describe('MedichainSignup Component', () => {
     useSearchParams.mockReturnValue([mockSearchParams]);
     useAuth.mockReturnValue({
       signup: mockSignup,
+      signInWithGoogle: jest.fn(),
     });
     global.fetch.mockClear();
+    
+    // Mock sessionStorage
+    const sessionStorageMock = {
+      getItem: jest.fn(() => null),
+      setItem: jest.fn(),
+      removeItem: jest.fn(),
+      clear: jest.fn(),
+    };
+    Object.defineProperty(window, 'sessionStorage', {
+      value: sessionStorageMock,
+      writable: true,
+    });
   });
 
   describe('Initial Rendering', () => {
@@ -684,6 +697,121 @@ describe('MedichainSignup Component', () => {
       fireEvent.click(loginLink);
 
       expect(mockNavigate).toHaveBeenCalledWith('/login');
+    });
+  });
+
+  describe('Google Signup Flow', () => {
+    it('hides password fields when Google signup is detected', () => {
+      const mockSearchParams = new Map([['google', 'true']]);
+      sessionStorage.getItem.mockReturnValue(JSON.stringify({
+        idToken: 'mock-id-token',
+        email: 'google@example.com',
+        firstName: 'Google',
+        lastName: 'User',
+        displayName: 'Google User'
+      }));
+      useSearchParams.mockReturnValue([mockSearchParams]);
+
+      render(
+        <TestWrapper>
+          <MedichainSignup />
+        </TestWrapper>
+      );
+
+      expect(screen.queryByLabelText(/^password$/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/confirm password/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/you're signing up with google/i)).toBeInTheDocument();
+    });
+
+    it('pre-fills form fields from Google signup data', () => {
+      const mockSearchParams = new Map([['google', 'true']]);
+      const googleData = {
+        idToken: 'mock-id-token',
+        email: 'google@example.com',
+        firstName: 'Google',
+        lastName: 'User',
+        displayName: 'Google User'
+      };
+      sessionStorage.getItem.mockReturnValue(JSON.stringify(googleData));
+      useSearchParams.mockReturnValue([mockSearchParams]);
+
+      render(
+        <TestWrapper>
+          <MedichainSignup />
+        </TestWrapper>
+      );
+
+      const emailInput = screen.getByLabelText(/email/i);
+      const firstNameInput = screen.getByLabelText(/first name/i);
+      const lastNameInput = screen.getByLabelText(/last name/i);
+
+      expect(emailInput.value).toBe('google@example.com');
+      expect(firstNameInput.value).toBe('Google');
+      expect(lastNameInput.value).toBe('User');
+    });
+
+    it('shows Google sign-in button for regular signup', () => {
+      render(
+        <TestWrapper>
+          <MedichainSignup />
+        </TestWrapper>
+      );
+
+      expect(screen.getByText(/continue with google/i)).toBeInTheDocument();
+    });
+
+    it('hides Google sign-in button when already in Google signup mode', () => {
+      const mockSearchParams = new Map([['google', 'true']]);
+      sessionStorage.getItem.mockReturnValue(JSON.stringify({
+        idToken: 'mock-id-token',
+        email: 'google@example.com',
+        firstName: 'Google',
+        lastName: 'User'
+      }));
+      useSearchParams.mockReturnValue([mockSearchParams]);
+
+      render(
+        <TestWrapper>
+          <MedichainSignup />
+        </TestWrapper>
+      );
+
+      expect(screen.queryByText(/continue with google/i)).not.toBeInTheDocument();
+    });
+
+    it('validates form without password for Google signup', async () => {
+      const mockSearchParams = new Map([['google', 'true']]);
+      const mockSignInWithGoogle = jest.fn().mockResolvedValue({
+        success: true,
+        message: 'Account created successfully!',
+        user: { id: '1', email: 'google@example.com' }
+      });
+      sessionStorage.getItem.mockReturnValue(JSON.stringify({
+        idToken: 'mock-id-token',
+        email: 'google@example.com',
+        firstName: 'Google',
+        lastName: 'User'
+      }));
+      useSearchParams.mockReturnValue([mockSearchParams]);
+      useAuth.mockReturnValue({
+        signup: mockSignup,
+        signInWithGoogle: mockSignInWithGoogle,
+      });
+
+      render(
+        <TestWrapper>
+          <MedichainSignup />
+        </TestWrapper>
+      );
+
+      const submitButton = screen.getByRole('button', { name: /create account/i });
+      
+      await act(async () => {
+        fireEvent.click(submitButton);
+      });
+
+      // Should not require password validation
+      expect(showToast.error).not.toHaveBeenCalledWith(expect.stringContaining('password'));
     });
   });
 });

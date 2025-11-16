@@ -6,11 +6,13 @@ import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight, Upload, Stethoscope,
 import LoadingSpinner from "../components/LoadingSpinner"
 import { showToast } from "../components/CustomToast"
 import medichainLogo from "../assets/medichain_logo.png"
+import axios from "axios"
 
 const MedichainSignup = () => {
   const navigate = useNavigate()
-  const { signup } = useAuth() // Fix: Use signup instead of register
+  const { signup, signInWithGoogle } = useAuth() // Fix: Use signup instead of register
   const [searchParams] = useSearchParams()
+  const API_URL = 'http://localhost:5000/api'
   
   const [formData, setFormData] = useState({
     firstName: "",
@@ -28,11 +30,14 @@ const MedichainSignup = () => {
   const [isRolePreSelected, setIsRolePreSelected] = useState(false)
   const [inlineError, setInlineError] = useState("")
   const [inlineSuccess, setInlineSuccess] = useState("")
+  const [isGoogleSignup, setIsGoogleSignup] = useState(false)
+  const [googleIdToken, setGoogleIdToken] = useState(null)
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false)
 
   // Set the userType based on URL parameter
   useEffect(() => {
     const role = searchParams.get('role')
-    const isGoogleSignup = searchParams.get('google') === 'true'
+    const isGoogleSignupParam = searchParams.get('google') === 'true'
     
     if (role && (role === 'doctor' || role === 'patient')) {
       setFormData(prev => ({
@@ -44,11 +49,13 @@ const MedichainSignup = () => {
     }
     
     // Pre-fill Google signup data if available
-    if (isGoogleSignup) {
+    if (isGoogleSignupParam) {
       const googleData = sessionStorage.getItem('google_signup_data')
       if (googleData) {
         try {
           const data = JSON.parse(googleData)
+          setIsGoogleSignup(true)
+          setGoogleIdToken(data.idToken)
           setFormData(prev => ({
             ...prev,
             email: data.email || prev.email,
@@ -101,16 +108,6 @@ const MedichainSignup = () => {
       return false
     }
     
-    if (!password?.trim()) {
-      showToast.error("Please enter a password")
-      return false
-    }
-    
-    if (!confirmPassword?.trim()) {
-      showToast.error("Please confirm your password")
-      return false
-    }
-    
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email.trim())) {
@@ -118,16 +115,29 @@ const MedichainSignup = () => {
       return false
     }
     
-    // Validate password length
-    if (password.length < 6) {
-      showToast.error("Password must be at least 6 characters long")
-      return false
-    }
-    
-    // Check if passwords match
-    if (password !== confirmPassword) {
-      showToast.error("Passwords do not match")
-      return false
+    // Password validation only for non-Google signups
+    if (!isGoogleSignup) {
+      if (!password?.trim()) {
+        showToast.error("Please enter a password")
+        return false
+      }
+      
+      if (!confirmPassword?.trim()) {
+        showToast.error("Please confirm your password")
+        return false
+      }
+      
+      // Validate password length
+      if (password.length < 6) {
+        showToast.error("Password must be at least 6 characters long")
+        return false
+      }
+      
+      // Check if passwords match
+      if (password !== confirmPassword) {
+        showToast.error("Passwords do not match")
+        return false
+      }
     }
     
     // Doctor-specific validation
@@ -174,6 +184,60 @@ const MedichainSignup = () => {
     try {
       setInlineError("")
       setInlineSuccess("")
+      
+      // Handle Google signup (uses id_token instead of password)
+      if (isGoogleSignup && googleIdToken) {
+        console.log('[Signup] Completing Google signup with id_token...')
+        
+        // For Google signup, use the stored id_token to register
+        const name = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim()
+        
+        // Doctor signup with Google
+        if (formData.userType === 'doctor') {
+          // For doctors, we need to upload the verification file
+          const signupData = new FormData();
+          signupData.append('id_token', googleIdToken);
+          signupData.append('name', name);
+          signupData.append('role', formData.userType);
+          signupData.append('specialization', 'General Practitioner');
+          signupData.append('verificationFile', formData.verificationFile);
+
+          const response = await fetch(`${API_URL}/auth/doctor-signup`, {
+            method: 'POST',
+            body: signupData
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            setInlineSuccess("Doctor account created successfully. Your documents are under review.")
+            showToast.success(result.message || "Doctor account created successfully! Your documents are under review.");
+            localStorage.setItem('medichain_token', result.data.token);
+            localStorage.setItem('medichain_user', JSON.stringify(result.data.user));
+            sessionStorage.removeItem('google_signup_data');
+            navigate("/dashboard");
+          } else {
+            setInlineError(result.error || "Doctor signup failed. Please try again.")
+            showToast.error(result.error || "Doctor signup failed");
+          }
+        } else {
+          // Patient signup with Google
+          const result = await signInWithGoogle(formData.userType, googleIdToken);
+          
+          if (result.success) {
+            setInlineSuccess("Account created successfully! Welcome to MediChain.")
+            showToast.success(result.message || "Account created successfully! Welcome to MediChain.");
+            sessionStorage.removeItem('google_signup_data');
+            navigate("/dashboard");
+          } else {
+            setInlineError(result.message || "Signup failed. Please try again.")
+            showToast.error(result.message || "Signup failed");
+          }
+        }
+        return
+      }
+      
+      // Regular signup (email/password)
       // Doctor signup uses multipart/form-data to include verification file
       if (formData.userType === 'doctor') {
         const signupData = new FormData();
@@ -185,7 +249,7 @@ const MedichainSignup = () => {
         signupData.append('specialization', 'General Practitioner'); // Always set to General Practitioner
         signupData.append('verificationFile', formData.verificationFile);
 
-        const response = await fetch('http://localhost:5000/api/auth/doctor-signup', {
+        const response = await fetch(`${API_URL}/auth/doctor-signup`, {
           method: 'POST',
           body: signupData
         });
@@ -197,7 +261,6 @@ const MedichainSignup = () => {
           showToast.success(result.message || "Doctor account created successfully! Your documents are under review.");
           localStorage.setItem('medichain_token', result.data.token);
           localStorage.setItem('medichain_user', JSON.stringify(result.data.user));
-          // Clear Google signup data if present
           sessionStorage.removeItem('google_signup_data');
           navigate("/dashboard");
         } else {
@@ -216,7 +279,6 @@ const MedichainSignup = () => {
         if (result.success) {
           setInlineSuccess("Account created successfully! Welcome to MediChain.")
           showToast.success(result.message || "Account created successfully! Welcome to MediChain.");
-          // Clear Google signup data if present
           sessionStorage.removeItem('google_signup_data');
           navigate("/dashboard");
         } else {
@@ -230,6 +292,51 @@ const MedichainSignup = () => {
       showToast.error("An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
+    }
+  }
+  
+  const handleGoogleSignIn = async () => {
+    if (isSubmitting || isGoogleSigningIn) return
+    
+    setIsGoogleSigningIn(true)
+    setInlineError("")
+    
+    try {
+      const result = await signInWithGoogle()
+      
+      if (result.success) {
+        showToast.success(result.message || "Login successful!")
+        sessionStorage.removeItem('google_signup_data')
+        navigate("/dashboard")
+      } else if (result.needsSignup) {
+        // Account not found - continue with signup
+        showToast.info("Please complete your registration to continue.")
+        setIsGoogleSignup(true)
+        const googleData = sessionStorage.getItem('google_signup_data')
+        if (googleData) {
+          try {
+            const data = JSON.parse(googleData)
+            setGoogleIdToken(data.idToken)
+            setFormData(prev => ({
+              ...prev,
+              email: data.email || prev.email,
+              firstName: data.firstName || prev.firstName,
+              lastName: data.lastName || prev.lastName
+            }))
+          } catch (error) {
+            console.error('Error parsing Google signup data:', error)
+          }
+        }
+      } else {
+        setInlineError(result.message || "Google sign-in failed. Please try again.")
+        showToast.error(result.message || "Google sign-in failed")
+      }
+    } catch (error) {
+      console.error("Google sign-in error:", error)
+      setInlineError("An unexpected error occurred. Please try again.")
+      showToast.error("An unexpected error occurred. Please try again.")
+    } finally {
+      setIsGoogleSigningIn(false)
     }
   }
 
@@ -397,61 +504,72 @@ const MedichainSignup = () => {
                   </>
                 )}
 
-                <div className="input-group">
-                  <label htmlFor="password">Password</label>
-                  <div className="input-wrapper">
-                    <Lock className="input-icon" size={20} />
-                    <input
-                      id="password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="new-password"
-                      aria-required="true"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      placeholder="Enter your password"
-                      disabled={isSubmitting}
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="password-toggle"
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
-                </div>
+                {/* Password fields - hidden for Google signup */}
+                {!isGoogleSignup && (
+                  <>
+                    <div className="input-group">
+                      <label htmlFor="password">Password</label>
+                      <div className="input-wrapper">
+                        <Lock className="input-icon" size={20} />
+                        <input
+                          id="password"
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          autoComplete="new-password"
+                          aria-required="true"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          placeholder="Enter your password"
+                          disabled={isSubmitting}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle"
+                          onClick={() => setShowPassword(!showPassword)}
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                          tabIndex={-1}
+                        >
+                          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                      </div>
+                    </div>
 
-                <div className="input-group">
-                  <label htmlFor="confirmPassword">Confirm Password</label>
-                  <div className="input-wrapper">
-                    <Lock className="input-icon" size={20} />
-                    <input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      autoComplete="new-password"
-                      aria-required="true"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      placeholder="Confirm your password"
-                      disabled={isSubmitting}
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="password-toggle"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                      tabIndex={-1}
-                    >
-                      {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
+                    <div className="input-group">
+                      <label htmlFor="confirmPassword">Confirm Password</label>
+                      <div className="input-wrapper">
+                        <Lock className="input-icon" size={20} />
+                        <input
+                          id="confirmPassword"
+                          name="confirmPassword"
+                          type={showConfirmPassword ? "text" : "password"}
+                          autoComplete="new-password"
+                          aria-required="true"
+                          value={formData.confirmPassword}
+                          onChange={handleInputChange}
+                          placeholder="Confirm your password"
+                          disabled={isSubmitting}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                          tabIndex={-1}
+                        >
+                          {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                {isGoogleSignup && (
+                  <div className="form-alert info" role="status" aria-live="polite" style={{ backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' }}>
+                    <p>You're signing up with Google. No password required.</p>
                   </div>
-                </div>
+                )}
 
                 <button 
                   type="submit" 
@@ -474,6 +592,30 @@ const MedichainSignup = () => {
                     </>
                   )}
                 </button>
+
+                {!isGoogleSignup && (
+                  <>
+                    <div className="divider">
+                      <span>or</span>
+                    </div>
+
+                    <button 
+                      type="button" 
+                      className="google-btn" 
+                      onClick={handleGoogleSignIn}
+                      disabled={isSubmitting || isGoogleSigningIn}
+                    >
+                      {isGoogleSigningIn ? (
+                        <LoadingSpinner size="small" text="" />
+                      ) : (
+                        <>
+                          <div className="google-icon">G</div>
+                          Continue with Google
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
 
                 <p className="signup-link">
                   Already have an account? <span 

@@ -76,11 +76,14 @@ describe('MedichainLogin Component', () => {
   const mockLogin = jest.fn();
   const mockResendVerification = jest.fn();
   
+  const mockSignInWithGoogle = jest.fn();
+  
   const defaultAuthContext = {
     login: mockLogin,
     isAuthenticated: false,
     loading: false,
     resendVerification: mockResendVerification,
+    signInWithGoogle: mockSignInWithGoogle,
   };
 
   const defaultLocation = {
@@ -106,6 +109,18 @@ describe('MedichainLogin Component', () => {
     };
     Object.defineProperty(window, 'localStorage', {
       value: localStorageMock,
+      writable: true,
+    });
+    
+    // Mock sessionStorage
+    const sessionStorageMock = {
+      getItem: jest.fn(() => null),
+      setItem: jest.fn(),
+      removeItem: jest.fn(),
+      clear: jest.fn(),
+    };
+    Object.defineProperty(window, 'sessionStorage', {
+      value: sessionStorageMock,
       writable: true,
     });
   });
@@ -644,6 +659,114 @@ describe('MedichainLogin Component', () => {
 
       const form = screen.getByRole('button', { name: /log in/i }).closest('form');
       expect(form).toBeInTheDocument();
+    });
+  });
+
+  describe('Google Sign-In', () => {
+    it('renders Google sign-in button', () => {
+      render(
+        <TestWrapper>
+          <MedichainLogin />
+        </TestWrapper>
+      );
+
+      expect(screen.getByText(/continue with google/i)).toBeInTheDocument();
+    });
+
+    it('handles successful Google sign-in', async () => {
+      mockSignInWithGoogle.mockResolvedValue({
+        success: true,
+        message: 'Login successful!',
+        user: { id: '1', email: 'google@example.com' }
+      });
+
+      render(
+        <TestWrapper>
+          <MedichainLogin />
+        </TestWrapper>
+      );
+
+      const googleButton = screen.getByText(/continue with google/i);
+      
+      await act(async () => {
+        fireEvent.click(googleButton);
+      });
+
+      await waitFor(() => {
+        expect(mockSignInWithGoogle).toHaveBeenCalled();
+        expect(showToast.success).toHaveBeenCalledWith('Login successful!');
+        expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true });
+      });
+    });
+
+    it('redirects to signup when Google user needs registration', async () => {
+      mockSignInWithGoogle.mockResolvedValue({
+        success: false,
+        needsSignup: true,
+        email: 'newuser@example.com',
+        message: 'Account not found. Please complete your registration.'
+      });
+
+      render(
+        <TestWrapper>
+          <MedichainLogin />
+        </TestWrapper>
+      );
+
+      const googleButton = screen.getByText(/continue with google/i);
+      
+      await act(async () => {
+        fireEvent.click(googleButton);
+      });
+
+      await waitFor(() => {
+        expect(mockSignInWithGoogle).toHaveBeenCalled();
+        expect(showToast.info).toHaveBeenCalledWith('Please complete your registration to continue.');
+        expect(mockNavigate).toHaveBeenCalledWith('/signup?google=true', { replace: true });
+      });
+    });
+
+    it('handles Google sign-in errors', async () => {
+      mockSignInWithGoogle.mockResolvedValue({
+        success: false,
+        message: 'Google sign-in failed. Please try again.'
+      });
+
+      render(
+        <TestWrapper>
+          <MedichainLogin />
+        </TestWrapper>
+      );
+
+      const googleButton = screen.getByText(/continue with google/i);
+      
+      await act(async () => {
+        fireEvent.click(googleButton);
+      });
+
+      await waitFor(() => {
+        expect(showToast.error).toHaveBeenCalledWith('Google sign-in failed. Please try again.');
+      });
+    });
+
+    it('disables Google button during sign-in', async () => {
+      mockSignInWithGoogle.mockImplementation(() => 
+        new Promise(resolve => setTimeout(() => resolve({ success: true }), 100))
+      );
+
+      render(
+        <TestWrapper>
+          <MedichainLogin />
+        </TestWrapper>
+      );
+
+      const googleButton = screen.getByText(/continue with google/i);
+      
+      await act(async () => {
+        fireEvent.click(googleButton);
+      });
+
+      expect(googleButton).toBeDisabled();
     });
   });
 });

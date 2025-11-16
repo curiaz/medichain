@@ -420,15 +420,132 @@ def doctor_signup():
     """
     Doctor registration endpoint with document verification
     Handles multipart/form-data for file uploads
+    Supports both regular signup (email/password) and Google signup (id_token)
     """
     try:
         print("[DEBUG] 🏥 Doctor signup request received")
         
-        # Get form data (multipart/form-data, not JSON)
-        email = request.form.get('email', '').strip().lower()
-        password = request.form.get('password', '')
-        first_name = request.form.get('firstName', '').strip()
-        last_name = request.form.get('lastName', '').strip()
+        # Check if this is a Google signup (id_token provided) or regular signup
+        id_token = request.form.get('id_token', '').strip()
+        is_google_signup = bool(id_token)
+        
+        if is_google_signup:
+            print("[DEBUG] 🔥 Google signup detected (id_token provided)")
+            # For Google signup, verify token and extract user info
+            try:
+                from auth.firebase_auth import firebase_auth_service
+                
+                # Verify Firebase token
+                result = firebase_auth_service.verify_token(id_token)
+                
+                if not result.get("success"):
+                    return jsonify({
+                        "success": False,
+                        "error": "Invalid authentication token. Please try again."
+                    }), 401
+                
+                uid = result.get("uid")
+                email = result.get("email", '').strip().lower()
+                email_verified = result.get("email_verified", False)
+                
+                # Get name from form or token
+                name = request.form.get('name', '').strip()
+                if name:
+                    name_parts = name.split(' ', 1)
+                    first_name = name_parts[0] if len(name_parts) > 0 else ''
+                    last_name = name_parts[1] if len(name_parts) > 1 else ''
+                else:
+                    first_name = request.form.get('firstName', '').strip()
+                    last_name = request.form.get('lastName', '').strip()
+                
+                print(f"[DEBUG] Google signup: {email} (UID: {uid}), {first_name} {last_name}")
+                
+                # Validate name
+                if not first_name or not last_name:
+                    return jsonify({
+                        "success": False,
+                        "error": "Please enter your first and last name."
+                    }), 400
+                
+                # Skip password validation for Google signup
+                password = None
+                password_hash = None
+                
+            except Exception as token_error:
+                print(f"[DEBUG] ❌ Token verification error: {token_error}")
+                return jsonify({
+                    "success": False,
+                    "error": "Failed to verify authentication. Please try again."
+                }), 401
+        else:
+            print("[DEBUG] 📧 Regular signup detected (email/password)")
+            # Regular signup - get form data
+            email = request.form.get('email', '').strip().lower()
+            password = request.form.get('password', '')
+            first_name = request.form.get('firstName', '').strip()
+            last_name = request.form.get('lastName', '').strip()
+            
+            # Validate required fields
+            if not email:
+                print("[DEBUG] ❌ Missing email")
+                return jsonify({
+                    "success": False,
+                    "error": "Please enter your email address."
+                }), 400
+            
+            if not password or len(password) < 6:
+                print("[DEBUG] ❌ Invalid password")
+                return jsonify({
+                    "success": False,
+                    "error": "Password must be at least 6 characters long."
+                }), 400
+            
+            if not first_name or not last_name:
+                print("[DEBUG] ❌ Missing name")
+                return jsonify({
+                    "success": False,
+                    "error": "Please enter your first and last name."
+                }), 400
+            
+            # Create Firebase account for regular signup
+            try:
+                from auth.firebase_auth import firebase_auth_service
+                
+                # Create user in Firebase
+                user_record = auth.create_user(
+                    email=email,
+                    password=password,
+                    display_name=f"{first_name} {last_name}"
+                )
+                
+                uid = user_record.uid
+                print(f"[DEBUG] ✅ Firebase user created: {email} (UID: {uid})")
+                
+                # Hash password for database storage
+                password_hash = auth_utils.hash_password(password)
+                
+            except Exception as firebase_error:
+                firebase_error_msg = str(firebase_error)
+                print(f"[DEBUG] ❌ Firebase error: {firebase_error_msg}")
+                
+                # Handle specific Firebase errors
+                if 'EMAIL_EXISTS' in firebase_error_msg or 'email-already-exists' in firebase_error_msg:
+                    return jsonify({
+                        "success": False,
+                        "error": "An account with this email already exists."
+                    }), 400
+                if 'WEAK_PASSWORD' in firebase_error_msg:
+                    return jsonify({
+                        "success": False,
+                        "error": "Password should be at least 6 characters long."
+                    }), 400
+                
+                # Generic failure
+                return jsonify({
+                    "success": False,
+                    "error": f"Failed to create account: {firebase_error_msg}"
+                }), 500
+        
         # Force specialization to "General Practitioner" only
         specialization = "General Practitioner"
         
@@ -438,32 +555,15 @@ def doctor_signup():
         print(f"[DEBUG] Doctor signup data: {email}, {first_name} {last_name}, {specialization}")
         print(f"[DEBUG] Verification file: {verification_file.filename if verification_file else 'None'}")
         
-        # Validate required fields
-        if not email:
-            print("[DEBUG] ❌ Missing email")
-            return jsonify({
-                "success": False,
-                "error": "Please enter your email address."
-            }), 400
-        
-        if not password or len(password) < 6:
-            print("[DEBUG] ❌ Invalid password")
-            return jsonify({
-                "success": False,
-                "error": "Password must be at least 6 characters long."
-            }), 400
-        
-        if not first_name or not last_name:
-            print("[DEBUG] ❌ Missing name")
-            return jsonify({
-                "success": False,
-                "error": "Please enter your first and last name."
-            }), 400
-        
-        # Specialization is always set to "General Practitioner" - no validation needed
-        
+        # Validate verification file
         if not verification_file:
             print("[DEBUG] ❌ Missing verification file")
+            # Clean up Firebase user if it was created
+            if not is_google_signup and 'uid' in locals():
+                try:
+                    auth.delete_user(uid)
+                except:
+                    pass
             return jsonify({
                 "success": False,
                 "error": "Please upload your verification document (medical license, ID, or certificate)."
@@ -476,6 +576,12 @@ def doctor_signup():
         
         if file_ext not in allowed_extensions:
             print(f"[DEBUG] ❌ Invalid file type: {file_ext}")
+            # Clean up Firebase user if it was created
+            if not is_google_signup and 'uid' in locals():
+                try:
+                    auth.delete_user(uid)
+                except:
+                    pass
             return jsonify({
                 "success": False,
                 "error": "Please upload a valid file (PDF, JPG, or PNG)."
@@ -488,48 +594,18 @@ def doctor_signup():
         
         if file_size > 5 * 1024 * 1024:  # 5MB
             print(f"[DEBUG] ❌ File too large: {file_size} bytes")
+            # Clean up Firebase user if it was created
+            if not is_google_signup and 'uid' in locals():
+                try:
+                    auth.delete_user(uid)
+                except:
+                    pass
             return jsonify({
                 "success": False,
                 "error": "File size must be less than 5MB."
             }), 400
         
-        print("[DEBUG] ✅ Validation passed, creating Firebase account...")
-        
-        # Create Firebase account
-        try:
-            from auth.firebase_auth import firebase_auth_service
-            
-            # Create user in Firebase
-            user_record = auth.create_user(
-                email=email,
-                password=password,
-                display_name=f"{first_name} {last_name}"
-            )
-            
-            uid = user_record.uid
-            print(f"[DEBUG] ✅ Firebase user created: {email} (UID: {uid})")
-            firebase_error_msg = None
-        except Exception as firebase_error:
-            firebase_error_msg = str(firebase_error)
-            print(f"[DEBUG] ❌ Firebase error: {firebase_error_msg}")
-            
-            # Handle specific Firebase errors
-            if 'EMAIL_EXISTS' in firebase_error_msg or 'email-already-exists' in firebase_error_msg:
-                return jsonify({
-                    "success": False,
-                    "error": "An account with this email already exists."
-                }), 400
-            if 'WEAK_PASSWORD' in firebase_error_msg:
-                return jsonify({
-                    "success": False,
-                    "error": "Password should be at least 6 characters long."
-                }), 400
-            
-            # Generic failure
-            return jsonify({
-                "success": False,
-                "error": f"Failed to create account: {firebase_error_msg}"
-            }), 500
+        print("[DEBUG] ✅ Validation passed, proceeding with file upload and database creation...")
 
         # Save verification file
         try:
@@ -548,12 +624,13 @@ def doctor_signup():
             
         except Exception as file_error:
             print(f"[DEBUG] ❌ File save error: {file_error}")
-            # Clean up Firebase user
-            try:
-                auth.delete_user(uid)
-                print(f"[DEBUG] Cleaned up Firebase user after file save failure")
-            except:
-                pass
+            # Clean up Firebase user (only for regular signup, not Google)
+            if not is_google_signup:
+                try:
+                    auth.delete_user(uid)
+                    print(f"[DEBUG] Cleaned up Firebase user after file save failure")
+                except:
+                    pass
             
             return jsonify({
                 "success": False,
@@ -562,8 +639,9 @@ def doctor_signup():
         
         # Create user profile in database
         try:
-            # Hash password for database storage
-            password_hash = auth_utils.hash_password(password)
+            # Hash password for database storage (only for regular signup)
+            if not is_google_signup and not password_hash:
+                password_hash = auth_utils.hash_password(password)
             
             # 1. Create basic user profile
             user_data = {
@@ -572,9 +650,12 @@ def doctor_signup():
                 "first_name": first_name,
                 "last_name": last_name,
                 "role": "doctor",
-                "password_hash": password_hash,
                 "verification_status": "pending"  # Set to pending for doctor verification
             }
+            
+            # Only add password_hash if it exists (regular signup)
+            if password_hash:
+                user_data["password_hash"] = password_hash
             
             user_response = supabase.client.table("user_profiles").insert(user_data).execute()
             
@@ -673,14 +754,16 @@ def doctor_signup():
             print(f"[DEBUG] ❌ Database error: {db_error}")
             
             # Clean up Firebase user, file, and any created database records
+            # (Only delete Firebase user for regular signup, not Google)
             try:
-                auth.delete_user(uid)
-                if os.path.exists(file_path):
+                if not is_google_signup:
+                    auth.delete_user(uid)
+                if 'file_path' in locals() and os.path.exists(file_path):
                     os.remove(file_path)
                 # Try to clean up user_profiles if it was created (use service_client to bypass RLS)
                 if 'user_id' in locals():
                     supabase.service_client.table("user_profiles").delete().eq("id", user_id).execute()
-                print(f"[DEBUG] Cleaned up Firebase user, file, and database records after failure")
+                print(f"[DEBUG] Cleaned up Firebase user (if regular signup), file, and database records after failure")
             except Exception as cleanup_error:
                 print(f"[DEBUG] Cleanup error: {cleanup_error}")
             
