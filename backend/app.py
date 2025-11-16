@@ -602,7 +602,9 @@ CORS(app, resources={
             "http://localhost:3000",
             "http://127.0.0.1:3000",
             "http://localhost:3001",
-            "http://127.0.0.1:3001"
+            "http://127.0.0.1:3001",
+            "https://medichain-8773b.web.app",
+            "https://medichain-8773b.firebaseapp.com"
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
@@ -623,7 +625,9 @@ def handle_preflight():
             "http://localhost:3000",
             "http://127.0.0.1:3000",
             "http://localhost:3001",
-            "http://127.0.0.1:3001"
+            "http://127.0.0.1:3001",
+            "https://medichain-8773b.web.app",
+            "https://medichain-8773b.firebaseapp.com"
         ]
         if origin in allowed_origins:
             response.headers.add("Access-Control-Allow-Origin", origin)
