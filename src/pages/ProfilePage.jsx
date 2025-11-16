@@ -4,7 +4,7 @@ import { SupabaseService } from '../config/supabase';
 import { 
   User, Heart, FileText, Lock, Key, History, 
   Edit3, Save, X, Camera,
-  AlertCircle, CheckCircle, ArrowLeft
+  AlertCircle, CheckCircle, ArrowLeft, Trash2
 } from 'lucide-react';
 import './ProfilePage.css';
 

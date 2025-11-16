@@ -5,7 +5,7 @@ import {
   User, Heart, Edit3, Save, X, 
   Camera, AlertCircle, CheckCircle,
   Lock, Key, 
-  History
+  History, FileText
 } from 'lucide-react';
 
 // Import tab components

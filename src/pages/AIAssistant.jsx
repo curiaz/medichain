@@ -20,6 +20,7 @@ const AIAssistant = () => {
   const [progressStatus, setProgressStatus] = useState('');
   const [aiStatus, setAiStatus] = useState('checking');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [modelInfo, setModelInfo] = useState(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 

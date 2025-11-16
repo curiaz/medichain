@@ -22,6 +22,7 @@ const AIAssistant = () => {
   const [aiStatus, setAiStatus] = useState('checking');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [mode, setMode] = useState('quick'); // 'quick' or 'conversational'
+  const [modelInfo, setModelInfo] = useState(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
