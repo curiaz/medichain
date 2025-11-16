@@ -4,44 +4,107 @@
 -- 
 -- Usage: Copy and paste this entire script into Supabase SQL Editor and execute
 
+-- This script only deletes from tables that actually exist in your schema
+-- Tables are checked for existence before deletion
+
 -- Step 1: Delete related data first (in order of dependencies)
 
--- Delete appointments
-DELETE FROM appointments WHERE id != '00000000-0000-0000-0000-000000000000';
+-- Delete appointments (if table exists)
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'appointments') THEN
+        DELETE FROM appointments WHERE id != '00000000-0000-0000-0000-000000000000';
+        RAISE NOTICE 'Deleted appointments';
+    END IF;
+END $$;
 
--- Delete prescriptions
-DELETE FROM prescriptions WHERE id != '00000000-0000-0000-0000-000000000000';
+-- Delete prescriptions (if table exists)
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'prescriptions') THEN
+        DELETE FROM prescriptions WHERE id != '00000000-0000-0000-0000-000000000000';
+        RAISE NOTICE 'Deleted prescriptions';
+    END IF;
+END $$;
 
--- Delete AI diagnoses
-DELETE FROM ai_diagnoses WHERE id != '00000000-0000-0000-0000-000000000000';
+-- Delete AI diagnoses (if table exists)
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'ai_diagnoses') THEN
+        DELETE FROM ai_diagnoses WHERE id != '00000000-0000-0000-0000-000000000000';
+        RAISE NOTICE 'Deleted AI diagnoses';
+    END IF;
+END $$;
 
--- Delete medical records
-DELETE FROM medical_records WHERE id != '00000000-0000-0000-0000-000000000000';
+-- Delete medical records (if table exists)
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'medical_records') THEN
+        DELETE FROM medical_records WHERE id != '00000000-0000-0000-0000-000000000000';
+        RAISE NOTICE 'Deleted medical records';
+    END IF;
+END $$;
 
--- Delete blockchain transactions
-DELETE FROM blockchain_transactions WHERE id != '00000000-0000-0000-0000-000000000000';
+-- Delete blockchain transactions (if table exists)
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'blockchain_transactions') THEN
+        DELETE FROM blockchain_transactions WHERE id != '00000000-0000-0000-0000-000000000000';
+        RAISE NOTICE 'Deleted blockchain transactions';
+    END IF;
+END $$;
 
--- Delete user documents
-DELETE FROM user_documents WHERE id != '00000000-0000-0000-0000-000000000000';
+-- Delete user documents (if table exists)
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_documents') THEN
+        DELETE FROM user_documents WHERE id != '00000000-0000-0000-0000-000000000000';
+        RAISE NOTICE 'Deleted user documents';
+    END IF;
+END $$;
 
--- Delete privacy settings
-DELETE FROM privacy_settings WHERE user_firebase_uid != '';
+-- Delete privacy settings (if table exists)
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'privacy_settings') THEN
+        DELETE FROM privacy_settings WHERE user_firebase_uid != '';
+        RAISE NOTICE 'Deleted privacy settings';
+    END IF;
+END $$;
 
--- Delete credential updates
-DELETE FROM credential_updates WHERE id != '00000000-0000-0000-0000-000000000000';
+-- Delete credential updates (if table exists)
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'credential_updates') THEN
+        DELETE FROM credential_updates WHERE id != '00000000-0000-0000-0000-000000000000';
+        RAISE NOTICE 'Deleted credential updates';
+    END IF;
+END $$;
 
--- Step 2: Delete doctor profiles
-DELETE FROM doctor_profiles WHERE id != '00000000-0000-0000-0000-000000000000';
+-- Step 2: Delete doctor profiles (if table exists)
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'doctor_profiles') THEN
+        DELETE FROM doctor_profiles WHERE id != '00000000-0000-0000-0000-000000000000';
+        RAISE NOTICE 'Deleted doctor profiles';
+    END IF;
+END $$;
 
 -- Step 3: Delete user profiles (this should cascade to any remaining related data)
-DELETE FROM user_profiles WHERE id != '00000000-0000-0000-0000-000000000000';
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_profiles') THEN
+        DELETE FROM user_profiles WHERE id != '00000000-0000-0000-0000-000000000000';
+        RAISE NOTICE 'Deleted user profiles';
+    END IF;
+END $$;
 
 -- Verify deletion
 SELECT 
-    (SELECT COUNT(*) FROM user_profiles) as remaining_users,
-    (SELECT COUNT(*) FROM doctor_profiles) as remaining_doctors,
-    (SELECT COUNT(*) FROM appointments) as remaining_appointments,
-    (SELECT COUNT(*) FROM medical_records) as remaining_medical_records;
+    COALESCE((SELECT COUNT(*) FROM user_profiles), 0) as remaining_users,
+    COALESCE((SELECT COUNT(*) FROM doctor_profiles WHERE EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'doctor_profiles')), 0) as remaining_doctors,
+    COALESCE((SELECT COUNT(*) FROM appointments WHERE EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'appointments')), 0) as remaining_appointments,
+    COALESCE((SELECT COUNT(*) FROM medical_records WHERE EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'medical_records')), 0) as remaining_medical_records;
 
 -- Note: Firebase Auth users are NOT deleted by this script
 -- You need to delete them manually from Firebase Console or use Firebase Admin SDK

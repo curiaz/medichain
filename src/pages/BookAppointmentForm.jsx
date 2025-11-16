@@ -40,62 +40,6 @@ const BookAppointmentForm = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    console.log("🔍 BookAppointmentForm: Component mounted");
-    console.log("🔍 BookAppointmentForm: location.state =", location.state);
-    console.log("🔍 BookAppointmentForm: doctor =", doctor);
-    console.log("🔍 BookAppointmentForm: selectedDate =", location.state?.selectedDate);
-    console.log("🔍 BookAppointmentForm: selectedTime =", location.state?.selectedTime);
-    console.log("🔍 BookAppointmentForm: authLoading =", authLoading);
-    console.log("🔍 BookAppointmentForm: isAuthenticated =", isAuthenticated);
-    console.log("🔍 BookAppointmentForm: user =", user);
-    
-    // Wait for AuthContext to finish loading
-    if (authLoading) {
-      console.log("⏳ BookAppointmentForm: AuthContext still loading, waiting...");
-      setLoading(true);
-      return;
-    }
-    
-    // Check authentication after loading is complete
-    if (!isAuthenticated || !user) {
-      console.log("❌ BookAppointmentForm: Not authenticated, redirecting to login");
-      setError("Please log in to continue");
-      setTimeout(() => {
-        navigate("/login", { replace: true });
-      }, 1000);
-      return;
-    }
-    
-    if (!doctor) {
-      console.log("❌ BookAppointmentForm: No doctor found, redirecting to /select-gp");
-      setError("No doctor selected. Redirecting to doctor selection...");
-      setTimeout(() => {
-        navigate("/select-gp");
-      }, 2000);
-      return;
-    }
-    
-    // If date and time are passed from SelectDateTime, use them
-    const dateFromState = location.state?.selectedDate;
-    const timeFromState = location.state?.selectedTime;
-    const dateFromStorage = sessionStorage.getItem('selectedDate');
-    const timeFromStorage = sessionStorage.getItem('selectedTime');
-    
-    if (dateFromState && timeFromState) {
-      console.log("✅ BookAppointmentForm: Date and time pre-selected from state");
-      setSelectedDate(dateFromState);
-      setSelectedTime(timeFromState);
-    } else if (dateFromStorage && timeFromStorage) {
-      console.log("✅ BookAppointmentForm: Date and time pre-selected from sessionStorage");
-      setSelectedDate(dateFromStorage);
-      setSelectedTime(timeFromStorage);
-    }
-    
-    console.log("✅ BookAppointmentForm: Doctor found, fetching availability");
-    fetchDoctorAvailability();
-  }, [doctor, navigate, location, isAuthenticated, user, authLoading, fetchDoctorAvailability]);
-
   // Get current time in Asia/Manila timezone
   const getManilaNow = () => {
     const now = new Date();
@@ -235,6 +179,62 @@ const BookAppointmentForm = () => {
       setLoading(false);
     }
   }, [doctor, isAuthenticated, user, navigate]);
+
+  useEffect(() => {
+    console.log("🔍 BookAppointmentForm: Component mounted");
+    console.log("🔍 BookAppointmentForm: location.state =", location.state);
+    console.log("🔍 BookAppointmentForm: doctor =", doctor);
+    console.log("🔍 BookAppointmentForm: selectedDate =", location.state?.selectedDate);
+    console.log("🔍 BookAppointmentForm: selectedTime =", location.state?.selectedTime);
+    console.log("🔍 BookAppointmentForm: authLoading =", authLoading);
+    console.log("🔍 BookAppointmentForm: isAuthenticated =", isAuthenticated);
+    console.log("🔍 BookAppointmentForm: user =", user);
+    
+    // Wait for AuthContext to finish loading
+    if (authLoading) {
+      console.log("⏳ BookAppointmentForm: AuthContext still loading, waiting...");
+      setLoading(true);
+      return;
+    }
+    
+    // Check authentication after loading is complete
+    if (!isAuthenticated || !user) {
+      console.log("❌ BookAppointmentForm: Not authenticated, redirecting to login");
+      setError("Please log in to continue");
+      setTimeout(() => {
+        navigate("/login", { replace: true });
+      }, 1000);
+      return;
+    }
+    
+    if (!doctor) {
+      console.log("❌ BookAppointmentForm: No doctor found, redirecting to /select-gp");
+      setError("No doctor selected. Redirecting to doctor selection...");
+      setTimeout(() => {
+        navigate("/select-gp");
+      }, 2000);
+      return;
+    }
+    
+    // If date and time are passed from SelectDateTime, use them
+    const dateFromState = location.state?.selectedDate;
+    const timeFromState = location.state?.selectedTime;
+    const dateFromStorage = sessionStorage.getItem('selectedDate');
+    const timeFromStorage = sessionStorage.getItem('selectedTime');
+    
+    if (dateFromState && timeFromState) {
+      console.log("✅ BookAppointmentForm: Date and time pre-selected from state");
+      setSelectedDate(dateFromState);
+      setSelectedTime(timeFromState);
+    } else if (dateFromStorage && timeFromStorage) {
+      console.log("✅ BookAppointmentForm: Date and time pre-selected from sessionStorage");
+      setSelectedDate(dateFromStorage);
+      setSelectedTime(timeFromStorage);
+    }
+    
+    console.log("✅ BookAppointmentForm: Doctor found, fetching availability");
+    fetchDoctorAvailability();
+  }, [doctor, navigate, location, isAuthenticated, user, authLoading, fetchDoctorAvailability]);
 
   const handleBookAppointment = async () => {
     if (!selectedDate || !selectedTime) {

@@ -37,61 +37,6 @@ const SelectDateTime = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [availableDates, setAvailableDates] = useState([]); // Array of date strings that have slots
 
-  useEffect(() => {
-    console.log("🔍 SelectDateTime: Component mounted");
-    console.log("🔍 SelectDateTime: location.state =", location.state);
-    console.log("🔍 SelectDateTime: doctor =", doctor);
-    console.log("🔍 SelectDateTime: location.pathname =", location.pathname);
-    console.log("🔍 SelectDateTime: authLoading =", authLoading);
-    console.log("🔍 SelectDateTime: isAuthenticated =", isAuthenticated);
-    console.log("🔍 SelectDateTime: user =", user);
-    
-    // Wait for AuthContext to finish loading
-    if (authLoading) {
-      console.log("⏳ SelectDateTime: AuthContext still loading, waiting...");
-      setLoading(true);
-      return;
-    }
-    
-    // Check authentication after loading is complete
-    if (!isAuthenticated || !user) {
-      console.log("❌ SelectDateTime: Not authenticated (isAuthenticated:", isAuthenticated, ", user:", user, "), redirecting to login");
-      setError("Please log in to continue");
-      setLoading(false);
-      setTimeout(() => {
-        navigate("/login", { replace: true });
-      }, 1000);
-      return;
-    }
-    
-    // Check if doctor exists, if not try to get from location state or redirect
-    if (!doctor) {
-      console.log("❌ SelectDateTime: No doctor found in location.state");
-      console.log("❌ SelectDateTime: Full location object:", location);
-      
-      // Don't redirect immediately - show error message first
-      setError("No doctor selected. Redirecting to doctor selection...");
-      setLoading(false);
-      
-      // Redirect after a short delay to show error message
-      const redirectTimer = setTimeout(() => {
-        console.log("🔄 SelectDateTime: Redirecting to /select-gp");
-        navigate("/select-gp", { replace: true });
-      }, 2000);
-      
-      return () => clearTimeout(redirectTimer);
-    }
-    
-    console.log("✅ SelectDateTime: Doctor found, fetching availability");
-    console.log("✅ SelectDateTime: Doctor details:", {
-      firebase_uid: doctor.firebase_uid,
-      name: `${doctor.first_name} ${doctor.last_name}`,
-      email: doctor.email
-    });
-    
-    fetchDoctorAvailability();
-  }, [doctor, navigate, location, isAuthenticated, user, authLoading, fetchDoctorAvailability]);
-
   // Get current time in Asia/Manila timezone
   const getManilaNow = () => {
     const now = new Date();
@@ -375,6 +320,61 @@ const SelectDateTime = () => {
       setLoading(false);
     }
   }, [doctor, isAuthenticated, user, navigate, getFirebaseToken, auth]);
+
+  useEffect(() => {
+    console.log("🔍 SelectDateTime: Component mounted");
+    console.log("🔍 SelectDateTime: location.state =", location.state);
+    console.log("🔍 SelectDateTime: doctor =", doctor);
+    console.log("🔍 SelectDateTime: location.pathname =", location.pathname);
+    console.log("🔍 SelectDateTime: authLoading =", authLoading);
+    console.log("🔍 SelectDateTime: isAuthenticated =", isAuthenticated);
+    console.log("🔍 SelectDateTime: user =", user);
+    
+    // Wait for AuthContext to finish loading
+    if (authLoading) {
+      console.log("⏳ SelectDateTime: AuthContext still loading, waiting...");
+      setLoading(true);
+      return;
+    }
+    
+    // Check authentication after loading is complete
+    if (!isAuthenticated || !user) {
+      console.log("❌ SelectDateTime: Not authenticated (isAuthenticated:", isAuthenticated, ", user:", user, "), redirecting to login");
+      setError("Please log in to continue");
+      setLoading(false);
+      setTimeout(() => {
+        navigate("/login", { replace: true });
+      }, 1000);
+      return;
+    }
+    
+    // Check if doctor exists, if not try to get from location state or redirect
+    if (!doctor) {
+      console.log("❌ SelectDateTime: No doctor found in location.state");
+      console.log("❌ SelectDateTime: Full location object:", location);
+      
+      // Don't redirect immediately - show error message first
+      setError("No doctor selected. Redirecting to doctor selection...");
+      setLoading(false);
+      
+      // Redirect after a short delay to show error message
+      const redirectTimer = setTimeout(() => {
+        console.log("🔄 SelectDateTime: Redirecting to /select-gp");
+        navigate("/select-gp", { replace: true });
+      }, 2000);
+      
+      return () => clearTimeout(redirectTimer);
+    }
+    
+    console.log("✅ SelectDateTime: Doctor found, fetching availability");
+    console.log("✅ SelectDateTime: Doctor details:", {
+      firebase_uid: doctor.firebase_uid,
+      name: `${doctor.first_name} ${doctor.last_name}`,
+      email: doctor.email
+    });
+    
+    fetchDoctorAvailability();
+  }, [doctor, navigate, location, isAuthenticated, user, authLoading, fetchDoctorAvailability]);
 
   // Convert 24-hour format to 12-hour format with AM/PM
   const formatTimeTo12Hour = (time24) => {

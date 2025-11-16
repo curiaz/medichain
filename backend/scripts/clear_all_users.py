@@ -110,40 +110,52 @@ def clear_all_users(confirm=False):
             print(f"  ⚠️  Error deleting medical records: {e}")
             deleted_counts["medical_records"] = 0
         
-        # Delete blockchain transactions
+        # Delete blockchain transactions (if table exists)
         try:
             result = service_client.table("blockchain_transactions").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
             deleted_counts["blockchain_transactions"] = len(result.data) if result.data else 0
             print(f"  ✅ Deleted {deleted_counts['blockchain_transactions']} blockchain transactions")
         except Exception as e:
-            print(f"  ⚠️  Error deleting blockchain transactions: {e}")
+            if "relation" in str(e).lower() and "does not exist" in str(e).lower():
+                print(f"  ⏭️  Skipped blockchain_transactions (table does not exist)")
+            else:
+                print(f"  ⚠️  Error deleting blockchain transactions: {e}")
             deleted_counts["blockchain_transactions"] = 0
         
-        # Delete user documents
+        # Delete user documents (if table exists)
         try:
             result = service_client.table("user_documents").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
             deleted_counts["user_documents"] = len(result.data) if result.data else 0
             print(f"  ✅ Deleted {deleted_counts['user_documents']} user documents")
         except Exception as e:
-            print(f"  ⚠️  Error deleting user documents: {e}")
+            if "relation" in str(e).lower() and "does not exist" in str(e).lower():
+                print(f"  ⏭️  Skipped user_documents (table does not exist)")
+            else:
+                print(f"  ⚠️  Error deleting user documents: {e}")
             deleted_counts["user_documents"] = 0
         
-        # Delete privacy settings
+        # Delete privacy settings (if table exists)
         try:
             result = service_client.table("privacy_settings").delete().neq("user_firebase_uid", "").execute()
             deleted_counts["privacy_settings"] = len(result.data) if result.data else 0
             print(f"  ✅ Deleted {deleted_counts['privacy_settings']} privacy settings")
         except Exception as e:
-            print(f"  ⚠️  Error deleting privacy settings: {e}")
+            if "relation" in str(e).lower() and "does not exist" in str(e).lower():
+                print(f"  ⏭️  Skipped privacy_settings (table does not exist)")
+            else:
+                print(f"  ⚠️  Error deleting privacy settings: {e}")
             deleted_counts["privacy_settings"] = 0
         
-        # Delete credential updates
+        # Delete credential updates (if table exists)
         try:
             result = service_client.table("credential_updates").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
             deleted_counts["credential_updates"] = len(result.data) if result.data else 0
             print(f"  ✅ Deleted {deleted_counts['credential_updates']} credential updates")
         except Exception as e:
-            print(f"  ⚠️  Error deleting credential updates: {e}")
+            if "relation" in str(e).lower() and "does not exist" in str(e).lower():
+                print(f"  ⏭️  Skipped credential_updates (table does not exist)")
+            else:
+                print(f"  ⚠️  Error deleting credential updates: {e}")
             deleted_counts["credential_updates"] = 0
         
         # 2. Delete doctor profiles
