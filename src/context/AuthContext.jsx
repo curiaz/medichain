@@ -650,18 +650,24 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (loginError) {
         // User doesn't exist - need to register
-        console.log('[Auth] User not found, registering new user...');
+        console.log('[Auth] User not found, redirecting to signup...');
         
-        // If role not provided, we'll need to get it from the user
+        // Store Google auth data for signup page
         if (!role) {
-          return {
-            success: false,
-            needsRoleSelection: true,
+          // Store Google credentials temporarily for signup completion
+          sessionStorage.setItem('google_signup_data', JSON.stringify({
             idToken: currentIdToken,
             email: email,
             firstName: firstName,
             lastName: lastName,
-            message: 'Please select your account type'
+            displayName: displayName
+          }));
+          
+          return {
+            success: false,
+            needsSignup: true,
+            email: email,
+            message: 'Account not found. Please complete your registration.'
           };
         }
         

@@ -27,8 +27,6 @@ const MedichainLogin = () => {
   const [reactivationToken, setReactivationToken] = useState(null)
   const [isReactivating, setIsReactivating] = useState(false)
   const [inlineError, setInlineError] = useState("")
-  const [showGoogleRoleModal, setShowGoogleRoleModal] = useState(false)
-  const [googleSignInData, setGoogleSignInData] = useState(null)
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false)
 
   const handleSignUpClick = () => {
@@ -255,15 +253,10 @@ const MedichainLogin = () => {
         // Navigate to intended page or dashboard
         const from = location.state?.from?.pathname || "/dashboard"
         navigate(from, { replace: true })
-      } else if (result.needsRoleSelection) {
-        // New user needs to select role
-        setGoogleSignInData({
-          idToken: result.idToken,
-          email: result.email,
-          firstName: result.firstName,
-          lastName: result.lastName
-        })
-        setShowGoogleRoleModal(true)
+      } else if (result.needsSignup) {
+        // Account not found - redirect to signup
+        showToast.info("Please complete your registration to continue.")
+        navigate('/signup?google=true', { replace: true })
       } else {
         setInlineError(result.message || "Google sign-in failed. Please try again.")
         showToast.error(result.message || "Google sign-in failed")
@@ -277,41 +270,6 @@ const MedichainLogin = () => {
     }
   }
 
-  const handleGoogleRoleSelect = async (role) => {
-    if (!googleSignInData) return
-    
-    setIsGoogleSigningIn(true)
-    setShowGoogleRoleModal(false)
-    
-    try {
-      // Continue sign-in with role and stored token (no popup)
-      const result = await signInWithGoogle(role, googleSignInData.idToken)
-      
-      if (result.success) {
-        showToast.success(result.message || "Account created successfully!")
-        
-        // Navigate to intended page or dashboard
-        const from = location.state?.from?.pathname || "/dashboard"
-        navigate(from, { replace: true })
-      } else {
-        setInlineError(result.message || "Registration failed. Please try again.")
-        showToast.error(result.message || "Registration failed")
-      }
-    } catch (error) {
-      console.error("Google role selection error:", error)
-      setInlineError("An unexpected error occurred. Please try again.")
-      showToast.error("An unexpected error occurred. Please try again.")
-    } finally {
-      setIsGoogleSigningIn(false)
-      setGoogleSignInData(null)
-    }
-  }
-
-  const handleCancelGoogleRoleSelection = () => {
-    setShowGoogleRoleModal(false)
-    setGoogleSignInData(null)
-    showToast.info("Google sign-in cancelled.")
-  }
 
   // Show loading spinner if checking authentication
   if (loading) {
@@ -560,17 +518,6 @@ const MedichainLogin = () => {
         onClose={closeRoleModal}
         onRoleSelect={handleRoleSelect}
       />
-
-      {/* Google Role Selection Modal */}
-      {showGoogleRoleModal && googleSignInData && (
-        <RoleSelectionModal
-          isOpen={showGoogleRoleModal}
-          onClose={handleCancelGoogleRoleSelection}
-          onRoleSelect={handleGoogleRoleSelect}
-          title="Select Your Account Type"
-          subtitle={`Welcome ${googleSignInData.firstName}! Please choose how you'd like to use MediChain.`}
-        />
-      )}
 
       {/* Reactivation Confirmation Modal */}
       {showReactivationModal && (

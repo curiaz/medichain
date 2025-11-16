@@ -32,6 +32,8 @@ const MedichainSignup = () => {
   // Set the userType based on URL parameter
   useEffect(() => {
     const role = searchParams.get('role')
+    const isGoogleSignup = searchParams.get('google') === 'true'
+    
     if (role && (role === 'doctor' || role === 'patient')) {
       setFormData(prev => ({
         ...prev,
@@ -39,6 +41,25 @@ const MedichainSignup = () => {
         specialization: role === 'doctor' ? "General Practitioner" : prev.specialization
       }))
       setIsRolePreSelected(true) // Lock the role selection
+    }
+    
+    // Pre-fill Google signup data if available
+    if (isGoogleSignup) {
+      const googleData = sessionStorage.getItem('google_signup_data')
+      if (googleData) {
+        try {
+          const data = JSON.parse(googleData)
+          setFormData(prev => ({
+            ...prev,
+            email: data.email || prev.email,
+            firstName: data.firstName || prev.firstName,
+            lastName: data.lastName || prev.lastName
+          }))
+          showToast.info("Please complete your registration to finish setting up your account.")
+        } catch (error) {
+          console.error('Error parsing Google signup data:', error)
+        }
+      }
     }
   }, [searchParams])
   
@@ -176,6 +197,8 @@ const MedichainSignup = () => {
           showToast.success(result.message || "Doctor account created successfully! Your documents are under review.");
           localStorage.setItem('medichain_token', result.data.token);
           localStorage.setItem('medichain_user', JSON.stringify(result.data.user));
+          // Clear Google signup data if present
+          sessionStorage.removeItem('google_signup_data');
           navigate("/dashboard");
         } else {
           setInlineError(result.error || "Doctor signup failed. Please try again.")
@@ -193,6 +216,8 @@ const MedichainSignup = () => {
         if (result.success) {
           setInlineSuccess("Account created successfully! Welcome to MediChain.")
           showToast.success(result.message || "Account created successfully! Welcome to MediChain.");
+          // Clear Google signup data if present
+          sessionStorage.removeItem('google_signup_data');
           navigate("/dashboard");
         } else {
           setInlineError(result.error || "Signup failed. Please try again.")
