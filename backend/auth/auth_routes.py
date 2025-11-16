@@ -828,9 +828,10 @@ def login():
                         doctor_profile = None
                         try:
                             if user.get("role") == "doctor":
+                                # Select ALL doctor profile fields for complete profile data
                                 dp_resp = supabase.service_client.table("doctor_profiles").select(
-                                    "id, verification_status, specialization, verification_file_path"
-                                ).eq("user_id", user["id"]).execute()
+                                    "*"
+                                ).eq("firebase_uid", uid).execute()
                                 if dp_resp.data:
                                     doctor_profile = dp_resp.data[0]
                         except Exception as _:
@@ -852,6 +853,25 @@ def login():
                                     "full_name": full_name,
                                     "role": user["role"],
                                     "firebase_uid": uid,
+                                    "phone": user.get("phone", ""),
+                                    "address": user.get("address", ""),
+                                    "city": user.get("city", ""),
+                                    "state": user.get("state", ""),
+                                    "zip_code": user.get("zip_code", ""),
+                                    "date_of_birth": user.get("date_of_birth", ""),
+                                    "gender": user.get("gender", ""),
+                                    "emergency_contact": user.get("emergency_contact", ""),
+                                    "medical_conditions": user.get("medical_conditions", []),
+                                    "allergies": user.get("allergies", []),
+                                    "current_medications": user.get("current_medications", []),
+                                    "blood_type": user.get("blood_type", ""),
+                                    "medical_notes": user.get("medical_notes", ""),
+                                    "profile_visibility": user.get("profile_visibility", "private"),
+                                    "show_email": user.get("show_email", False),
+                                    "show_phone": user.get("show_phone", False),
+                                    "medical_info_visible_to_doctors": user.get("medical_info_visible_to_doctors", True),
+                                    "allow_ai_analysis": user.get("allow_ai_analysis", True),
+                                    "share_data_for_research": user.get("share_data_for_research", False),
                                     "doctor_profile": doctor_profile,
                                 },
                                 "token": id_token
@@ -921,6 +941,18 @@ def login():
 
             user = response.data[0]
             print(f"[DEBUG] User found: {user.get('email')}")
+
+            # 🔧 CHECK: Is account deactivated?
+            is_active = user.get('is_active', True)
+            if not is_active and user.get('role') == 'doctor':
+                print(f"[DEBUG] 🔒 Deactivated doctor account detected: {email}")
+                return jsonify({
+                    "success": False,
+                    "error": "account_deactivated",
+                    "message": "Your account has been deactivated. Would you like to reactivate it?",
+                    "deactivated": True,
+                    "email": email
+                }), 403
 
             # 🔧 FIXED: Check if user has password_hash
             has_password_hash = user.get("password_hash") and user.get("password_hash") is not None
@@ -1814,3 +1846,188 @@ def sync_firebase_user():
     except Exception as e:
         print(f"User sync error: {str(e)}")
         return jsonify({"error": "An error occurred during user synchronization"}), 500
+
+
+@auth_bp.route("/verify-password", methods=["POST"])
+def verify_password():
+    """Verify user password for sensitive operations like account deletion"""
+    try:
+        from auth.firebase_auth import firebase_auth_service
+        
+        # Get Firebase token from request headers
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return jsonify({
+                "success": False,
+                "error": "Authorization token is required"
+            }), 401
+        
+        firebase_token = auth_header.split(" ")[1]
+        
+        # Verify the Firebase token first
+        verification_result = firebase_auth_service.verify_token(firebase_token)
+        
+        if not verification_result["success"]:
+            return jsonify({
+                "success": False,
+                "error": "Invalid or expired token"
+            }), 401
+        
+        # Extract user info directly from verification_result (no nested "user" key)
+        firebase_uid = verification_result.get("uid")
+        firebase_email = verification_result.get("email")
+        
+        # Get password from request body
+        data = request.get_json()
+        
+        if not data or 'password' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Password is required'
+            }), 400
+        
+        email = data.get('email') or firebase_email
+        password = data.get('password')
+        
+        if not email or not password:
+            return jsonify({
+                'success': False,
+                'error': 'Email and password are required'
+            }), 400
+        
+        print(f"🔐 Attempting to verify password for email: {email}")
+        print(f"🔐 Firebase user: {firebase_uid}")
+        
+        # Check user's sign-in method first using Firebase Admin
+        try:
+            user_record = auth.get_user(firebase_uid)
+            print(f" User providers: {user_record.provider_data}")
+            
+            # Check if user has password provider
+            has_password = False
+            for provider in user_record.provider_data:
+                if provider.provider_id == 'password':
+                    has_password = True
+                    break
+            
+            if not has_password:
+                print(" User doesn't have password provider - using Google/other OAuth")
+                # For OAuth users, we'll accept the fact they're already authenticated
+                return jsonify({
+                    'success': True,
+                    'message': 'OAuth user verified via existing session'
+                }), 200
+        except Exception as admin_error:
+            print(f" Couldn't check user providers: {admin_error}")
+        
+        # Verify password by attempting to sign in with Firebase REST API
+        import requests
+        
+        # Use the Firebase Web API key directly (this is safe for server-side use)
+        firebase_api_key = os.environ.get('FIREBASE_API_KEY', 'AIzaSyDij3Q998OYB3PkSQpzIkki3wFzSF_OUcM')
+        
+        # Use Firebase REST API to verify password
+        firebase_auth_url = f'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={firebase_api_key}'
+        
+        auth_response = requests.post(firebase_auth_url, json={
+            'email': email,
+            'password': password,
+            'returnSecureToken': True
+        })
+        
+        print(f" Firebase response status: {auth_response.status_code}")
+        
+        if auth_response.status_code == 200:
+            print(" Password verified successfully!")
+            return jsonify({
+                'success': True,
+                'message': 'Password verified successfully'
+            }), 200
+        else:
+            error_data = auth_response.json()
+            error_message = error_data.get('error', {}).get('message', 'Invalid password')
+            print(f" Firebase error: {error_message}")
+            
+            # Translate Firebase error messages
+            if 'INVALID_PASSWORD' in error_message or 'INVALID_LOGIN_CREDENTIALS' in error_message or 'INVALID_EMAIL' in error_message:
+                error_message = 'Incorrect password. Please try again.'
+            elif 'TOO_MANY_ATTEMPTS' in error_message:
+                error_message = 'Too many failed attempts. Please try again later.'
+            elif 'USER_DISABLED' in error_message:
+                error_message = 'This account has been disabled.'
+            
+            return jsonify({
+                'success': False,
+                'error': error_message
+            }), 401
+            
+    except Exception as e:
+        print(f" Password verification error: {str(e)}")
+        import traceback
+        print(f" Traceback: {traceback.format_exc()}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to verify password'
+        }), 500
+
+@auth_bp.route('/check-deactivated', methods=['POST'])
+def check_deactivated_status():
+    """Check if a user account is deactivated (for showing reactivation modal)"""
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        
+        if not email:
+            return jsonify({
+                'success': False,
+                'error': 'Email is required'
+            }), 400
+        
+        print(f"[DEBUG] Checking deactivation status for: {email}")
+        
+        # Query Supabase for user
+        response = supabase.service_client.table('user_profiles').select('*').eq('email', email).execute()
+        
+        if not response.data:
+            print(f"[DEBUG] User not found in database")
+            return jsonify({
+                'success': False,
+                'error': 'User not found'
+            }), 404
+        
+        user = response.data[0]
+        is_active = user.get('is_active', True)
+        role = user.get('role', '')
+        
+        print(f"[DEBUG] User role: {role}, is_active: {is_active}")
+        
+        # Check if this is a deactivated doctor
+        if role == 'doctor' and not is_active:
+            print(f"[DEBUG] ✅ This is a deactivated doctor account")
+            return jsonify({
+                'success': True,
+                'is_deactivated_doctor': True,
+                'user': {
+                    'email': user.get('email'),
+                    'first_name': user.get('first_name'),
+                    'last_name': user.get('last_name'),
+                    'role': role
+                },
+                'message': 'Account is deactivated. Reactivation available.'
+            }), 200
+        else:
+            print(f"[DEBUG] Not a deactivated doctor (role: {role}, active: {is_active})")
+            return jsonify({
+                'success': True,
+                'is_deactivated_doctor': False,
+                'message': 'Account is not a deactivated doctor'
+            }), 200
+            
+    except Exception as e:
+        print(f"[ERROR] Error checking deactivation status: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

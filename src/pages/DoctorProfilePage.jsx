@@ -1,87 +1,415 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
-  User, Heart, Lock, Key, 
-  X,
-  AlertCircle, CheckCircle, ArrowLeft, ShieldOff
+  User, Lock, ShieldOff, Edit3, Save, X, AlertCircle, CheckCircle, ArrowLeft, Camera,
+  Briefcase, FileText, Eye, History, Shield, Upload, Trash2
 } from 'lucide-react';
 import './ProfilePage.css';
 
 const DoctorProfilePage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState('personal');
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   
-  // Deactivate Account Modal States
+  // Form data
+  const [formData, setFormData] = useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+    email: '',
+    address: '',
+    city: '',
+    state: '',
+    zip_code: ''
+  });
+
+  const [professionalInfo, setProfessionalInfo] = useState({
+    specialization: '',
+    license_number: '',
+    years_of_experience: '',
+    hospital_affiliation: ''
+  });
+
+  const [documents, setDocuments] = useState({
+    medical_license: null,
+    certificates: [],
+    verification_docs: []
+  });
+
+  const [privacySettings, setPrivacySettings] = useState({
+    profile_visibility: 'public',
+    show_email: false,
+    show_phone: false,
+    allow_patient_messages: true,
+    data_sharing: false
+  });
+
+  const [activityLog, setActivityLog] = useState([]);
+  
+  // Deactivate modal states
   const [showDeactivateModal, setShowDeactivateModal] = useState(false);
-  const [deactivateStep, setDeactivateStep] = useState(1); // 1: password, 2: confirmation
+  const [deactivateStep, setDeactivateStep] = useState(1);
   const [deactivatePassword, setDeactivatePassword] = useState('');
   const [passwordVerifying, setPasswordVerifying] = useState(false);
   const [passwordError, setPasswordError] = useState('');
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (user) {
       loadProfile();
+      loadDocuments();
+      loadActivityLog();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const loadProfile = async () => {
+  const loadProfile = () => {
     try {
-      setLoading(true);
-      setError('');
+      // Don't show loading spinner if we already have user data
+      if (!formData.first_name && !formData.last_name) {
+        setLoading(true);
+      }
       
-      if (!user || user.profile?.role !== 'doctor') {
-        setError('Access denied. This page is for doctors only.');
-        setLoading(false);
+      console.log('🔍 Loading doctor profile, user object:', user);
+      
+      if (!user) {
+        console.error('❌ No user found, redirecting to login');
+        navigate('/login');
         return;
       }
 
-      // Load doctor profile data
-      const userProfile = {
-        first_name: user.profile?.first_name || user.displayName?.split(' ')[0] || '',
-        last_name: user.profile?.last_name || user.displayName?.split(' ')[1] || '',
-        email: user.email || user.profile?.email || '',
-        phone: user.profile?.phone || '',
-        role: 'doctor',
-        avatar_url: user.profile?.avatar_url || user.photoURL || null,
-        specialization: user.profile?.specialization || '',
-        license_number: user.profile?.license_number || '',
-        years_of_experience: user.profile?.years_of_experience || 0,
-        hospital_affiliation: user.profile?.hospital_affiliation || '',
-        bio: user.profile?.bio || ''
-      };
+      // Extract profile data from user object
+      setFormData({
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        phone: user.phone || '',
+        email: user.email || '',
+        address: user.address || '',
+        city: user.city || '',
+        state: user.state || '',
+        zip_code: user.zip_code || ''
+      });
 
-      setProfile(userProfile);
+      // Extract doctor-specific data
+      const docProfile = user.doctor_profile || {};
+      setProfessionalInfo({
+        specialization: docProfile.specialization || '',
+        license_number: docProfile.license_number || '',
+        years_of_experience: docProfile.years_of_experience || '',
+        hospital_affiliation: docProfile.hospital_affiliation || ''
+      });
+
+      setPrivacySettings({
+        profile_visibility: docProfile.profile_visibility || 'public',
+        show_email: docProfile.show_email || false,
+        show_phone: docProfile.show_phone || false,
+        allow_patient_messages: docProfile.allow_patient_messages !== false,
+        data_sharing: docProfile.data_sharing || false
+      });
+
+      setActivityLog([
+        { date: new Date().toISOString(), action: 'Profile loaded', details: 'Viewed profile page' }
+      ]);
+
+      console.log('✅ Profile loaded successfully');
       setLoading(false);
     } catch (err) {
-      console.error('Error loading profile:', err);
+      console.error('❌ Error loading profile:', err);
       setError('Failed to load profile');
       setLoading(false);
     }
   };
 
-  const handleDeactivateAccount = () => {
-    setShowDeactivateModal(true);
-    setDeactivateStep(1);
-    setDeactivatePassword('');
-    setPasswordError('');
+  const handleSavePersonalInfo = async () => {
+    try {
+      setSaving(true);
+      setError('');
+      
+      const token = localStorage.getItem('medichain_token');
+      if (!token) {
+        setError('Please log in again');
+        return;
+      }
+
+      const response = await fetch('http://localhost:5000/api/profile/doctor/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setSuccess('Personal information updated successfully!');
+        setEditing(false);
+        
+        // Fetch updated profile data from backend
+        const profileResponse = await fetch('http://localhost:5000/api/profile/doctor/details', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          if (profileData.success) {
+            // Update localStorage with new data
+            const updatedUser = profileData.data;
+            localStorage.setItem('medichain_user', JSON.stringify(updatedUser));
+            
+            // Reload profile from updated data
+            window.location.reload(); // Simple solution to refresh everything
+          }
+        }
+        
+        loadActivityLog(); // Refresh activity log
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(result.error || 'Failed to update');
+      }
+    } catch (err) {
+      console.error('Error updating:', err);
+      setError('Failed to update. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleCloseDeactivateModal = () => {
-    setShowDeactivateModal(false);
-    setDeactivateStep(1);
-    setDeactivatePassword('');
-    setPasswordError('');
-    setPasswordVerifying(false);
+  const handleSaveProfessionalInfo = async () => {
+    try {
+      setSaving(true);
+      setError('');
+      
+      const token = localStorage.getItem('medichain_token');
+      if (!token) {
+        setError('Please log in again');
+        return;
+      }
+
+      const response = await fetch('http://localhost:5000/api/profile/doctor/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(professionalInfo)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setSuccess('Professional information updated successfully!');
+        
+        // Fetch updated profile data
+        const profileResponse = await fetch('http://localhost:5000/api/profile/doctor/details', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (profileResponse.ok) {
+          const profileData = await profileResponse.json();
+          if (profileData.success) {
+            const updatedUser = profileData.data;
+            localStorage.setItem('medichain_user', JSON.stringify(updatedUser));
+            
+            // Update professional info state with new data
+            const docProfile = updatedUser.doctor_profile || updatedUser;
+            setProfessionalInfo({
+              specialization: docProfile.specialization || '',
+              license_number: docProfile.license_number || '',
+              years_of_experience: docProfile.years_of_experience || '',
+              hospital_affiliation: docProfile.hospital_affiliation || ''
+            });
+          }
+        }
+        
+        loadActivityLog();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(result.error || 'Failed to update');
+      }
+    } catch (err) {
+      console.error('Error updating professional info:', err);
+      setError('Failed to update. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSavePrivacySettings = async () => {
+    try {
+      setSaving(true);
+      setError('');
+      
+      const token = localStorage.getItem('medichain_token');
+      if (!token) {
+        setError('Please log in again');
+        return;
+      }
+
+      const response = await fetch('http://localhost:5000/api/profile/doctor/privacy', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(privacySettings)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setSuccess('Privacy settings updated successfully!');
+        loadActivityLog();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(result.error || 'Failed to update');
+      }
+    } catch (err) {
+      console.error('Error updating privacy settings:', err);
+      setError('Failed to update. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDocumentUpload = async (type, file) => {
+    try {
+      setUploading(true);
+      setError('');
+      
+      const token = localStorage.getItem('medichain_token');
+      if (!token) {
+        setError('Please log in again');
+        return;
+      }
+
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      uploadFormData.append('type', type);
+
+      const response = await fetch('http://localhost:5000/api/profile/doctor/documents/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: uploadFormData
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setSuccess(`${type} uploaded successfully!`);
+        loadDocuments(); // Refresh documents list
+        loadActivityLog();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(result.error || 'Failed to upload document');
+      }
+    } catch (err) {
+      console.error('Error uploading document:', err);
+      setError('Failed to upload document. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const loadDocuments = async () => {
+    try {
+      const token = localStorage.getItem('medichain_token');
+      if (!token) return;
+
+      const response = await fetch('http://localhost:5000/api/profile/doctor/documents', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        console.warn('Documents endpoint not available yet');
+        return;
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Update documents state with loaded data
+        const docs = result.documents.reduce((acc, doc) => {
+          if (doc.document_type === 'license') {
+            acc.medical_license = {
+              name: doc.filename,
+              size: `${(doc.file_size / 1024).toFixed(2)} KB`,
+              uploadDate: new Date(doc.uploaded_at).toLocaleDateString(),
+              status: doc.status
+            };
+          } else if (doc.document_type === 'certificate') {
+            if (!Array.isArray(acc.certificates)) acc.certificates = [];
+            acc.certificates.push({
+              name: doc.filename,
+              size: `${(doc.file_size / 1024).toFixed(2)} KB`,
+              uploadDate: new Date(doc.uploaded_at).toLocaleDateString(),
+              status: doc.status
+            });
+          } else if (doc.document_type === 'verification') {
+            if (!Array.isArray(acc.verification_docs)) acc.verification_docs = [];
+            acc.verification_docs.push({
+              name: doc.filename,
+              size: `${(doc.file_size / 1024).toFixed(2)} KB`,
+              uploadDate: new Date(doc.uploaded_at).toLocaleDateString(),
+              status: doc.status
+            });
+          }
+          return acc;
+        }, {});
+        setDocuments(prevDocs => ({ ...prevDocs, ...docs }));
+      }
+    } catch (err) {
+      console.error('Error loading documents:', err);
+    }
+  };
+
+  const loadActivityLog = async () => {
+    try {
+      const token = localStorage.getItem('medichain_token');
+      if (!token) return;
+
+      const response = await fetch('http://localhost:5000/api/profile/doctor/activity', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        console.warn('Activity log endpoint not available yet');
+        return;
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setActivityLog(result.activities);
+      }
+    } catch (err) {
+      console.error('Error loading activity log:', err);
+    }
   };
 
   const handleVerifyPassword = async () => {
-    if (!deactivatePassword.trim()) {
+    if (!deactivatePassword) {
       setPasswordError('Please enter your password');
       return;
     }
@@ -89,20 +417,8 @@ const DoctorProfilePage = () => {
     try {
       setPasswordVerifying(true);
       setPasswordError('');
-      
+
       const token = localStorage.getItem('medichain_token');
-      if (!token) {
-        setPasswordError('Authentication token not found. Please log in again.');
-        return;
-      }
-
-      const userEmail = user?.email || profile?.email;
-      
-      if (!userEmail) {
-        setPasswordError('Email not found. Please log in again.');
-        return;
-      }
-
       const response = await fetch('http://localhost:5000/api/auth/verify-password', {
         method: 'POST',
         headers: {
@@ -110,23 +426,22 @@ const DoctorProfilePage = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          email: userEmail,
+          email: formData.email,
           password: deactivatePassword
         })
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         setDeactivateStep(2);
         setPasswordError('');
       } else {
-        const errorMsg = result.error || 'Incorrect password. Please try again.';
-        setPasswordError(errorMsg);
+        setPasswordError(result.error || 'Incorrect password');
       }
     } catch (err) {
-      console.error('Error verifying password:', err);
-      setPasswordError('Failed to verify password. Please try again.');
+      console.error('Password verification error:', err);
+      setPasswordError('Failed to verify password');
     } finally {
       setPasswordVerifying(false);
     }
@@ -134,46 +449,35 @@ const DoctorProfilePage = () => {
 
   const handleConfirmDeactivate = async () => {
     try {
-      setSaving(true);
-      setError('');
-      
-      const token = localStorage.getItem('medichain_token');
-      if (!token) {
-        setError('Authentication token not found. Please log in again.');
-        return;
-      }
+      setPasswordVerifying(true);
 
+      const token = localStorage.getItem('medichain_token');
       const response = await fetch('http://localhost:5000/api/profile/delete-account', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: deactivatePassword
+        })
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         localStorage.removeItem('medichain_token');
         localStorage.removeItem('medichain_user');
-        
-        handleCloseDeactivateModal();
-        
-        setSuccess('✅ Your account has been deactivated. You will be redirected...');
-        
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 2000);
+        window.location.href = '/';
       } else {
-        setError(result.error || 'Failed to deactivate account. Please try again.');
-        handleCloseDeactivateModal();
+        setPasswordError(result.error || 'Failed to deactivate account');
+        setPasswordVerifying(false);
       }
     } catch (err) {
-      console.error('Error deactivating account:', err);
-      setError('Failed to deactivate account. Please try again or contact support.');
-      handleCloseDeactivateModal();
-    } finally {
-      setSaving(false);
+      console.error('Deactivation error:', err);
+      setPasswordError('Failed to deactivate account');
+      setPasswordVerifying(false);
     }
   };
 
@@ -188,19 +492,13 @@ const DoctorProfilePage = () => {
     );
   }
 
-  if (!user || user.profile?.role !== 'doctor') {
-    return (
-      <div className="profile-page">
-        <div className="profile-error-container">
-          <AlertCircle size={64} />
-          <h2>Access Denied</h2>
-          <p>This page is only accessible to doctors.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const userProfile = profile || {};
+  const userProfile = {
+    first_name: formData.first_name,
+    last_name: formData.last_name,
+    email: formData.email,
+    role: 'Doctor',
+    specialization: professionalInfo.specialization || 'Doctor'
+  };
 
   return (
     <div className="profile-page">
@@ -219,302 +517,690 @@ const DoctorProfilePage = () => {
             </div>
             <div className="profile-header-right">
               <div className="profile-welcome-text">
-                Welcome, Dr. {userProfile.first_name || 'Doctor'}
+                Welcome, Dr. {userProfile.first_name || 'User'}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Alert Messages */}
-      {error && (
-        <div className="profile-alert-error">
-          <AlertCircle size={20} />
-          <span>{error}</span>
-        </div>
-      )}
-      
-      {success && (
-        <div className="profile-alert-success">
-          <CheckCircle size={20} />
-          <span>{success}</span>
-        </div>
-      )}
-
-      <div className="container">
-        <div className="profile-main-container">
-          {/* Profile Card */}
-          <div className="profile-card-header">
-            <div className="profile-card-content">
-              <div className="profile-card-left">
-                <div className="profile-avatar-container">
-                  <div className="profile-avatar">
-                    {userProfile.avatar_url ? (
-                      <img src={userProfile.avatar_url} alt="Avatar" />
+      <div className="profile-main-container">
+        {/* Profile Header */}
+        <div className="profile-card-header">
+          <div className="profile-card-content">
+            <div className="profile-card-left">
+              <div className="profile-avatar-container">
+                <div className="profile-avatar">
+                  <span>
+                    {userProfile.first_name?.charAt(0)?.toUpperCase() || 'D'}
+                  </span>
+                </div>
+                <label className="profile-avatar-upload">
+                  <Camera size={16} />
+                  <span className="profile-avatar-upload-label">{uploading ? 'Uploading...' : 'Upload Photo'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploading}
+                  />
+                </label>
+              </div>
+              <div className="profile-info">
+                <h2 className="profile-name">
+                  Dr. {userProfile.first_name} {userProfile.last_name}
+                </h2>
+                <p className="profile-role">Doctor</p>
+                {userProfile.specialization && (
+                  <p className="profile-specialization">{userProfile.specialization}</p>
+                )}
+              </div>
+            </div>
+            <div className="profile-card-actions">
+              {editing ? (
+                <>
+                  <button
+                    onClick={handleSavePersonalInfo}
+                    disabled={saving}
+                    className="profile-btn profile-btn-success"
+                  >
+                    {saving ? (
+                      <>
+                        <div className="profile-btn-spinner"></div>
+                        <span>Saving...</span>
+                      </>
                     ) : (
-                      <span>
-                        {userProfile.first_name?.charAt(0)?.toUpperCase() || 'D'}
-                      </span>
+                      <>
+                        <Save size={18} />
+                        <span>Save Changes</span>
+                      </>
                     )}
-                  </div>
-                </div>
-                <div className="profile-card-info">
-                  <h2>Dr. {userProfile.first_name} {userProfile.last_name}</h2>
-                  <p className="profile-card-role">{userProfile.specialization || 'Medical Doctor'}</p>
-                  <p className="profile-card-email">{userProfile.email}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Tab Container */}
-          <div className="profile-tab-container">
-            {/* Tab Navigation */}
-            <div className="profile-tab-navigation">
-              <nav className="profile-tab-nav-list">
-                {[
-                  { id: 'personal', label: 'Personal Info', icon: User },
-                  { id: 'professional', label: 'Professional Details', icon: Heart },
-                  { id: 'credentials', label: 'Account Security', icon: Key }
-                ].map(tab => (
-                  <li key={tab.id} className="profile-tab-nav-item">
-                    <button
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`profile-tab-nav-button ${activeTab === tab.id ? 'active' : ''}`}
-                    >
-                      <tab.icon size={18} />
-                      <span>{tab.label}</span>
-                    </button>
-                  </li>
-                ))}
-              </nav>
-            </div>
-
-            {/* Tab Content */}
-            <div className="profile-tab-content">
-              {activeTab === 'credentials' && (
-                <div className="profile-tab-section">
-                  <h3 className="profile-tab-title">Account Security</h3>
-                  
-                  {/* Security Settings */}
-                  <div className="profile-security-settings">
-                    {/* Email Address */}
-                    <div className="profile-security-item">
-                      <div className="profile-security-item-content">
-                        <h4>Email Address</h4>
-                        <p className="profile-security-item-description">Update your email address</p>
-                      </div>
-                      <button className="profile-btn profile-btn-primary profile-btn-sm">
-                        Update Email
-                      </button>
-                    </div>
-
-                    {/* Password */}
-                    <div className="profile-security-item">
-                      <div className="profile-security-item-content">
-                        <h4>Password</h4>
-                        <p className="profile-security-item-description">Change your password</p>
-                      </div>
-                      <button className="profile-btn profile-btn-primary profile-btn-sm">
-                        Change Password
-                      </button>
-                    </div>
-
-                    {/* Two-Factor Authentication */}
-                    <div className="profile-security-item">
-                      <div className="profile-security-item-content">
-                        <h4>Two-Factor Authentication</h4>
-                        <p className="profile-security-item-description">Add an extra layer of security</p>
-                      </div>
-                      <button className="profile-btn profile-btn-success profile-btn-sm">
-                        Enable 2FA
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Deactivate Account Section */}
-                  <div className="profile-danger-zone">
-                    <h4 className="profile-danger-zone-title">Account Deactivation</h4>
-                    <div className="profile-danger-zone-content">
-                      <div className="profile-danger-warning">
-                        <ShieldOff size={20} />
-                        <div>
-                          <p className="profile-danger-warning-title">Deactivate Doctor Account</p>
-                          <p className="profile-danger-warning-text">
-                            Deactivating your account will disable your login access, but patients will still be able to view 
-                            your profile and past medical records. This action prevents data loss for patient care continuity.
-                          </p>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={handleDeactivateAccount}
-                        disabled={saving}
-                        className="profile-btn profile-btn-danger"
-                      >
-                        <ShieldOff size={16} />
-                        {saving ? 'Processing...' : 'Deactivate Account'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'personal' && (
-                <div className="profile-tab-section">
-                  <h3 className="profile-tab-title">Personal Information</h3>
-                  <p>Personal information management for doctors.</p>
-                </div>
-              )}
-
-              {activeTab === 'professional' && (
-                <div className="profile-tab-section">
-                  <h3 className="profile-tab-title">Professional Details</h3>
-                  <p>Professional information, specialization, and credentials.</p>
-                </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditing(false);
+                      loadProfile();
+                    }}
+                    className="profile-btn profile-btn-secondary"
+                  >
+                    <X size={18} />
+                    <span>Cancel</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="profile-btn profile-btn-primary"
+                >
+                  <Edit3 size={18} />
+                  <span>Edit Profile</span>
+                </button>
               )}
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Deactivate Account Modal */}
-      {showDeactivateModal && (
-        <div className="profile-modal-overlay" onClick={handleCloseDeactivateModal}>
-          <div className="profile-modal-content profile-delete-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="profile-modal-close" onClick={handleCloseDeactivateModal}>
-              <X size={24} />
-            </button>
+        {/* Success/Error Messages */}
+        {success && (
+          <div className="profile-alert profile-alert-success">
+            <CheckCircle size={20} />
+            {success}
+          </div>
+        )}
+        {error && (
+          <div className="profile-alert profile-alert-error">
+            <AlertCircle size={20} />
+            {error}
+          </div>
+        )}
 
-            {deactivateStep === 1 ? (
-              /* Step 1: Password Verification */
-              <>
-                <div className="profile-modal-header">
-                  <AlertCircle size={48} className="profile-modal-icon-warning" />
-                  <h2>Verify Your Identity</h2>
-                  <p>Please enter your password to continue with account deactivation</p>
-                </div>
+        {/* Tab Navigation */}
+        <div className="profile-tab-container">
+          <div className="profile-tab-navigation">
+            <nav className="profile-tab-nav-list">
+              {[
+                { id: 'personal', label: 'Personal Info', icon: User },
+                { id: 'professional', label: 'Professional Info', icon: Briefcase },
+                { id: 'documents', label: 'Documents', icon: FileText },
+                { id: 'privacy', label: 'Privacy Settings', icon: Eye },
+                { id: 'security', label: 'Account Security', icon: Lock },
+                { id: 'activity', label: 'Activity History', icon: History }
+              ].map(tab => (
+                <li key={tab.id} className="profile-tab-nav-item">
+                  <button
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`profile-tab-nav-button ${activeTab === tab.id ? 'active' : ''}`}
+                  >
+                    <tab.icon size={18} />
+                    <span>{tab.label}</span>
+                  </button>
+                </li>
+              ))}
+            </nav>
+          </div>
 
-                <div className="profile-modal-body">
-                  <div className="profile-modal-warning-box">
-                    <div>
-                      <p className="profile-modal-warning-title">Account Deactivation for Doctors</p>
-                      <p className="profile-modal-warning-text">
-                        Deactivating your doctor account will:
-                      </p>
-                      <ul className="profile-modal-warning-list">
-                        <li>Disable your login access</li>
-                        <li>Keep your profile visible to patients</li>
-                        <li>Preserve all medical records and history</li>
-                        <li>Maintain patient care continuity</li>
-                        <li>Allow profile viewing but not editing</li>
-                      </ul>
-                    </div>
+          {/* Tab Content */}
+          <div className="profile-tab-content">
+            {activeTab === 'personal' && (
+              <div className="profile-tab-section">
+                <h3 className="profile-tab-title">Personal Information</h3>
+                
+                <div className="profile-form-grid">
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">First Name</label>
+                    <input
+                      type="text"
+                      value={formData.first_name}
+                      onChange={(e) => setFormData({...formData, first_name: e.target.value})}
+                      disabled={!editing}
+                      className="profile-form-input"
+                      placeholder="Enter your first name"
+                    />
+                  </div>
+                  
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">Last Name</label>
+                    <input
+                      type="text"
+                      value={formData.last_name}
+                      onChange={(e) => setFormData({...formData, last_name: e.target.value})}
+                      disabled={!editing}
+                      className="profile-form-input"
+                      placeholder="Enter your last name"
+                    />
+                  </div>
+                  
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">Email Address</label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      disabled
+                      className="profile-form-input"
+                      placeholder="your.email@example.com"
+                    />
+                  </div>
+                  
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      disabled={!editing}
+                      className="profile-form-input"
+                      placeholder="+1 (555) 000-0000"
+                    />
                   </div>
 
                   <div className="profile-form-group">
-                    <label className="profile-form-label">
-                      <Lock size={16} />
-                      Enter Your Password
+                    <label className="profile-form-label">Address</label>
+                    <input
+                      type="text"
+                      value={formData.address}
+                      onChange={(e) => setFormData({...formData, address: e.target.value})}
+                      disabled={!editing}
+                      className="profile-form-input"
+                      placeholder="Street address"
+                    />
+                  </div>
+
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">City</label>
+                    <input
+                      type="text"
+                      value={formData.city}
+                      onChange={(e) => setFormData({...formData, city: e.target.value})}
+                      disabled={!editing}
+                      className="profile-form-input"
+                      placeholder="City"
+                    />
+                  </div>
+
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">State</label>
+                    <input
+                      type="text"
+                      value={formData.state}
+                      onChange={(e) => setFormData({...formData, state: e.target.value})}
+                      disabled={!editing}
+                      className="profile-form-input"
+                      placeholder="State"
+                    />
+                  </div>
+
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">ZIP Code</label>
+                    <input
+                      type="text"
+                      value={formData.zip_code}
+                      onChange={(e) => setFormData({...formData, zip_code: e.target.value})}
+                      disabled={!editing}
+                      className="profile-form-input"
+                      placeholder="ZIP Code"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'professional' && (
+              <div className="profile-tab-section">
+                <h3 className="profile-tab-title">Professional Information</h3>
+                
+                <div className="profile-form-grid">
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">Medical License Number</label>
+                    <input
+                      type="text"
+                      value={professionalInfo.license_number}
+                      onChange={(e) => setProfessionalInfo({...professionalInfo, license_number: e.target.value})}
+                      disabled={!editing}
+                      className="profile-form-input"
+                      placeholder="Enter license number"
+                    />
+                  </div>
+
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">Specialization</label>
+                    <input
+                      type="text"
+                      value={professionalInfo.specialization}
+                      onChange={(e) => setProfessionalInfo({...professionalInfo, specialization: e.target.value})}
+                      disabled={!editing}
+                      className="profile-form-input"
+                      placeholder="e.g., Cardiology"
+                    />
+                  </div>
+
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">Years of Experience</label>
+                    <input
+                      type="number"
+                      value={professionalInfo.years_of_experience}
+                      onChange={(e) => setProfessionalInfo({...professionalInfo, years_of_experience: e.target.value})}
+                      disabled={!editing}
+                      className="profile-form-input"
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">Hospital Affiliation</label>
+                    <input
+                      type="text"
+                      value={professionalInfo.hospital_affiliation}
+                      onChange={(e) => setProfessionalInfo({...professionalInfo, hospital_affiliation: e.target.value})}
+                      disabled={!editing}
+                      className="profile-form-input"
+                      placeholder="Hospital/Clinic name"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'documents' && (
+              <div className="profile-tab-section">
+                <h3 className="profile-tab-title">Documents & Verification</h3>
+                
+                <div className="profile-document-grid">
+                  <div className="profile-document-card">
+                    <div className="profile-document-header">
+                      <FileText size={24} className="profile-document-icon" />
+                      <div>
+                        <h4 className="profile-document-title">Medical License</h4>
+                        <p className="profile-document-description">Upload your medical license document</p>
+                      </div>
+                    </div>
+                    {documents.medical_license ? (
+                      <div className="profile-document-info">
+                        <p className="profile-document-filename">{documents.medical_license.name}</p>
+                        <p className="profile-document-meta">
+                          {documents.medical_license.size} • {documents.medical_license.uploadDate}
+                        </p>
+                        <span className={`profile-document-status profile-status-${documents.medical_license.status}`}>
+                          {documents.medical_license.status}
+                        </span>
+                      </div>
+                    ) : (
+                      <label className="profile-btn profile-btn-outline profile-btn-upload">
+                        <Upload size={18} />
+                        <span>{uploading ? 'Uploading...' : 'Upload License'}</span>
+                        <input 
+                          type="file" 
+                          accept=".pdf,.jpg,.jpeg,.png" 
+                          style={{display: 'none'}}
+                          onChange={(e) => e.target.files[0] && handleDocumentUpload('license', e.target.files[0])}
+                          disabled={uploading}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  <div className="profile-document-card">
+                    <div className="profile-document-header">
+                      <FileText size={24} className="profile-document-icon" />
+                      <div>
+                        <h4 className="profile-document-title">Certificates</h4>
+                        <p className="profile-document-description">Upload professional certificates</p>
+                      </div>
+                    </div>
+                    <label className="profile-btn profile-btn-outline profile-btn-upload">
+                      <Upload size={18} />
+                      <span>{uploading ? 'Uploading...' : 'Upload Certificates'}</span>
+                      <input 
+                        type="file" 
+                        accept=".pdf,.jpg,.jpeg,.png" 
+                        multiple 
+                        style={{display: 'none'}}
+                        onChange={(e) => e.target.files[0] && handleDocumentUpload('certificate', e.target.files[0])}
+                        disabled={uploading}
+                      />
                     </label>
+                    {Array.isArray(documents.certificates) && documents.certificates.length > 0 && (
+                      <div className="profile-documents-list">
+                        {documents.certificates.map((cert, idx) => (
+                          <div key={idx} className="profile-document-item">
+                            <p className="profile-document-filename">{cert.name}</p>
+                            <span className={`profile-document-status profile-status-${cert.status}`}>
+                              {cert.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="profile-document-card">
+                    <div className="profile-document-header">
+                      <FileText size={24} className="profile-document-icon" />
+                      <div>
+                        <h4 className="profile-document-title">Verification Documents</h4>
+                        <p className="profile-document-description">Upload additional verification documents</p>
+                      </div>
+                    </div>
+                    <label className="profile-btn profile-btn-outline profile-btn-upload">
+                      <Upload size={18} />
+                      <span>{uploading ? 'Uploading...' : 'Upload Documents'}</span>
+                      <input 
+                        type="file" 
+                        accept=".pdf,.jpg,.jpeg,.png" 
+                        multiple 
+                        style={{display: 'none'}}
+                        onChange={(e) => e.target.files[0] && handleDocumentUpload('verification', e.target.files[0])}
+                        disabled={uploading}
+                      />
+                    </label>
+                    {Array.isArray(documents.verification_docs) && documents.verification_docs.length > 0 && (
+                      <div className="profile-documents-list">
+                        {documents.verification_docs.map((doc, idx) => (
+                          <div key={idx} className="profile-document-item">
+                            <p className="profile-document-filename">{doc.name}</p>
+                            <span className={`profile-document-status profile-status-${doc.status}`}>
+                              {doc.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="profile-info-box">
+                  <AlertCircle size={20} />
+                  <div>
+                    <strong>Supported formats:</strong> PDF, JPG, PNG (Max 5MB per file)
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'privacy' && (
+              <div className="profile-tab-section">
+                <h3 className="profile-tab-title">Privacy Settings</h3>
+                
+                <div className="profile-settings-list">
+                  <div className="profile-setting-item">
+                    <div className="profile-setting-info">
+                      <h4 className="profile-setting-title">Profile Visibility</h4>
+                      <p className="profile-setting-description">Control who can see your profile</p>
+                    </div>
+                    <select 
+                      value={privacySettings.profile_visibility}
+                      onChange={(e) => setPrivacySettings({...privacySettings, profile_visibility: e.target.value})}
+                      className="profile-select"
+                    >
+                      <option value="public">Public</option>
+                      <option value="patients">Patients Only</option>
+                      <option value="private">Private</option>
+                    </select>
+                  </div>
+
+                  <div className="profile-setting-item">
+                    <div className="profile-setting-info">
+                      <h4 className="profile-setting-title">Show Email Address</h4>
+                      <p className="profile-setting-description">Display email on public profile</p>
+                    </div>
+                    <label className="profile-toggle">
+                      <input
+                        type="checkbox"
+                        checked={privacySettings.show_email}
+                        onChange={(e) => setPrivacySettings({...privacySettings, show_email: e.target.checked})}
+                      />
+                      <span className="profile-toggle-slider"></span>
+                    </label>
+                  </div>
+
+                  <div className="profile-setting-item">
+                    <div className="profile-setting-info">
+                      <h4 className="profile-setting-title">Show Phone Number</h4>
+                      <p className="profile-setting-description">Display phone on public profile</p>
+                    </div>
+                    <label className="profile-toggle">
+                      <input
+                        type="checkbox"
+                        checked={privacySettings.show_phone}
+                        onChange={(e) => setPrivacySettings({...privacySettings, show_phone: e.target.checked})}
+                      />
+                      <span className="profile-toggle-slider"></span>
+                    </label>
+                  </div>
+
+                  <div className="profile-setting-item">
+                    <div className="profile-setting-info">
+                      <h4 className="profile-setting-title">Allow Patient Messages</h4>
+                      <p className="profile-setting-description">Let patients contact you directly</p>
+                    </div>
+                    <label className="profile-toggle">
+                      <input
+                        type="checkbox"
+                        checked={privacySettings.allow_patient_messages}
+                        onChange={(e) => setPrivacySettings({...privacySettings, allow_patient_messages: e.target.checked})}
+                      />
+                      <span className="profile-toggle-slider"></span>
+                    </label>
+                  </div>
+
+                  <div className="profile-setting-item">
+                    <div className="profile-setting-info">
+                      <h4 className="profile-setting-title">Data Sharing</h4>
+                      <p className="profile-setting-description">Share anonymized data for research</p>
+                    </div>
+                    <label className="profile-toggle">
+                      <input
+                        type="checkbox"
+                        checked={privacySettings.data_sharing}
+                        onChange={(e) => setPrivacySettings({...privacySettings, data_sharing: e.target.checked})}
+                      />
+                      <span className="profile-toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'security' && (
+              <div className="profile-tab-section">
+                <h3 className="profile-tab-title">Account Security</h3>
+                
+                <div className="profile-security-grid">
+                  <div className="profile-security-card">
+                    <div className="profile-security-header">
+                      <Lock size={24} className="profile-security-icon" />
+                      <div>
+                        <h4 className="profile-security-title">Change Password</h4>
+                        <p className="profile-security-description">Update your account password</p>
+                      </div>
+                    </div>
+                    <button className="profile-btn profile-btn-outline">
+                      <Lock size={18} />
+                      <span>Change Password</span>
+                    </button>
+                  </div>
+
+                  <div className="profile-security-card">
+                    <div className="profile-security-header">
+                      <Shield size={24} className="profile-security-icon" />
+                      <div>
+                        <h4 className="profile-security-title">Two-Factor Authentication</h4>
+                        <p className="profile-security-description">Add an extra layer of security</p>
+                      </div>
+                    </div>
+                    <label className="profile-toggle">
+                      <input type="checkbox" />
+                      <span className="profile-toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="profile-danger-zone">
+                  <div className="profile-danger-zone-header">
+                    <ShieldOff size={24} className="profile-danger-icon" />
+                    <div className="profile-danger-zone-content">
+                      <h3 className="profile-danger-zone-title">Deactivate Account</h3>
+                      <p className="profile-danger-zone-description">
+                        Temporarily disable your account. You can reactivate it anytime by logging in with your credentials.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    className="profile-btn profile-btn-danger"
+                    onClick={() => setShowDeactivateModal(true)}
+                  >
+                    <ShieldOff size={18} />
+                    <span>Deactivate Account</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'activity' && (
+              <div className="profile-tab-section">
+                <h3 className="profile-tab-title">Activity History</h3>
+                
+                {activityLog.length > 0 ? (
+                  <div className="profile-activity-list">
+                    {activityLog.map((activity, index) => (
+                      <div key={index} className="profile-activity-item">
+                        <div className="profile-activity-icon">
+                          <History size={20} />
+                        </div>
+                        <div className="profile-activity-content">
+                          <h4 className="profile-activity-title">{activity.action}</h4>
+                          <p className="profile-activity-details">{activity.details}</p>
+                          <span className="profile-activity-time">
+                            {new Date(activity.date).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="profile-empty-state">
+                    <History size={48} />
+                    <p>No activity recorded yet</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Deactivate Modal */}
+        {showDeactivateModal && (
+        <div className="profile-modal-overlay" onClick={() => {
+          setShowDeactivateModal(false);
+          setDeactivateStep(1);
+          setDeactivatePassword('');
+          setPasswordError('');
+        }}>
+          <div className="profile-modal-content" onClick={(e) => e.stopPropagation()}>
+            {deactivateStep === 1 ? (
+              <>
+                <div className="profile-modal-header">
+                  <h2>Verify Your Password</h2>
+                  <p>Please enter your password to continue with account deactivation.</p>
+                </div>
+                
+                <div className="profile-modal-body">
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">Password</label>
                     <input
                       type="password"
                       value={deactivatePassword}
                       onChange={(e) => setDeactivatePassword(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleVerifyPassword()}
-                      className="profile-form-input"
                       placeholder="Enter your password"
-                      autoFocus
                       disabled={passwordVerifying}
+                      className="profile-form-input"
                     />
                     {passwordError && (
-                      <p className="profile-form-error">
+                      <div className="profile-form-error">
                         <AlertCircle size={16} />
-                        {passwordError}
-                      </p>
+                        <span>{passwordError}</span>
+                      </div>
                     )}
                   </div>
                 </div>
 
                 <div className="profile-modal-footer">
-                  <button 
-                    onClick={handleCloseDeactivateModal}
-                    className="profile-btn profile-btn-secondary"
+                  <button
+                    className="profile-btn profile-btn-primary"
+                    onClick={handleVerifyPassword}
                     disabled={passwordVerifying}
                   >
-                    Cancel
+                    <Lock size={18} />
+                    <span>{passwordVerifying ? 'Verifying...' : 'Continue'}</span>
                   </button>
-                  <button 
-                    onClick={handleVerifyPassword}
-                    className="profile-btn profile-btn-primary"
-                    disabled={passwordVerifying || !deactivatePassword.trim()}
+                  <button
+                    className="profile-btn profile-btn-secondary"
+                    onClick={() => {
+                      setShowDeactivateModal(false);
+                      setDeactivateStep(1);
+                      setDeactivatePassword('');
+                      setPasswordError('');
+                    }}
+                    disabled={passwordVerifying}
                   >
-                    {passwordVerifying ? 'Verifying...' : 'Verify Password'}
+                    <X size={18} />
+                    <span>Cancel</span>
                   </button>
                 </div>
               </>
             ) : (
-              /* Step 2: Final Confirmation */
               <>
                 <div className="profile-modal-header">
-                  <ShieldOff size={48} className="profile-modal-icon-danger" />
-                  <h2>Final Confirmation</h2>
-                  <p>Are you sure you want to deactivate your doctor account?</p>
+                  <h2>Confirm Account Deactivation</h2>
                 </div>
 
                 <div className="profile-modal-body">
-                  <div className="profile-modal-danger-box">
-                    <h3>⚠️ Deactivation Details:</h3>
-                    <div className="profile-modal-delete-list">
-                      <div className="profile-modal-delete-item">
-                        <CheckCircle size={20} />
-                        <span>Your login access will be disabled</span>
-                      </div>
-                      <div className="profile-modal-delete-item">
-                        <CheckCircle size={20} />
-                        <span>Patients can still view your profile</span>
-                      </div>
-                      <div className="profile-modal-delete-item">
-                        <CheckCircle size={20} />
-                        <span>All medical records remain accessible</span>
-                      </div>
-                      <div className="profile-modal-delete-item">
-                        <CheckCircle size={20} />
-                        <span>Patient care continuity is maintained</span>
-                      </div>
-                      <div className="profile-modal-delete-item">
-                        <CheckCircle size={20} />
-                        <span>Your professional data is preserved</span>
-                      </div>
-                    </div>
-                    <p className="profile-modal-danger-text">
-                      <strong>Note:</strong> You will not be able to login after deactivation. 
-                      Contact support to reactivate your account.
-                    </p>
+                  <div className="profile-modal-warning-box">
+                    <h3 className="profile-modal-warning-title">What happens when you deactivate?</h3>
+                    <ul className="profile-modal-warning-list">
+                      <li>Your account will be temporarily disabled</li>
+                      <li>Your data will be preserved and not deleted</li>
+                      <li>You can reactivate anytime by logging in</li>
+                      <li>Patients won't be able to book appointments with you</li>
+                    </ul>
                   </div>
+
+                  {passwordError && (
+                    <div className="profile-form-error">
+                      <AlertCircle size={16} />
+                      <span>{passwordError}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="profile-modal-footer">
-                  <button 
-                    onClick={handleCloseDeactivateModal}
-                    className="profile-btn profile-btn-success"
-                    disabled={saving}
-                  >
-                    No, Keep My Account Active
-                  </button>
-                  <button 
-                    onClick={handleConfirmDeactivate}
+                  <button
                     className="profile-btn profile-btn-danger"
-                    disabled={saving}
+                    onClick={handleConfirmDeactivate}
+                    disabled={passwordVerifying}
                   >
-                    <ShieldOff size={16} />
-                    {saving ? 'Deactivating...' : 'Yes, Deactivate My Account'}
+                    <ShieldOff size={18} />
+                    <span>{passwordVerifying ? 'Deactivating...' : 'Yes, Deactivate My Account'}</span>
+                  </button>
+                  <button
+                    className="profile-btn profile-btn-secondary"
+                    onClick={() => {
+                      setShowDeactivateModal(false);
+                      setDeactivateStep(1);
+                      setDeactivatePassword('');
+                      setPasswordError('');
+                    }}
+                    disabled={passwordVerifying}
+                  >
+                    <X size={18} />
+                    <span>Cancel</span>
                   </button>
                 </div>
               </>
             )}
           </div>
         </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

@@ -97,18 +97,18 @@ const MedichainLogin = () => {
       const result = await login(email.trim(), password)
       console.log('📊 Login result:', result);
       
+      // Check if account requires reactivation (can happen even if success is false)
+      if (result.requiresReactivation) {
+        console.log('🔔 Showing reactivation modal');
+        setReactivationToken(result.token || null)
+        setShowReactivationModal(true)
+        setInlineError("") // Clear any error messages
+        setIsSubmitting(false)
+        // Keep email and password in state for reactivation (already available)
+        return
+      }
+      
       if (result.success) {
-        // Check if account requires reactivation
-        if (result.requiresReactivation) {
-          console.log('🔔 Showing reactivation modal');
-          setReactivationToken(result.token || null)
-          setShowReactivationModal(true)
-          showToast.info("Your account is deactivated. Please confirm reactivation.")
-          setIsSubmitting(false)
-          // Keep email and password in state for reactivation (already available)
-          return
-        }
-
         // Handle remember me functionality
         if (rememberMe) {
           localStorage.setItem("medichain_remembered_email", email.trim())
@@ -174,34 +174,17 @@ const MedichainLogin = () => {
     setIsReactivating(true)
     
     try {
-      // Check if we have a token (authenticated reactivation) or email/password (disabled user reactivation)
-      let response;
-      
-      if (reactivationToken) {
-        // User is authenticated - use token-based reactivation
-        response = await fetch('http://localhost:5000/api/auth/reactivate-account', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${reactivationToken}`
-          }
+      // Use email/password reactivation endpoint
+      const response = await fetch('http://localhost:5000/api/profile/reactivate-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password
         })
-      } else if (email && password) {
-        // User is disabled (deactivated doctor) - use email/password reactivation
-        response = await fetch('http://localhost:5000/api/auth/reactivate-disabled-account', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            email: email.trim(),
-            password: password
-          })
-        })
-      } else {
-        showToast.error("Invalid reactivation session. Please try logging in again.")
-        return
-      }
+      })
 
       const result = await response.json()
       
@@ -209,17 +192,28 @@ const MedichainLogin = () => {
         showToast.success("Account reactivated successfully! Logging you in...")
         setShowReactivationModal(false)
         
-        // Now automatically log in with the email and password
-        const loginResult = await login(email, password)
+        // Handle remember me functionality
+        if (rememberMe) {
+          localStorage.setItem("medichain_remembered_email", email.trim())
+          localStorage.setItem("medichain_remembered_password", password)
+        } else {
+          localStorage.removeItem("medichain_remembered_email")
+          localStorage.removeItem("medichain_remembered_password")
+        }
+        
+        // Now perform actual login to set auth state properly
+        const loginResult = await login(email.trim(), password)
         
         if (loginResult.success) {
-          // Login successful, redirect to dashboard
-          setTimeout(() => {
-            navigate('/dashboard')
-          }, 1000)
+          // Navigate to dashboard
+          const from = location.state?.from?.pathname || "/dashboard"
+          navigate(from, { replace: true })
         } else {
-          // Login failed for some reason, show error
-          showToast.error(loginResult.error || "Failed to log in after reactivation. Please try logging in manually.")
+          showToast.error("Reactivated but failed to log in. Please try logging in manually.")
+          // Still consider it a success since account was reactivated
+          setTimeout(() => {
+            window.location.reload()
+          }, 2000)
         }
       } else {
         showToast.error(result.error || "Failed to reactivate account")

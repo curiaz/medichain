@@ -1,0 +1,864 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { SupabaseService } from '../config/supabase';
+import { 
+  User, Heart, FileText, Lock, Key, History, 
+  Edit3, Save, X, Camera, Plus, Trash2, 
+  AlertCircle, CheckCircle, UploadIcon, ArrowLeft, ShieldOff
+} from 'lucide-react';
+import './ProfilePage.css';
+
+const DoctorProfilePage = () => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState('personal');
+  const [saving, setSaving] = useState(false);
+  
+  // Form data for editing
+  const [formData, setFormData] = useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+    email: ''
+  });
+
+  const [professionalInfo, setProfessionalInfo] = useState({
+    specialization: '',
+    license_number: '',
+    years_of_experience: 0,
+    hospital_affiliation: '',
+    bio: '',
+    consultation_fee: '',
+    available_days: []
+  });
+  
+  // Deactivate Account Modal States
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [deactivateStep, setDeactivateStep] = useState(1); // 1: password, 2: confirmation
+  const [deactivatePassword, setDeactivatePassword] = useState('');
+  const [passwordVerifying, setPasswordVerifying] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+    }
+  }, [user]);
+
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Debug logging
+      console.log('🔍 DoctorProfilePage - Full user object:', user);
+      console.log('🔍 user?.role:', user?.role);
+      console.log('🔍 user?.profile:', user?.profile);
+      console.log('🔍 user?.profile?.role:', user?.profile?.role);
+      
+      if (!user) {
+        console.error('❌ No user object found');
+        setError('Please log in to access this page.');
+        setLoading(false);
+        return;
+      }
+
+      // Load doctor profile data from user context
+      const p = user.profile || user;
+      const doctorProf = user.doctor_profile || p.doctor_profile || {};
+      
+      const userProfile = {
+        first_name: p.first_name || user.first_name || user.displayName?.split(' ')[0] || '',
+        last_name: p.last_name || user.last_name || user.displayName?.split(' ')[1] || '',
+        email: user.email || p.email || '',
+        phone: p.phone || user.phone || '',
+        role: p.role || user.role || 'doctor',
+        avatar_url: p.avatar_url || user.photoURL || null,
+        firebase_uid: user.uid || p.firebase_uid || user.firebase_uid,
+        // Include doctor profile fields
+        ...doctorProf
+      };
+      
+      console.log('✅ Loaded user profile:', userProfile);
+      console.log('✅ Doctor profile data:', doctorProf);
+
+      setProfile(userProfile);
+      setFormData({
+        first_name: userProfile.first_name || '',
+        last_name: userProfile.last_name || '',
+        phone: userProfile.phone || '',
+        email: userProfile.email || ''
+      });
+      setProfessionalInfo({
+        specialization: doctorProf.specialization || '',
+        license_number: doctorProf.license_number || '',
+        years_of_experience: doctorProf.years_of_experience || 0,
+        hospital_affiliation: doctorProf.hospital_affiliation || '',
+        bio: doctorProf.bio || '',
+        consultation_fee: doctorProf.consultation_fee || '',
+        available_days: doctorProf.available_days || []
+      });
+      setLoading(false);
+    } catch (err) {
+      console.error('Error loading profile:', err);
+      setError('Failed to load profile');
+      setLoading(false);
+    }
+  };
+
+  const handleSavePersonalInfo = async () => {
+    try {
+      setSaving(true);
+      setError('');
+      
+      const token = localStorage.getItem('medichain_token');
+      if (!token) {
+        setError('Authentication token not found. Please log in again.');
+        return;
+      }
+
+      const updateData = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
+        firebase_uid: profile.firebase_uid
+      };
+
+      const response = await fetch('http://localhost:5000/api/profile/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setSuccess('Personal information updated successfully!');
+        setEditing(false);
+        await loadProfile();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(result.error || 'Failed to update personal information');
+      }
+    } catch (err) {
+      console.error('Error updating personal info:', err);
+      setError('Failed to update personal information. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveProfessionalInfo = async () => {
+    try {
+      setSaving(true);
+      setError('');
+      
+      const token = localStorage.getItem('medichain_token');
+      if (!token) {
+        setError('Authentication token not found. Please log in again.');
+        return;
+      }
+
+      const response = await fetch('http://localhost:5000/api/profile/update-doctor-info', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(professionalInfo)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setSuccess('Professional information updated successfully!');
+        setEditing(false);
+        await loadProfile();
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(result.error || 'Failed to update professional information');
+      }
+    } catch (err) {
+      console.error('Error updating professional info:', err);
+      setError('Failed to update professional information. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeactivateAccount = () => {
+    setShowDeactivateModal(true);
+    setDeactivateStep(1);
+    setDeactivatePassword('');
+    setPasswordError('');
+  };
+
+  const handleCloseDeactivateModal = () => {
+    setShowDeactivateModal(false);
+    setDeactivateStep(1);
+    setDeactivatePassword('');
+    setPasswordError('');
+    setPasswordVerifying(false);
+  };
+
+  const handleVerifyPassword = async () => {
+    if (!deactivatePassword.trim()) {
+      setPasswordError('Please enter your password');
+      return;
+    }
+
+    try {
+      setPasswordVerifying(true);
+      setPasswordError('');
+      
+      const token = localStorage.getItem('medichain_token');
+      if (!token) {
+        setPasswordError('Authentication token not found. Please log in again.');
+        return;
+      }
+
+      const userEmail = user?.email || profile?.email;
+      
+      if (!userEmail) {
+        setPasswordError('Email not found. Please log in again.');
+        return;
+      }
+
+      const response = await fetch('http://localhost:5000/api/auth/verify-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          password: deactivatePassword
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setDeactivateStep(2);
+        setPasswordError('');
+      } else {
+        const errorMsg = result.error || 'Incorrect password. Please try again.';
+        setPasswordError(errorMsg);
+      }
+    } catch (err) {
+      console.error('Error verifying password:', err);
+      setPasswordError('Failed to verify password. Please try again.');
+    } finally {
+      setPasswordVerifying(false);
+    }
+  };
+
+  const handleConfirmDeactivate = async () => {
+    try {
+      setSaving(true);
+      setError('');
+      
+      const token = localStorage.getItem('medichain_token');
+      if (!token) {
+        setError('Authentication token not found. Please log in again.');
+        return;
+      }
+
+      const response = await fetch('http://localhost:5000/api/profile/delete-account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Clear authentication data
+        localStorage.removeItem('medichain_token');
+        localStorage.removeItem('medichain_user');
+        
+        handleCloseDeactivateModal();
+        
+        setSuccess('✅ Your account has been deactivated successfully. Redirecting to home page...');
+        
+        // Redirect to landing page immediately
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
+      } else {
+        setError(result.error || 'Failed to deactivate account. Please try again.');
+        handleCloseDeactivateModal();
+      }
+    } catch (err) {
+      console.error('Error deactivating account:', err);
+      setError('Failed to deactivate account. Please try again or contact support.');
+      handleCloseDeactivateModal();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="profile-page">
+        <div className="profile-loading-container">
+          <div className="profile-loading-spinner"></div>
+          <p>Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || user.profile?.role !== 'doctor') {
+    return (
+      <div className="profile-page">
+        <div className="profile-error-container">
+          <AlertCircle size={64} />
+          <h2>Access Denied</h2>
+          <p>This page is only accessible to doctors.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const userProfile = profile || {};
+
+  // Debug: Log when component renders
+  console.log('🩺 DOCTOR PROFILE PAGE LOADED - This is the DOCTOR profile, not patient!');
+  console.log('User role:', user?.profile?.role);
+
+  return (
+    <div className="profile-page" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+      {/* Header - DOCTOR VERSION */}
+      <div className="profile-header-nav" style={{ background: '#667eea' }}>
+        <div className="container">
+          <div className="profile-header-content">
+            <div className="profile-header-left">
+              <button 
+                onClick={() => window.history.back()}
+                className="profile-back-btn"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <h1 className="profile-header-title">🩺 Doctor Profile Management (DEACTIVATION)</h1>
+            </div>
+            <div className="profile-header-right">
+              <div className="profile-welcome-text">
+                Welcome, Dr. {userProfile.first_name || 'Doctor'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Alert Messages */}
+      {error && (
+        <div className="profile-alert-error">
+          <AlertCircle size={20} />
+          <span>{error}</span>
+        </div>
+      )}
+      
+      {success && (
+        <div className="profile-alert-success">
+          <CheckCircle size={20} />
+          <span>{success}</span>
+        </div>
+      )}
+
+      <div className="container">
+        {/* CLEAR INDICATOR THIS IS DOCTOR PROFILE */}
+        <div style={{ 
+          background: '#f0f9ff', 
+          border: '3px solid #3b82f6', 
+          borderRadius: '8px', 
+          padding: '1rem', 
+          marginBottom: '1rem',
+          textAlign: 'center'
+        }}>
+          <h2 style={{ margin: 0, color: '#1e40af', fontSize: '1.5rem' }}>
+            🩺 DOCTOR PROFILE - Account Deactivation Available
+          </h2>
+          <p style={{ margin: '0.5rem 0 0 0', color: '#1e40af' }}>
+            This is the doctor-specific profile page with deactivation (not deletion)
+          </p>
+        </div>
+
+        <div className="profile-main-container">
+          {/* Profile Card */}
+          <div className="profile-card-header">
+            <div className="profile-card-content">
+              <div className="profile-card-left">
+                <div className="profile-avatar-container">
+                  <div className="profile-avatar" style={{ background: '#667eea' }}>
+                    {userProfile.avatar_url ? (
+                      <img src={userProfile.avatar_url} alt="Avatar" />
+                    ) : (
+                      <span>
+                        {userProfile.first_name?.charAt(0)?.toUpperCase() || 'D'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="profile-card-info">
+                  <h2>Dr. {userProfile.first_name} {userProfile.last_name}</h2>
+                  <p className="profile-card-role">{userProfile.specialization || 'Medical Doctor'}</p>
+                  <p className="profile-card-email">{userProfile.email}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tab Container */}
+          <div className="profile-tab-container">
+            {/* Tab Navigation */}
+            <div className="profile-tab-navigation">
+              <nav className="profile-tab-nav-list">
+                {[
+                  { id: 'personal', label: 'Personal Info', icon: User },
+                  { id: 'professional', label: 'Professional Details', icon: Heart },
+                  { id: 'credentials', label: 'Account Security', icon: Key }
+                ].map(tab => (
+                  <li key={tab.id} className="profile-tab-nav-item">
+                    <button
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`profile-tab-nav-button ${activeTab === tab.id ? 'active' : ''}`}
+                    >
+                      <tab.icon size={18} />
+                      <span>{tab.label}</span>
+                    </button>
+                  </li>
+                ))}
+              </nav>
+            </div>
+
+            {/* Tab Content */}
+            <div className="profile-tab-content">
+              {activeTab === 'credentials' && (
+                <div className="profile-tab-section">
+                  <h3 className="profile-tab-title">Account Security</h3>
+                  
+                  {/* Security Settings */}
+                  <div className="profile-security-settings">
+                    {/* Email Address */}
+                    <div className="profile-security-item">
+                      <div className="profile-security-item-content">
+                        <h4>Email Address</h4>
+                        <p className="profile-security-item-description">Update your email address</p>
+                      </div>
+                      <button className="profile-btn profile-btn-primary profile-btn-sm">
+                        Update Email
+                      </button>
+                    </div>
+
+                    {/* Password */}
+                    <div className="profile-security-item">
+                      <div className="profile-security-item-content">
+                        <h4>Password</h4>
+                        <p className="profile-security-item-description">Change your password</p>
+                      </div>
+                      <button className="profile-btn profile-btn-primary profile-btn-sm">
+                        Change Password
+                      </button>
+                    </div>
+
+                    {/* Two-Factor Authentication */}
+                    <div className="profile-security-item">
+                      <div className="profile-security-item-content">
+                        <h4>Two-Factor Authentication</h4>
+                        <p className="profile-security-item-description">Add an extra layer of security</p>
+                      </div>
+                      <button className="profile-btn profile-btn-success profile-btn-sm">
+                        Enable 2FA
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Deactivate Account Section */}
+                  <div className="profile-danger-zone">
+                    <h4 className="profile-danger-zone-title">Account Deactivation</h4>
+                    <div className="profile-danger-zone-content">
+                      <div className="profile-danger-warning">
+                        <ShieldOff size={20} />
+                        <div>
+                          <p className="profile-danger-warning-title">Deactivate Doctor Account</p>
+                          <p className="profile-danger-warning-text">
+                            Deactivating your account will temporarily disable your login access. Your profile, medical records, 
+                            and professional data will remain intact and visible to patients. You can reactivate your account 
+                            anytime by logging in with your credentials.
+                          </p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={handleDeactivateAccount}
+                        disabled={saving}
+                        className="profile-btn profile-btn-danger"
+                      >
+                        <ShieldOff size={16} />
+                        {saving ? 'Processing...' : 'Deactivate Account'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'personal' && (
+                <div className="profile-tab-section">
+                  <div className="profile-section-header">
+                    <h3 className="profile-tab-title">Personal Information</h3>
+                    {!editing ? (
+                      <button 
+                        onClick={() => setEditing(true)}
+                        className="profile-btn profile-btn-primary profile-btn-sm"
+                      >
+                        <Edit3 size={16} />
+                        Edit Profile
+                      </button>
+                    ) : (
+                      <div className="profile-edit-actions">
+                        <button 
+                          onClick={() => {
+                            setEditing(false);
+                            loadProfile();
+                          }}
+                          className="profile-btn profile-btn-secondary profile-btn-sm"
+                        >
+                          <X size={16} />
+                          Cancel
+                        </button>
+                        <button 
+                          onClick={handleSavePersonalInfo}
+                          disabled={saving}
+                          className="profile-btn profile-btn-success profile-btn-sm"
+                        >
+                          <Save size={16} />
+                          {saving ? 'Saving...' : 'Save Changes'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="profile-form-grid">
+                    <div className="profile-form-group">
+                      <label className="profile-form-label">First Name</label>
+                      <input
+                        type="text"
+                        value={formData.first_name}
+                        onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                        disabled={!editing}
+                        className="profile-form-input"
+                        placeholder="Enter your first name"
+                      />
+                    </div>
+
+                    <div className="profile-form-group">
+                      <label className="profile-form-label">Last Name</label>
+                      <input
+                        type="text"
+                        value={formData.last_name}
+                        onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                        disabled={!editing}
+                        className="profile-form-input"
+                        placeholder="Enter your last name"
+                      />
+                    </div>
+
+                    <div className="profile-form-group">
+                      <label className="profile-form-label">Email Address</label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        disabled={true}
+                        className="profile-form-input"
+                        placeholder="Email cannot be changed"
+                      />
+                      <p className="profile-form-hint">Email address cannot be changed</p>
+                    </div>
+
+                    <div className="profile-form-group">
+                      <label className="profile-form-label">Phone Number</label>
+                      <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        disabled={!editing}
+                        className="profile-form-input"
+                        placeholder="Enter your phone number"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'professional' && (
+                <div className="profile-tab-section">
+                  <div className="profile-section-header">
+                    <h3 className="profile-tab-title">Professional Details</h3>
+                    {!editing ? (
+                      <button 
+                        onClick={() => setEditing(true)}
+                        className="profile-btn profile-btn-primary profile-btn-sm"
+                      >
+                        <Edit3 size={16} />
+                        Edit Details
+                      </button>
+                    ) : (
+                      <div className="profile-edit-actions">
+                        <button 
+                          onClick={() => {
+                            setEditing(false);
+                            loadProfile();
+                          }}
+                          className="profile-btn profile-btn-secondary profile-btn-sm"
+                        >
+                          <X size={16} />
+                          Cancel
+                        </button>
+                        <button 
+                          onClick={handleSaveProfessionalInfo}
+                          disabled={saving}
+                          className="profile-btn profile-btn-success profile-btn-sm"
+                        >
+                          <Save size={16} />
+                          {saving ? 'Saving...' : 'Save Changes'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="profile-form-grid">
+                    <div className="profile-form-group">
+                      <label className="profile-form-label">Specialization</label>
+                      <input
+                        type="text"
+                        value={professionalInfo.specialization}
+                        onChange={(e) => setProfessionalInfo({ ...professionalInfo, specialization: e.target.value })}
+                        disabled={!editing}
+                        className="profile-form-input"
+                        placeholder="e.g., Cardiologist, Pediatrician"
+                      />
+                    </div>
+
+                    <div className="profile-form-group">
+                      <label className="profile-form-label">Medical License Number</label>
+                      <input
+                        type="text"
+                        value={professionalInfo.license_number}
+                        onChange={(e) => setProfessionalInfo({ ...professionalInfo, license_number: e.target.value })}
+                        disabled={!editing}
+                        className="profile-form-input"
+                        placeholder="Enter your license number"
+                      />
+                    </div>
+
+                    <div className="profile-form-group">
+                      <label className="profile-form-label">Years of Experience</label>
+                      <input
+                        type="number"
+                        value={professionalInfo.years_of_experience}
+                        onChange={(e) => setProfessionalInfo({ ...professionalInfo, years_of_experience: parseInt(e.target.value) || 0 })}
+                        disabled={!editing}
+                        className="profile-form-input"
+                        placeholder="Years of practice"
+                        min="0"
+                      />
+                    </div>
+
+                    <div className="profile-form-group">
+                      <label className="profile-form-label">Hospital/Clinic Affiliation</label>
+                      <input
+                        type="text"
+                        value={professionalInfo.hospital_affiliation}
+                        onChange={(e) => setProfessionalInfo({ ...professionalInfo, hospital_affiliation: e.target.value })}
+                        disabled={!editing}
+                        className="profile-form-input"
+                        placeholder="Enter hospital or clinic name"
+                      />
+                    </div>
+
+                    <div className="profile-form-group profile-form-group-full">
+                      <label className="profile-form-label">Professional Bio</label>
+                      <textarea
+                        value={professionalInfo.bio}
+                        onChange={(e) => setProfessionalInfo({ ...professionalInfo, bio: e.target.value })}
+                        disabled={!editing}
+                        className="profile-form-textarea"
+                        placeholder="Brief description of your medical background and expertise"
+                        rows="4"
+                      />
+                    </div>
+
+                    <div className="profile-form-group">
+                      <label className="profile-form-label">Consultation Fee (₱)</label>
+                      <input
+                        type="text"
+                        value={professionalInfo.consultation_fee}
+                        onChange={(e) => setProfessionalInfo({ ...professionalInfo, consultation_fee: e.target.value })}
+                        disabled={!editing}
+                        className="profile-form-input"
+                        placeholder="e.g., 500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Deactivate Account Modal */}
+      {showDeactivateModal && (
+        <div className="profile-modal-overlay" onClick={handleCloseDeactivateModal}>
+          <div className="profile-modal-content profile-delete-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="profile-modal-close" onClick={handleCloseDeactivateModal}>
+              <X size={24} />
+            </button>
+
+            {deactivateStep === 1 ? (
+              /* Step 1: Password Verification */
+              <>
+                <div className="profile-modal-header">
+                  <AlertCircle size={48} className="profile-modal-icon-warning" />
+                  <h2>Verify Your Identity</h2>
+                  <p>Please enter your password to continue with account deactivation</p>
+                </div>
+
+                <div className="profile-modal-body">
+                  <div className="profile-modal-warning-box">
+                    <div>
+                      <p className="profile-modal-warning-title">Account Deactivation for Doctors</p>
+                      <p className="profile-modal-warning-text">
+                        Deactivating your doctor account will:
+                      </p>
+                      <ul className="profile-modal-warning-list">
+                        <li>Disable your login access</li>
+                        <li>Keep your profile visible to patients</li>
+                        <li>Preserve all medical records and history</li>
+                        <li>Maintain patient care continuity</li>
+                        <li>Allow profile viewing but not editing</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="profile-form-group">
+                    <label className="profile-form-label">
+                      <Lock size={16} />
+                      Enter Your Password
+                    </label>
+                    <input
+                      type="password"
+                      value={deactivatePassword}
+                      onChange={(e) => setDeactivatePassword(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleVerifyPassword()}
+                      className="profile-form-input"
+                      placeholder="Enter your password"
+                      autoFocus
+                      disabled={passwordVerifying}
+                    />
+                    {passwordError && (
+                      <p className="profile-form-error">
+                        <AlertCircle size={16} />
+                        {passwordError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="profile-modal-footer">
+                  <button 
+                    onClick={handleCloseDeactivateModal}
+                    className="profile-btn profile-btn-secondary"
+                    disabled={passwordVerifying}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleVerifyPassword}
+                    className="profile-btn profile-btn-primary"
+                    disabled={passwordVerifying || !deactivatePassword.trim()}
+                  >
+                    {passwordVerifying ? 'Verifying...' : 'Verify Password'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Step 2: Final Confirmation */
+              <>
+                <div className="profile-modal-header">
+                  <ShieldOff size={48} className="profile-modal-icon-danger" />
+                  <h2>Final Confirmation</h2>
+                  <p>Are you sure you want to deactivate your doctor account?</p>
+                </div>
+
+                <div className="profile-modal-body">
+                  <div className="profile-modal-danger-box">
+                    <h3>⚠️ What happens when you deactivate:</h3>
+                    <div className="profile-modal-delete-list">
+                      <div className="profile-modal-delete-item">
+                        <CheckCircle size={20} />
+                        <span>Login access will be temporarily disabled</span>
+                      </div>
+                      <div className="profile-modal-delete-item">
+                        <CheckCircle size={20} />
+                        <span>Patients can still view your profile</span>
+                      </div>
+                      <div className="profile-modal-delete-item">
+                        <CheckCircle size={20} />
+                        <span>All medical records remain accessible</span>
+                      </div>
+                      <div className="profile-modal-delete-item">
+                        <CheckCircle size={20} />
+                        <span>Patient care continuity is maintained</span>
+                      </div>
+                      <div className="profile-modal-delete-item">
+                        <CheckCircle size={20} />
+                        <span>Your professional data is preserved</span>
+                      </div>
+                      <div className="profile-modal-delete-item">
+                        <CheckCircle size={20} />
+                        <span>You can reactivate anytime by logging in</span>
+                      </div>
+                    </div>
+                    <p className="profile-modal-danger-text">
+                      <strong>Note:</strong> After deactivation, simply log in with your credentials to reactivate your account.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="profile-modal-footer">
+                  <button 
+                    onClick={handleCloseDeactivateModal}
+                    className="profile-btn profile-btn-success"
+                    disabled={saving}
+                  >
+                    No, Keep My Account Active
+                  </button>
+                  <button 
+                    onClick={handleConfirmDeactivate}
+                    className="profile-btn profile-btn-danger"
+                    disabled={saving}
+                  >
+                    <ShieldOff size={16} />
+                    {saving ? 'Deactivating...' : 'Yes, Deactivate My Account'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default DoctorProfilePage;

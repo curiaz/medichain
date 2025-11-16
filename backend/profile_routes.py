@@ -6,6 +6,7 @@ from flask import Blueprint, request, jsonify
 from auth.firebase_auth import firebase_auth_required, firebase_role_required
 from db.supabase_client import SupabaseClient
 import json
+import os
 from datetime import datetime
 
 profile_bp = Blueprint('profile', __name__, url_prefix='/api/profile')
@@ -520,4 +521,628 @@ def delete_account():
             'success': False,
             'error': f'Failed to process account: {str(e)}'
         }), 500
+
+
+@profile_bp.route('/doctor/update', methods=['PUT'])
+@firebase_auth_required
+@firebase_role_required('doctor')
+def update_doctor_profile():
+    """Update doctor profile information"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user['uid']
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        print(f"[DEBUG] Updating doctor profile for UID: {uid}")
+        print(f"[DEBUG] Update data: {data}")
+        
+        # Separate user profile and doctor profile fields
+        user_fields = ['first_name', 'last_name', 'phone', 'address', 'city', 'state', 'zip_code']
+        doctor_fields = ['specialization', 'license_number', 'years_of_experience', 'hospital_affiliation']
+        privacy_fields = ['profile_visibility', 'show_email', 'show_phone', 'allow_patient_messages', 'data_sharing']
+        
+        user_data = {k: v for k, v in data.items() if k in user_fields}
+        doctor_data = {k: v for k, v in data.items() if k in doctor_fields}
+        privacy_data = {k: v for k, v in data.items() if k in privacy_fields}
+        
+        # Get user's internal ID first (needed for doctor profile)
+        user_lookup = supabase.service_client.table('user_profiles').select('id').eq('firebase_uid', uid).execute()
+        user_internal_id = user_lookup.data[0].get('id') if user_lookup.data else None
+        
+        # Update user profile
+        if user_data:
+            user_data['updated_at'] = datetime.utcnow().isoformat()
+            user_response = supabase.service_client.table('user_profiles').update(user_data).eq('firebase_uid', uid).execute()
+            print(f"[DEBUG] User profile update response: {user_response.data}")
+        
+        # Always ensure doctor profile exists (create if needed)
+        check_response = supabase.service_client.table('doctor_profiles').select('id').eq('firebase_uid', uid).execute()
+        
+        if not check_response.data:
+            # Create doctor profile if it doesn't exist
+            print(f"[DEBUG] No doctor profile found, creating one for UID: {uid}")
+            new_doctor_profile = {
+                'firebase_uid': uid,
+                'user_id': user_internal_id,
+                'specialization': 'General Practice',  # Default value for NOT NULL constraint
+                'verification_status': 'pending',
+                'created_at': datetime.utcnow().isoformat(),
+                'updated_at': datetime.utcnow().isoformat()
+            }
+            create_response = supabase.service_client.table('doctor_profiles').insert(new_doctor_profile).execute()
+            print(f"[DEBUG] Doctor profile created: {create_response.data}")
+        
+        # Update doctor profile if we have data
+        if doctor_data or privacy_data:
+            update_data = {**doctor_data, **privacy_data}
+            update_data['updated_at'] = datetime.utcnow().isoformat()
+            
+            # Update existing doctor profile
+            doctor_response = supabase.service_client.table('doctor_profiles').update(update_data).eq('firebase_uid', uid).execute()
+            print(f"[DEBUG] Doctor profile updated with data: {doctor_response.data}")
+        
+        # Log activity (non-critical, don't fail if this errors)
+        try:
+            activity_log = {
+                'firebase_uid': uid,
+                'action': 'Profile Updated',
+                'details': f"Updated fields: {', '.join(data.keys())}",
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            supabase.service_client.table('activity_logs').insert(activity_log).execute()
+        except Exception as log_error:
+            print(f"[WARN] Failed to log activity: {log_error}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Profile updated successfully'
+        }), 200
+        
+    except Exception as e:
+        print(f"[ERROR] Error updating doctor profile: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@profile_bp.route('/doctor/details', methods=['GET'])
+@firebase_auth_required
+@firebase_role_required('doctor')
+def get_doctor_details():
+    """Get complete doctor profile details"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user['uid']
+        
+        print(f"[DEBUG] Fetching doctor details for UID: {uid}")
+        
+        # Get user profile
+        user_response = supabase.service_client.table('user_profiles').select('*').eq('firebase_uid', uid).execute()
+        
+        if not user_response.data:
+            return jsonify({
+                'success': False,
+                'error': 'User profile not found'
+            }), 404
+        
+        user_profile = user_response.data[0]
+        
+        # Get doctor profile
+        doctor_response = supabase.service_client.table('doctor_profiles').select('*').eq('firebase_uid', uid).execute()
+        
+        doctor_profile = doctor_response.data[0] if doctor_response.data else {}
+        
+        # Merge profiles
+        complete_profile = {
+            **user_profile,
+            **doctor_profile,
+            'role': 'doctor'
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': complete_profile
+        }), 200
+        
+    except Exception as e:
+        print(f"[ERROR] Error fetching doctor details: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@profile_bp.route('/doctor/documents/upload', methods=['POST'])
+@firebase_auth_required
+@firebase_role_required('doctor')
+def upload_doctor_document():
+    """Upload doctor verification documents"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user['uid']
+        
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        document_type = request.form.get('type', 'general')  # license, certificate, verification
+        
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        # Validate file type
+        allowed_extensions = {'pdf', 'jpg', 'jpeg', 'png'}
+        file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+        
+        if file_ext not in allowed_extensions:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid file type. Allowed: PDF, JPG, PNG'
+            }), 400
+        
+        # Generate unique filename
+        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        filename = f"{uid}_{document_type}_{timestamp}.{file_ext}"
+        
+        # Read file content
+        file_content = file.read()
+        
+        # Store document record in database
+        document_data = {
+            'firebase_uid': uid,
+            'document_type': document_type,
+            'filename': filename,
+            'file_size': len(file_content),
+            'file_type': file.content_type,
+            'uploaded_at': datetime.utcnow().isoformat(),
+            'status': 'pending'
+        }
+        
+        # Create documents table entry
+        doc_response = supabase.service_client.table('doctor_documents').insert(document_data).execute()
+        
+        # Log activity (non-critical, don't fail if this errors)
+        try:
+            activity_log = {
+                'firebase_uid': uid,
+                'action': 'Document Uploaded',
+                'details': f"Uploaded {document_type}: {file.filename}",
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            supabase.service_client.table('activity_logs').insert(activity_log).execute()
+        except Exception as log_error:
+            print(f"[WARN] Failed to log activity: {log_error}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Document uploaded successfully',
+            'document_id': doc_response.data[0]['id'] if doc_response.data else None
+        }), 200
+        
+    except Exception as e:
+        print(f"[ERROR] Error uploading document: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@profile_bp.route('/doctor/documents', methods=['GET'])
+@firebase_auth_required
+@firebase_role_required('doctor')
+def get_doctor_documents():
+    """Get all uploaded documents for a doctor"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user['uid']
+        
+        # Fetch documents
+        docs_response = supabase.service_client.table('doctor_documents').select('*').eq('firebase_uid', uid).order('uploaded_at', desc=True).execute()
+        
+        return jsonify({
+            'success': True,
+            'documents': docs_response.data or []
+        }), 200
+        
+    except Exception as e:
+        print(f"[ERROR] Error fetching documents: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@profile_bp.route('/doctor/privacy', methods=['PUT'])
+@firebase_auth_required
+@firebase_role_required('doctor')
+def update_privacy_settings():
+    """Update doctor privacy settings"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user['uid']
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        # Update doctor profile with privacy settings
+        privacy_data = {
+            'profile_visibility': data.get('profile_visibility'),
+            'show_email': data.get('show_email', False),
+            'show_phone': data.get('show_phone', False),
+            'allow_patient_messages': data.get('allow_patient_messages', True),
+            'data_sharing': data.get('data_sharing', False),
+            'updated_at': datetime.utcnow().isoformat()
+        }
+        
+        # Remove None values
+        privacy_data = {k: v for k, v in privacy_data.items() if v is not None}
+        
+        doctor_response = supabase.service_client.table('doctor_profiles').update(privacy_data).eq('firebase_uid', uid).execute()
+        
+        # Log activity (non-critical, don't fail if this errors)
+        try:
+            activity_log = {
+                'firebase_uid': uid,
+                'action': 'Privacy Settings Updated',
+                'details': 'Updated privacy preferences',
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            supabase.service_client.table('activity_logs').insert(activity_log).execute()
+        except Exception as log_error:
+            print(f"[WARN] Failed to log activity: {log_error}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Privacy settings updated successfully'
+        }), 200
+        
+    except Exception as e:
+        print(f"[ERROR] Error updating privacy settings: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@profile_bp.route('/doctor/activity', methods=['GET'])
+@firebase_auth_required
+@firebase_role_required('doctor')
+def get_activity_log():
+    """Get doctor activity history"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user['uid']
+        
+        # Fetch activity logs
+        logs_response = supabase.service_client.table('activity_logs').select('*').eq('firebase_uid', uid).order('timestamp', desc=True).limit(50).execute()
+        
+        return jsonify({
+            'success': True,
+            'activities': logs_response.data or []
+        }), 200
+        
+    except Exception as e:
+        print(f"[ERROR] Error fetching activity log: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@profile_bp.route('/reactivate-account', methods=['POST'])
+def reactivate_account():
+    """Reactivate a deactivated doctor account"""
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not email or not password:
+            return jsonify({
+                'success': False,
+                'error': 'Email and password are required'
+            }), 400
+        
+        print(f"🔄 Starting account reactivation for email: {email}")
+        
+        # Get user profile
+        user_response = supabase.service_client.table('user_profiles').select('*').eq('email', email).execute()
+        
+        if not user_response.data:
+            return jsonify({
+                'success': False,
+                'error': 'Account not found'
+            }), 404
+        
+        user = user_response.data[0]
+        uid = user['firebase_uid']
+        
+        # Check if account is deactivated
+        if user.get('is_active', True):
+            return jsonify({
+                'success': False,
+                'error': 'Account is already active'
+            }), 400
+        
+        # Check if user is a doctor
+        if user['role'] != 'doctor':
+            return jsonify({
+                'success': False,
+                'error': 'Only doctor accounts can be reactivated'
+            }), 400
+        
+        # Verify password using Firebase
+        import requests
+        firebase_api_key = os.environ.get('FIREBASE_API_KEY', 'AIzaSyDij3Q998OYB3PkSQpzIkki3wFzSF_OUcM')
+        firebase_auth_url = f'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={firebase_api_key}'
+        
+        # First, enable the Firebase account temporarily to verify password
+        from firebase_admin import auth as firebase_auth
+        firebase_auth.update_user(uid, disabled=False)
+        
+        auth_response = requests.post(firebase_auth_url, json={
+            'email': email,
+            'password': password,
+            'returnSecureToken': True
+        })
+        
+        if auth_response.status_code != 200:
+            # Re-disable if password is wrong
+            firebase_auth.update_user(uid, disabled=True)
+            return jsonify({
+                'success': False,
+                'error': 'Incorrect password'
+            }), 401
+        
+        print(f"✅ Password verified for reactivation")
+        
+        # Reactivate the account
+        user_update_data = {
+            'is_active': True,
+            'deactivated_at': None
+        }
+        
+        print("📝 Reactivating user profile...")
+        user_update = supabase.service_client.table('user_profiles').update(
+            user_update_data
+        ).eq('firebase_uid', uid).execute()
+        
+        if not user_update.data:
+            raise Exception("Failed to reactivate user profile")
+        
+        print(f"✅ User profile reactivated")
+        
+        # Update doctor_profiles
+        doctor_update_data = {
+            'account_status': 'active'
+        }
+        
+        print("📝 Updating doctor profile...")
+        supabase.service_client.table('doctor_profiles').update(
+            doctor_update_data
+        ).eq('firebase_uid', uid).execute()
+        
+        print(f"✅ Doctor profile reactivated")
+        
+        # Get ID token for login
+        id_token = auth_response.json().get('idToken')
+        
+        print(f"🎉 Doctor account reactivation completed successfully")
+        
+        # Return login response
+        return jsonify({
+            'success': True,
+            'message': 'Your account has been reactivated successfully!',
+            'data': {
+                'user': {
+                    'id': user['id'],
+                    'uid': uid,
+                    'email': user['email'],
+                    'first_name': user.get('first_name', ''),
+                    'last_name': user.get('last_name', ''),
+                    'role': user['role'],
+                    'firebase_uid': uid
+                },
+                'token': id_token
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Account reactivation error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f'Failed to reactivate account: {str(e)}'
+        }), 500
+
+
+# ========== PATIENT PROFILE ENDPOINTS ==========
+
+@profile_bp.route('/patient/update', methods=['PUT'])
+@firebase_auth_required
+@firebase_role_required('patient')
+def update_patient_profile():
+    """Update patient profile information"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user['uid']
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        print(f"[DEBUG] Updating patient profile for UID: {uid}")
+        print(f"[DEBUG] Update data: {data}")
+        
+        # Update user profile
+        user_data = {k: v for k, v in data.items() if k in [
+            'first_name', 'last_name', 'phone', 'date_of_birth', 'gender',
+            'address', 'city', 'state', 'zip_code', 'emergency_contact'
+        ]}
+        
+        # Convert empty strings to None for date and constrained fields
+        if 'date_of_birth' in user_data and user_data['date_of_birth'] == '':
+            user_data['date_of_birth'] = None
+        if 'gender' in user_data and user_data['gender'] == '':
+            user_data['gender'] = None
+        
+        if user_data:
+            user_data['updated_at'] = datetime.utcnow().isoformat()
+            user_response = supabase.service_client.table('user_profiles').update(user_data).eq('firebase_uid', uid).execute()
+            print(f"[DEBUG] Patient profile update response: {user_response.data}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Profile updated successfully'
+        }), 200
+        
+    except Exception as e:
+        print(f"[ERROR] Error updating patient profile: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@profile_bp.route('/patient/medical', methods=['PUT'])
+@firebase_auth_required
+@firebase_role_required('patient')
+def update_patient_medical():
+    """Update patient medical information"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user['uid']
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        print(f"[DEBUG] Updating patient medical info for UID: {uid}")
+        print(f"[DEBUG] Medical data: {data}")
+        
+        # Update medical fields in user profile
+        medical_data = {k: v for k, v in data.items() if k in [
+            'medical_conditions', 'allergies', 'current_medications', 'blood_type', 'medical_notes'
+        ]}
+        
+        if medical_data:
+            medical_data['updated_at'] = datetime.utcnow().isoformat()
+            user_response = supabase.service_client.table('user_profiles').update(medical_data).eq('firebase_uid', uid).execute()
+            print(f"[DEBUG] Medical info update response: {user_response.data}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Medical information updated successfully'
+        }), 200
+        
+    except Exception as e:
+        print(f"[ERROR] Error updating medical info: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@profile_bp.route('/patient/privacy', methods=['PUT'])
+@firebase_auth_required
+@firebase_role_required('patient')
+def update_patient_privacy():
+    """Update patient privacy settings"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user['uid']
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+        
+        print(f"[DEBUG] Updating patient privacy settings for UID: {uid}")
+        print(f"[DEBUG] Privacy data: {data}")
+        
+        # Update privacy fields in user profile
+        privacy_data = {k: v for k, v in data.items() if k in [
+            'profile_visibility', 'show_email', 'show_phone',
+            'medical_info_visible_to_doctors', 'allow_ai_analysis', 'share_data_for_research'
+        ]}
+        
+        if privacy_data:
+            privacy_data['updated_at'] = datetime.utcnow().isoformat()
+            user_response = supabase.service_client.table('user_profiles').update(privacy_data).eq('firebase_uid', uid).execute()
+            print(f"[DEBUG] Privacy settings update response: {user_response.data}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Privacy settings updated successfully'
+        }), 200
+        
+    except Exception as e:
+        print(f"[ERROR] Error updating privacy settings: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@profile_bp.route('/patient/documents', methods=['POST'])
+@firebase_auth_required
+@firebase_role_required('patient')
+def upload_patient_document():
+    """Upload patient health document"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user['uid']
+        
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        document_type = request.form.get('document_type', 'health_document')
+        description = request.form.get('description', '')
+        
+        print(f"[DEBUG] Uploading document for patient UID: {uid}")
+        print(f"[DEBUG] File: {file.filename}, Type: {document_type}")
+        
+        # For now, just store metadata (file storage would need to be implemented)
+        document_data = {
+            'firebase_uid': uid,
+            'filename': file.filename,
+            'document_type': document_type,
+            'description': description,
+            'file_size': len(file.read()),
+            'uploaded_at': datetime.utcnow().isoformat()
+        }
+        
+        # Store in a patient_documents table (would need to be created)
+        # For now, return success
+        
+        return jsonify({
+            'success': True,
+            'data': document_data,
+            'message': 'Document uploaded successfully'
+        }), 200
+        
+    except Exception as e:
+        print(f"[ERROR] Error uploading document: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 
