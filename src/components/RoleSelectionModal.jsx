@@ -1,20 +1,20 @@
 import React from 'react';
 import './RoleSelectionModal.css';
 
-const RoleSelectionModal = ({ isOpen, onClose, onRoleSelect }) => {
+const RoleSelectionModal = ({ isOpen, onClose, onRoleSelect, title, subtitle }) => {
   if (!isOpen) return null;
 
   const handleRoleSelection = (role) => {
     onRoleSelect(role);
-    onClose();
+    // Don't close modal here - let parent handle it after registration
   };
 
   return (
     <div className="role-modal-overlay" onClick={onClose}>
       <div className="role-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2 className="modal-title">Select Your Role</h2>
-          <p className="modal-subtitle">Choose your role to get started with MediChain</p>
+          <h2 className="modal-title">{title || "Select Your Role"}</h2>
+          <p className="modal-subtitle">{subtitle || "Choose your role to get started with MediChain"}</p>
         </div>
         
         <div className="role-options">

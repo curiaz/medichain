@@ -13,7 +13,7 @@ const MedichainLogin = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
-  const { login, isAuthenticated, loading, resendVerification } = useAuth()
+  const { login, isAuthenticated, loading, resendVerification, signInWithGoogle } = useAuth()
   
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -27,6 +27,9 @@ const MedichainLogin = () => {
   const [reactivationToken, setReactivationToken] = useState(null)
   const [isReactivating, setIsReactivating] = useState(false)
   const [inlineError, setInlineError] = useState("")
+  const [showGoogleRoleModal, setShowGoogleRoleModal] = useState(false)
+  const [googleSignInData, setGoogleSignInData] = useState(null)
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false)
 
   const handleSignUpClick = () => {
     setIsRoleModalOpen(true)
@@ -237,6 +240,79 @@ const MedichainLogin = () => {
     showToast.info("Reactivation cancelled. Your account remains deactivated.")
   }
 
+  const handleGoogleSignIn = async () => {
+    if (isSubmitting || isGoogleSigningIn) return
+    
+    setIsGoogleSigningIn(true)
+    setInlineError("")
+    
+    try {
+      const result = await signInWithGoogle()
+      
+      if (result.success) {
+        showToast.success(result.message || "Login successful!")
+        
+        // Navigate to intended page or dashboard
+        const from = location.state?.from?.pathname || "/dashboard"
+        navigate(from, { replace: true })
+      } else if (result.needsRoleSelection) {
+        // New user needs to select role
+        setGoogleSignInData({
+          idToken: result.idToken,
+          email: result.email,
+          firstName: result.firstName,
+          lastName: result.lastName
+        })
+        setShowGoogleRoleModal(true)
+      } else {
+        setInlineError(result.message || "Google sign-in failed. Please try again.")
+        showToast.error(result.message || "Google sign-in failed")
+      }
+    } catch (error) {
+      console.error("Google sign-in error:", error)
+      setInlineError("An unexpected error occurred. Please try again.")
+      showToast.error("An unexpected error occurred. Please try again.")
+    } finally {
+      setIsGoogleSigningIn(false)
+    }
+  }
+
+  const handleGoogleRoleSelect = async (role) => {
+    if (!googleSignInData) return
+    
+    setIsGoogleSigningIn(true)
+    setShowGoogleRoleModal(false)
+    
+    try {
+      // Continue sign-in with role and stored token (no popup)
+      const result = await signInWithGoogle(role, googleSignInData.idToken)
+      
+      if (result.success) {
+        showToast.success(result.message || "Account created successfully!")
+        
+        // Navigate to intended page or dashboard
+        const from = location.state?.from?.pathname || "/dashboard"
+        navigate(from, { replace: true })
+      } else {
+        setInlineError(result.message || "Registration failed. Please try again.")
+        showToast.error(result.message || "Registration failed")
+      }
+    } catch (error) {
+      console.error("Google role selection error:", error)
+      setInlineError("An unexpected error occurred. Please try again.")
+      showToast.error("An unexpected error occurred. Please try again.")
+    } finally {
+      setIsGoogleSigningIn(false)
+      setGoogleSignInData(null)
+    }
+  }
+
+  const handleCancelGoogleRoleSelection = () => {
+    setShowGoogleRoleModal(false)
+    setGoogleSignInData(null)
+    showToast.info("Google sign-in cancelled.")
+  }
+
   // Show loading spinner if checking authentication
   if (loading) {
     return (
@@ -405,9 +481,20 @@ const MedichainLogin = () => {
                   <span>or</span>
                 </div>
 
-                <button type="button" className="google-btn" disabled={isSubmitting}>
-                  <div className="google-icon">G</div>
-                  Continue with Google
+                <button 
+                  type="button" 
+                  className="google-btn" 
+                  onClick={handleGoogleSignIn}
+                  disabled={isSubmitting || isGoogleSigningIn}
+                >
+                  {isGoogleSigningIn ? (
+                    <LoadingSpinner size="small" text="" />
+                  ) : (
+                    <>
+                      <div className="google-icon">G</div>
+                      Continue with Google
+                    </>
+                  )}
                 </button>
 
                 <p className="signup-link">
@@ -473,6 +560,17 @@ const MedichainLogin = () => {
         onClose={closeRoleModal}
         onRoleSelect={handleRoleSelect}
       />
+
+      {/* Google Role Selection Modal */}
+      {showGoogleRoleModal && googleSignInData && (
+        <RoleSelectionModal
+          isOpen={showGoogleRoleModal}
+          onClose={handleCancelGoogleRoleSelection}
+          onRoleSelect={handleGoogleRoleSelect}
+          title="Select Your Account Type"
+          subtitle={`Welcome ${googleSignInData.firstName}! Please choose how you'd like to use MediChain.`}
+        />
+      )}
 
       {/* Reactivation Confirmation Modal */}
       {showReactivationModal && (

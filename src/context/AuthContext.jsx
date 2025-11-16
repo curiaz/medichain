@@ -3,6 +3,8 @@ import { auth } from '../config/firebase';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
   signOut,
   onAuthStateChanged
 } from 'firebase/auth';
@@ -565,6 +567,169 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Google sign-in function
+  const signInWithGoogle = async (role = null, idToken = null) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      let userCredential = null;
+      let currentIdToken = idToken;
+      let displayName = '';
+      let email = '';
+      let firstName = '';
+      let lastName = '';
+      
+      // If idToken is provided, we're continuing a previous sign-in (role selection)
+      if (idToken) {
+        console.log('[Auth] Continuing Google sign-in with provided token...');
+        // Get current user from Firebase
+        userCredential = auth.currentUser;
+        if (userCredential) {
+          currentIdToken = await userCredential.getIdToken(true); // Refresh token
+          displayName = userCredential.displayName || '';
+          email = userCredential.email || '';
+          const nameParts = displayName.split(' ');
+          firstName = nameParts[0] || email.split('@')[0];
+          lastName = nameParts.slice(1).join(' ') || '';
+        } else {
+          throw new Error('No Firebase user found');
+        }
+      } else {
+        // First time sign-in - open popup
+        console.log('[Auth] Initiating Google sign-in...');
+        
+        // Create Google Auth Provider
+        const provider = new GoogleAuthProvider();
+        
+        // Request additional scopes if needed
+        provider.addScope('email');
+        provider.addScope('profile');
+        
+        // Sign in with Google popup
+        const result = await signInWithPopup(auth, provider);
+        userCredential = result.user;
+        
+        console.log('[Auth] Google sign-in successful:', userCredential.email);
+        
+        // Get ID token
+        currentIdToken = await userCredential.getIdToken();
+        
+        // Extract user information from Google
+        displayName = userCredential.displayName || '';
+        email = userCredential.email || '';
+        const nameParts = displayName.split(' ');
+        firstName = nameParts[0] || email.split('@')[0];
+        lastName = nameParts.slice(1).join(' ') || '';
+      }
+      
+      // Try to login first (in case user already exists)
+      try {
+        console.log('[Auth] Checking if user exists in backend...');
+        const loginResponse = await axios.post(`${API_URL}/auth/login`, {
+          id_token: currentIdToken
+        });
+
+        if (loginResponse.data.success) {
+          // User exists - login successful
+          const userData = loginResponse.data.data?.user || loginResponse.data.user;
+          const token = loginResponse.data.data?.token || currentIdToken;
+          
+          localStorage.setItem('medichain_token', token);
+          localStorage.setItem('medichain_user', JSON.stringify(userData));
+          
+          setUser(userData);
+          setIsAuthenticated(true);
+          
+          console.log('[Auth] ✅ Google login successful (existing user)!');
+          return {
+            success: true,
+            message: 'Login successful!',
+            user: userData
+          };
+        }
+      } catch (loginError) {
+        // User doesn't exist - need to register
+        console.log('[Auth] User not found, registering new user...');
+        
+        // If role not provided, we'll need to get it from the user
+        if (!role) {
+          return {
+            success: false,
+            needsRoleSelection: true,
+            idToken: currentIdToken,
+            email: email,
+            firstName: firstName,
+            lastName: lastName,
+            message: 'Please select your account type'
+          };
+        }
+        
+        // Register new user with selected role
+        console.log('[Auth] Registering new Google user with role:', role);
+        const registerResponse = await axios.post(`${API_URL}/auth/register`, {
+          id_token: currentIdToken,
+          name: displayName || `${firstName} ${lastName}`,
+          role: role
+        });
+
+        if (registerResponse.data.success) {
+          const userData = registerResponse.data.data?.user || registerResponse.data.user;
+          const token = registerResponse.data.data?.token || currentIdToken;
+          
+          localStorage.setItem('medichain_token', token);
+          localStorage.setItem('medichain_user', JSON.stringify(userData));
+          
+          setUser(userData);
+          setIsAuthenticated(true);
+          
+          console.log('[Auth] ✅ Google sign-up successful!');
+          return {
+            success: true,
+            message: 'Account created successfully! Welcome to MediChain.',
+            user: userData
+          };
+        } else {
+          throw new Error(registerResponse.data.error || 'Registration failed');
+        }
+      }
+    } catch (error) {
+      console.error('[Auth] Google sign-in error:', error);
+      
+      // Handle Firebase errors
+      if (error.code?.startsWith('auth/')) {
+        const friendlyMessage = getFirebaseErrorMessage(error.code);
+        setError(friendlyMessage);
+        return {
+          success: false,
+          message: friendlyMessage,
+          errorCode: error.code
+        };
+      }
+      
+      // Handle network errors
+      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        const errorMsg = 'Unable to connect to server. Please check your connection and try again.';
+        setError(errorMsg);
+        return {
+          success: false,
+          message: errorMsg,
+          errorType: 'network'
+        };
+      }
+      
+      // Generic error
+      const errorMsg = error.response?.data?.error || error.message || 'Google sign-in failed. Please try again.';
+      setError(errorMsg);
+      return {
+        success: false,
+        message: errorMsg
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     isAuthenticated,
     user,
@@ -573,6 +738,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     signup,
+    signInWithGoogle,
     updateUser,
     checkVerificationStatus,
     clearError,
