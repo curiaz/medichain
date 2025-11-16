@@ -6,12 +6,8 @@ import MedichainLogo from "../components/MedichainLogo"
 import "../assets/styles/Header.css"
 
 const Header = () => {
-<<<<<<< HEAD
   const { logout, user } = useAuth()
-=======
-  const { logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
->>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
   const navigate = useNavigate()
 
   const handleLogout = () => {

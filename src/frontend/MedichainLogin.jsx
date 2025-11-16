@@ -23,13 +23,10 @@ const MedichainLogin = () => {
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false)
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false)
   const [isResendingVerification, setIsResendingVerification] = useState(false)
-<<<<<<< HEAD
   const [showReactivationModal, setShowReactivationModal] = useState(false)
   const [reactivationToken, setReactivationToken] = useState(null)
   const [isReactivating, setIsReactivating] = useState(false)
-=======
   const [inlineError, setInlineError] = useState("")
->>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
 
   const handleSignUpClick = () => {
     setIsRoleModalOpen(true)
@@ -94,11 +91,8 @@ const MedichainLogin = () => {
     setIsSubmitting(true)
     
     try {
-<<<<<<< HEAD
       console.log('🔐 Attempting login...');
-=======
       setInlineError("")
->>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
       const result = await login(email.trim(), password)
       console.log('📊 Login result:', result);
       

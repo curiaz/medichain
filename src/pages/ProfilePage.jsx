@@ -47,8 +47,7 @@ const ProfilePage = () => {
   const [documents, setDocuments] = useState([]); // eslint-disable-line no-unused-vars
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-<<<<<<< HEAD
-  const [auditTrail, setAuditTrail] = useState([]);
+  const [auditTrail, setAuditTrail] = useState([]); // eslint-disable-line no-unused-vars
   
   // Delete Account Modal States
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -56,9 +55,6 @@ const ProfilePage = () => {
   const [deletePassword, setDeletePassword] = useState('');
   const [passwordVerifying, setPasswordVerifying] = useState(false);
   const [passwordError, setPasswordError] = useState('');
-=======
-  const [auditTrail, setAuditTrail] = useState([]); // eslint-disable-line no-unused-vars
->>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
 
   const loadProfile = useCallback(async () => {
     console.log('🚀 LOADING PROFILE - ENHANCED MODE');
@@ -74,7 +70,6 @@ const ProfilePage = () => {
         setLoading(false);
         return;
       }
-<<<<<<< HEAD
       
       // Check if user is a patient
       if (user.profile?.role === 'doctor') {
@@ -84,9 +79,6 @@ const ProfilePage = () => {
       }
       
       // Debug: Log the complete user object structure
-=======
-
->>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
       console.log('🔍 Complete user object structure:', JSON.stringify(user, null, 2));
       console.log('🔍 User properties:', Object.keys(user));
       
