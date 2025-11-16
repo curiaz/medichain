@@ -854,7 +854,8 @@ def symptom_explanations():
 
 if __name__ == '__main__':
     print("🌐 Starting Flask server...")
-    print(f"📡 API available at: http://localhost:5000")
+    port = int(os.getenv('PORT', 5000))
+    print(f"📡 API available at: http://localhost:{port}")
     print(f"🩺 Diagnosis endpoint: POST /api/diagnose")
     print(f"📋 Explanations endpoint: POST /api/symptom-explanations")
     print(f"❤️  Health check: GET /health")
@@ -863,13 +864,5 @@ if __name__ == '__main__':
     app.run(
         debug=False,
         host='0.0.0.0',
-        port=5000
-    )
-    print(f"❤️  Health check: GET /health")
-    print("=" * 60)
-    
-    app.run(
-        debug=False,
-        host='0.0.0.0',
-        port=5000
+        port=port
     )

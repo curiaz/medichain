@@ -6,8 +6,9 @@ import LoadingSpinner from "../components/LoadingSpinner"
 import { showToast } from "../components/CustomToast"
 import medichainLogo from "../assets/medichain_logo.png"
 import axios from 'axios'
+import { API_CONFIG } from '../config/api'
 
-const API_URL = 'http://localhost:5000/api'
+const API_URL = API_CONFIG.API_URL
 
 const ResetPassword = () => {
   const navigate = useNavigate()

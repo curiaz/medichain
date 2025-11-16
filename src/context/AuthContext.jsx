@@ -9,12 +9,13 @@ import {
   onAuthStateChanged
 } from 'firebase/auth';
 import axios from 'axios';
+import { API_CONFIG } from '../config/api';
 
 // Create the authentication context
 const AuthContext = createContext();
 
-// API base URL - simple localhost for development
-const API_URL = 'http://localhost:5000/api';
+// API base URL - uses environment-aware configuration
+const API_URL = API_CONFIG.API_URL;
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
