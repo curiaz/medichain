@@ -8,6 +8,40 @@ import { auth } from "../config/firebase";
 import "../assets/styles/ModernDashboard.css";
 import "../assets/styles/BookAppointmentForm.css";
 
+// Get current time in Asia/Manila timezone
+const getManilaNow = () => {
+  const now = new Date();
+  // Convert to Manila time (UTC+8)
+  const manilaOffset = 8 * 60; // Manila is UTC+8
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const manilaTime = new Date(utc + (manilaOffset * 60000));
+  return manilaTime;
+};
+
+// Filter out past time slots based on Manila timezone
+const filterPastTimeSlots = (date, timeSlots) => {
+  if (!date || !timeSlots || timeSlots.length === 0) return [];
+  
+  const now = getManilaNow();
+  const today = now.toISOString().split('T')[0];
+  
+  // If it's today, filter out past times
+  if (date === today) {
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentMinutes = currentHour * 60 + currentMinute;
+    
+    return timeSlots.filter(time => {
+      const [hours, minutes] = time.split(':').map(Number);
+      const slotMinutes = hours * 60 + minutes;
+      return slotMinutes > currentMinutes;
+    });
+  }
+  
+  // For future dates, return all slots
+  return timeSlots;
+};
+
 const BookAppointmentForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -39,40 +73,6 @@ const BookAppointmentForm = () => {
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-
-  // Get current time in Asia/Manila timezone
-  const getManilaNow = () => {
-    const now = new Date();
-    // Convert to Manila time (UTC+8)
-    const manilaOffset = 8 * 60; // Manila is UTC+8
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const manilaTime = new Date(utc + (manilaOffset * 60000));
-    return manilaTime;
-  };
-
-  // Filter out past time slots based on Manila timezone
-  const filterPastTimeSlots = (date, timeSlots) => {
-    if (!date || !timeSlots || timeSlots.length === 0) return [];
-    
-    const now = getManilaNow();
-    const today = now.toISOString().split('T')[0];
-    
-    // If it's today, filter out past times
-    if (date === today) {
-      const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
-      const currentMinutes = currentHour * 60 + currentMinute;
-      
-      return timeSlots.filter(time => {
-        const [hours, minutes] = time.split(':').map(Number);
-        const slotMinutes = hours * 60 + minutes;
-        return slotMinutes > currentMinutes;
-      });
-    }
-    
-    // For future dates, return all slots
-    return timeSlots;
-  };
 
   const fetchDoctorAvailability = useCallback(async () => {
     try {
