@@ -20,7 +20,6 @@ const AIAssistant = () => {
   const [progressStatus, setProgressStatus] = useState('');
   const [aiStatus, setAiStatus] = useState('checking');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-  const [modelInfo, setModelInfo] = useState(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -43,8 +42,7 @@ const AIAssistant = () => {
 
   const loadModelInfo = async () => {
     try {
-      const info = await aiService.getModelInfo();
-      setModelInfo(info);
+      await aiService.getModelInfo();
     } catch (error) {
       console.error('Failed to load model info:', error);
     }

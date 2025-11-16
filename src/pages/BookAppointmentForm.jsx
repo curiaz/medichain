@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "./Header";
 import { Calendar, Clock, User, Stethoscope, ArrowLeft, Check, AlertCircle } from "lucide-react";
@@ -94,7 +94,7 @@ const BookAppointmentForm = () => {
     
     console.log("✅ BookAppointmentForm: Doctor found, fetching availability");
     fetchDoctorAvailability();
-  }, [doctor, navigate, location, isAuthenticated, user, authLoading]);
+  }, [doctor, navigate, location, isAuthenticated, user, authLoading, fetchDoctorAvailability]);
 
   // Get current time in Asia/Manila timezone
   const getManilaNow = () => {
@@ -130,7 +130,7 @@ const BookAppointmentForm = () => {
     return timeSlots;
   };
 
-  const fetchDoctorAvailability = async () => {
+  const fetchDoctorAvailability = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -234,7 +234,7 @@ const BookAppointmentForm = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [doctor, isAuthenticated, user, navigate]);
 
   const handleBookAppointment = async () => {
     if (!selectedDate || !selectedTime) {

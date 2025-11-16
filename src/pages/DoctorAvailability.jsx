@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "./Header";
 import { Clock, Plus, Trash2, Save, AlertCircle } from "lucide-react";
@@ -38,7 +38,7 @@ const DoctorAvailability = ({ embedded = false }) => {
     };
   }, []);
 
-  const fetchAvailability = async () => {
+  const fetchAvailability = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -125,7 +125,11 @@ const DoctorAvailability = ({ embedded = false }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    fetchAvailability();
+  }, [fetchAvailability]);
 
   const saveAvailability = async () => {
     try {

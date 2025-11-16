@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import './NotificationTable.css';
 
@@ -55,7 +55,7 @@ const NotificationTable = ({ userId = 'default_user' }) => {
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   // Fetch notifications
-  const fetchNotifications = async (page = 1) => {
+  const fetchNotifications = useCallback(async (page = 1) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -83,10 +83,10 @@ const NotificationTable = ({ userId = 'default_user' }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, userId, pagination.per_page]);
 
   // Fetch notification stats
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/notifications/stats?user_id=${userId}`);
       if (response.data.success) {
@@ -95,13 +95,13 @@ const NotificationTable = ({ userId = 'default_user' }) => {
     } catch (err) {
       console.error('Failed to fetch stats:', err);
     }
-  };
+  }, [userId]);
 
   // Initial load
   useEffect(() => {
     fetchNotifications();
     fetchStats();
-  }, [filters, userId]);
+  }, [fetchNotifications, fetchStats]);
 
   // Mark notification as read
   const markAsRead = async (notificationId) => {

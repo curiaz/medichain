@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useCallback } from "react"
 import Header from "./Header"
 import { Calendar, Clock, User, Video, RefreshCw } from "lucide-react"
 import axios from "axios"
@@ -38,7 +38,7 @@ const DoctorSchedule = () => {
     }
   }
 
-  const loadAppointments = async () => {
+  const loadAppointments = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -142,9 +142,9 @@ const DoctorSchedule = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { loadAppointments() }, [])
+  useEffect(() => { loadAppointments() }, [loadAppointments])
 
   return (
     <div className="dashboard-container fade-in">

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { aiService } from '../services/aiService';
 import LoadingSpinner from '../components/LoadingSpinner';

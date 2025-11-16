@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { SupabaseService } from '../config/supabase';
 import { 
-  User, Heart, FileText, Lock, Key, History, 
-  Edit3, Save, X, Camera, Plus, Trash2, 
-  AlertCircle, CheckCircle, UploadIcon, ArrowLeft, ShieldOff
+  User, Heart, Lock, Key, 
+  X,
+  AlertCircle, CheckCircle, ArrowLeft, ShieldOff
 } from 'lucide-react';
 import './ProfilePage.css';
 
@@ -14,7 +13,6 @@ const DoctorProfilePage = () => {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [editing, setEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
   
   // Deactivate Account Modal States
@@ -29,6 +27,7 @@ const DoctorProfilePage = () => {
     if (user) {
       loadProfile();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadProfile = async () => {

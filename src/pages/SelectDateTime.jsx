@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "./Header";
 import { Calendar, ArrowLeft, Check, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
@@ -90,7 +90,7 @@ const SelectDateTime = () => {
     });
     
     fetchDoctorAvailability();
-  }, [doctor, navigate, location, isAuthenticated, user, authLoading]);
+  }, [doctor, navigate, location, isAuthenticated, user, authLoading, fetchDoctorAvailability]);
 
   // Get current time in Asia/Manila timezone
   const getManilaNow = () => {
@@ -126,7 +126,7 @@ const SelectDateTime = () => {
     return timeSlots;
   };
 
-  const fetchDoctorAvailability = async () => {
+  const fetchDoctorAvailability = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -374,7 +374,7 @@ const SelectDateTime = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [doctor, isAuthenticated, user, navigate, getFirebaseToken, auth]);
 
   // Convert 24-hour format to 12-hour format with AM/PM
   const formatTimeTo12Hour = (time24) => {

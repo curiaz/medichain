@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { 
@@ -76,12 +76,7 @@ const ProfileManagement = () => {
   const [newAllergy, setNewAllergy] = useState('');
   const [newMedication, setNewMedication] = useState('');
 
-  useEffect(() => {
-    fetchCompleteProfile();
-    fetchAuditTrail();
-  }, []);
-
-  const fetchCompleteProfile = async () => {
+  const fetchCompleteProfile = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('medichain_token');
@@ -122,9 +117,9 @@ const ProfileManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchAuditTrail = async () => {
+  const fetchAuditTrail = useCallback(async () => {
     try {
       const token = localStorage.getItem('medichain_token');
       const response = await axios.get(`${API_URL}/profile-management/audit-trail`, {
@@ -137,7 +132,12 @@ const ProfileManagement = () => {
     } catch (error) {
       console.error('Audit trail fetch error:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchCompleteProfile();
+    fetchAuditTrail();
+  }, [fetchCompleteProfile, fetchAuditTrail]);
 
   const handlePersonalInfoUpdate = async () => {
     try {
