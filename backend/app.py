@@ -586,6 +586,7 @@ from appointment_routes import appointments_bp
 from admin_routes import admin_bp
 from medical_reports_routes import medical_reports_bp
 from prescription_verification_routes import prescription_verification_bp
+from profile_routes import profile_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(doctor_verification_bp)
@@ -594,6 +595,7 @@ app.register_blueprint(appointments_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(medical_reports_bp)
 app.register_blueprint(prescription_verification_bp)
+app.register_blueprint(profile_bp)
 
 # 🔧 FIXED: CORS configuration with credentials support (removed "*" to fix CORS issues)
 CORS(app, resources={

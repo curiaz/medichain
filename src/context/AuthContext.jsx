@@ -30,10 +30,24 @@ export const AuthProvider = ({ children }) => {
 
   // Check for existing authentication on mount
   useEffect(() => {
+    // First, try to load from localStorage for instant auth state (show cached data)
+    const storedUser = localStorage.getItem('medichain_user');
+    const storedToken = localStorage.getItem('medichain_token');
+    
+    if (storedUser && storedToken) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+        setIsAuthenticated(true);
+      } catch (e) {
+        console.error('Failed to parse stored user:', e);
+      }
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          // Get ID token
+          // Always fetch fresh data from backend to ensure we have latest profile
           const idToken = await firebaseUser.getIdToken();
           
           // 🔧 FIXED: Send id_token to unified login endpoint
@@ -160,6 +174,51 @@ export const AuthProvider = ({ children }) => {
           throw new Error(response.data.error || 'Backend verification failed');
         }
       } catch (firebaseError) {
+        // SPECIAL CASE: Handle user-disabled FIRST before any other processing
+        if (firebaseError.code === 'auth/user-disabled') {
+          console.log('🔍 Detected disabled user, checking if deactivated doctor...');
+          
+          try {
+            const checkResponse = await axios.post(`${API_URL}/auth/check-deactivated`, {
+              email: email
+            });
+            
+            console.log('✅ Deactivation check response:', checkResponse.data);
+            
+            if (checkResponse.data.success && checkResponse.data.is_deactivated_doctor) {
+              console.log('✅ This is a deactivated doctor - showing reactivation modal');
+              setError(null); // Clear any errors
+              return {
+                success: false,
+                requiresReactivation: true,
+                message: 'Account is deactivated',
+                user: checkResponse.data.user,
+                email: email,
+                password: password
+              };
+            }
+          } catch (checkError) {
+            console.error('❌ Error checking deactivation status:', checkError);
+            // If check fails, assume deactivated doctor to show modal
+            setError(null);
+            return {
+              success: false,
+              requiresReactivation: true,
+              message: 'Account is deactivated',
+              email: email,
+              password: password
+            };
+          }
+          
+          // Not a deactivated doctor - show disabled error
+          console.log('⚠️ Not a deactivated doctor - showing disabled error');
+          setError('This account has been disabled. Please contact support.');
+          return {
+            success: false,
+            message: 'This account has been disabled. Please contact support.'
+          };
+        }
+        
         // Handle Firebase-specific errors
         if (firebaseError.code?.startsWith('auth/')) {
           const friendlyMessage = getFirebaseErrorMessage(firebaseError.code);
@@ -197,6 +256,17 @@ export const AuthProvider = ({ children }) => {
                 throw new Error(response.data.error || 'Invalid email or password');
               }
             } catch (backendError) {
+              // Check for deactivated account (403 response with deactivated flag)
+              if (backendError.response?.status === 403 && backendError.response?.data?.deactivated) {
+                console.log('[Auth] 🔒 Deactivated account detected');
+                return {
+                  success: true,
+                  requiresReactivation: true,
+                  message: backendError.response.data.message || 'Your account is deactivated',
+                  email: email.trim()
+                };
+              }
+              
               const errorMsg = backendError.response?.data?.error || friendlyMessage;
               setError(errorMsg);
               return {
@@ -221,45 +291,6 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('[Auth] Login error:', error);
-      
-      // Special handling for disabled user (deactivated doctor accounts)
-      if (error.code === 'auth/user-disabled') {
-        console.log('🔍 Detected disabled user, checking if deactivated doctor...');
-        
-        // Try to check if this is a deactivated doctor account
-        try {
-          // Use Firebase Admin SDK through backend to check user status
-          const checkResponse = await axios.post(`${API_URL}/auth/check-deactivated`, {
-            email: email
-          });
-          
-          console.log('✅ Deactivation check response:', checkResponse.data);
-          
-          if (checkResponse.data.success && checkResponse.data.is_deactivated_doctor) {
-            // This is a deactivated doctor - return reactivation required
-            console.log('✅ This is a deactivated doctor - showing reactivation modal');
-            // DO NOT set error - we want to show the modal, not an error message
-            return {
-              success: true,
-              requiresReactivation: true,
-              message: 'Account is deactivated',
-              user: checkResponse.data.user,
-              email: email,
-              password: password // Store for reactivation
-            };
-          }
-        } catch (checkError) {
-          console.error('❌ Error checking deactivation status:', checkError);
-        }
-        
-        // If not a deactivated doctor, show the disabled error
-        console.log('⚠️ Not a deactivated doctor - showing disabled error');
-        setError('This account has been disabled. Please contact support.');
-        return {
-          success: false,
-          message: 'This account has been disabled. Please contact support.'
-        };
-      }
       
       // Network error
       if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
