@@ -3,6 +3,7 @@ import Header from "./Header"
 import { Calendar, Clock, User, Video, RefreshCw } from "lucide-react"
 import axios from "axios"
 import { auth } from "../config/firebase"
+import { API_CONFIG } from "../config/api"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import DoctorAvailability from "./DoctorAvailability"
@@ -99,7 +100,7 @@ const DoctorSchedule = () => {
       
       console.log(`✅ DoctorSchedule: Token obtained from ${tokenSource}`)
       
-      const resp = await axios.get("http://localhost:5000/api/appointments", {
+      const resp = await axios.get(`${API_CONFIG.API_URL}/appointments`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.data?.success) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_CONFIG } from '../config/api';
 import '../assets/styles/PrescriptionVerification.css';
 
 const PrescriptionVerification = () => {
@@ -25,7 +26,7 @@ const PrescriptionVerification = () => {
       setError(null);
 
       const response = await axios.get(
-        `http://localhost:5000/api/prescription/verify/${id}`
+        `${API_CONFIG.API_URL}/prescription/verify/${id}`
       );
 
       if (response.data.success) {
@@ -48,7 +49,7 @@ const PrescriptionVerification = () => {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/prescription/mark-dispensed/${appointmentId}`
+        `${API_CONFIG.API_URL}/prescription/mark-dispensed/${appointmentId}`
       );
 
       if (response.data.success) {

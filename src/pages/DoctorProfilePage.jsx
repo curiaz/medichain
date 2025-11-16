@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { API_CONFIG } from '../config/api';
 import { 
   User, Heart, Lock, Key, 
   X,
@@ -103,7 +104,7 @@ const DoctorProfilePage = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/auth/verify-password', {
+      const response = await fetch(`${API_CONFIG.API_URL}/auth/verify-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -143,7 +144,7 @@ const DoctorProfilePage = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/profile/delete-account', {
+      const response = await fetch(`${API_CONFIG.API_URL}/profile/delete-account`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

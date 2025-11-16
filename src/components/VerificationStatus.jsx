@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, Mail, FileText, AlertCircle, ShieldCheck, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { auth } from '../config/firebase';
+import { API_CONFIG } from '../config/api';
 import './VerificationStatus.css';
 
 const VerificationStatus = ({ status, userType, doctorProfile }) => {
@@ -58,7 +59,7 @@ const VerificationStatus = ({ status, userType, doctorProfile }) => {
 
       const token = await currentUser.getIdToken();
       const response = await axios.get(
-        `http://localhost:5000/api/auth/verification-status?firebase_uid=${currentUser.uid}`,
+        `${API_CONFIG.API_URL}/auth/verification-status?firebase_uid=${currentUser.uid}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -89,7 +90,7 @@ const VerificationStatus = ({ status, userType, doctorProfile }) => {
 
       const token = await currentUser.getIdToken();
       const response = await axios.post(
-        'http://localhost:5000/api/auth/resend-verification-request',
+        `${API_CONFIG.API_URL}/auth/resend-verification-request`,
         { firebase_uid: currentUser.uid },
         {
           headers: {

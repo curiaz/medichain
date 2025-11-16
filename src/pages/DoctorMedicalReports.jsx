@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { auth } from '../config/firebase';
+import { API_CONFIG } from '../config/api';
 import '../assets/styles/ModernDashboard.css';
 import '../assets/styles/DoctorMedicalReports.css';
 
@@ -43,7 +44,7 @@ const DoctorMedicalReports = () => {
         return;
       }
 
-      const response = await axios.get('http://localhost:5000/api/medical-reports/doctor', {
+      const response = await axios.get(`${API_CONFIG.API_URL}/medical-reports/doctor`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -55,7 +56,7 @@ const DoctorMedicalReports = () => {
           reportsData.map(async (report) => {
             try {
               // Get patient info from appointments or user_profiles
-              const appointmentsResponse = await axios.get('http://localhost:5000/api/appointments', {
+              const appointmentsResponse = await axios.get(`${API_CONFIG.API_URL}/appointments`, {
                 headers: { Authorization: `Bearer ${token}` }
               });
               
@@ -201,7 +202,7 @@ const DoctorMedicalReports = () => {
 
           if (token) {
             const appointmentResponse = await axios.get(
-              `http://localhost:5000/api/appointments/${report.appointment_id}`,
+              `${API_CONFIG.API_URL}/appointments/${report.appointment_id}`,
               { headers: { Authorization: `Bearer ${token}` } }
             );
             
@@ -299,7 +300,7 @@ const DoctorMedicalReports = () => {
 
           if (token) {
             const appointmentResponse = await axios.get(
-              `http://localhost:5000/api/appointments/${report.appointment_id}`,
+              `${API_CONFIG.API_URL}/appointments/${report.appointment_id}`,
               { headers: { Authorization: `Bearer ${token}` } }
             );
             

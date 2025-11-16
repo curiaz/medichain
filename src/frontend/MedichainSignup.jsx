@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import "./MedichainLogin.css" // Reuse existing styles
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
+import { API_CONFIG } from "../config/api"
 import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight, Upload, Stethoscope, Heart } from "lucide-react"
 import LoadingSpinner from "../components/LoadingSpinner"
 import { showToast } from "../components/CustomToast"
@@ -185,7 +186,7 @@ const MedichainSignup = () => {
         signupData.append('specialization', 'General Practitioner'); // Always set to General Practitioner
         signupData.append('verificationFile', formData.verificationFile);
 
-        const response = await fetch('http://localhost:5000/api/auth/doctor-signup', {
+        const response = await fetch(`${API_CONFIG.API_URL}/auth/doctor-signup`, {
           method: 'POST',
           body: signupData
         });

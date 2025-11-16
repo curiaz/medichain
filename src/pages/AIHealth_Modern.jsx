@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { API_CONFIG } from '../config/api';
 import { aiService } from '../services/aiService';
 import LoadingSpinner from '../components/LoadingSpinner';
 import AIProgressBar from '../components/AIProgressBar';
@@ -313,7 +314,7 @@ const AIHealth = () => {
   useEffect(() => {
     const checkAIStatus = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/health');
+        const response = await fetch(`${API_CONFIG.BASE_URL}/health`);
         if (response.ok) {
           setAiStatus('connected');
         } else {

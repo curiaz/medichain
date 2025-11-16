@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseService } from '../config/supabase';
+import { API_CONFIG } from '../config/api';
 import { 
   User, Heart, FileText, Lock, Key, History, 
   Edit3, Save, X, Camera,
@@ -202,7 +203,7 @@ const ProfilePage = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
+      const response = await fetch(`${API_CONFIG.API_URL}/auth/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -262,7 +263,7 @@ const ProfilePage = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
+      const response = await fetch(`${API_CONFIG.API_URL}/auth/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -375,7 +376,7 @@ const ProfilePage = () => {
             avatar_url_preview: base64String?.substring(0, 50)
           });
 
-          const response = await fetch('http://localhost:5000/api/auth/profile', {
+          const response = await fetch(`${API_CONFIG.API_URL}/auth/profile`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -514,7 +515,7 @@ const ProfilePage = () => {
       console.log('📤 Sending verification request with email:', userEmail);
 
       // Verify password by attempting to re-authenticate
-      const response = await fetch('http://localhost:5000/api/auth/verify-password', {
+      const response = await fetch(`${API_CONFIG.API_URL}/auth/verify-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -562,7 +563,7 @@ const ProfilePage = () => {
       }
 
       // Call backend API to delete account
-      const response = await fetch('http://localhost:5000/api/profile/delete-account', {
+      const response = await fetch(`${API_CONFIG.API_URL}/profile/delete-account`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
