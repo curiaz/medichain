@@ -11,7 +11,8 @@ import Dashboard from './pages/Dashboard'; // Role-based dashboard router
 import AIHealth from './pages/AIHealth'; // New standalone AI Health page
 import PatientAIHistory from './pages/PatientAIHistory'; // For doctors to view patient AI history
 import HealthRecord from './pages/HealthRecord'; // Patient health record page
-import ProfilePage from './pages/ProfilePage'; // Profile management page
+import ProfilePage from './pages/ProfilePage'; // Profile management page (Patient)
+import DoctorProfilePage from './pages/DoctorProfilePage'; // Doctor Profile management page
 import PatientList from './pages/PatientList'; // Patient list management page
 import Notifications from './pages/Notifications'; // Notifications page
 import BookAppointment from './pages/BookAppointment'; // Book appointment page
@@ -114,6 +115,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/doctor-profile" 
+              element={
+                <ProtectedRoute>
+                  <DoctorProfilePage />
                 </ProtectedRoute>
               } 
             />

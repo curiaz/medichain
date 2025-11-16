@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ master, develop ]
+    branches: [ master, develop, profile ]
   pull_request:
-    branches: [ master, develop ]
+    branches: [ master, develop, profile ]
 
 jobs:
   backend-tests:
@@ -36,7 +36,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install "black[jupyter]"
+<<<<<<< HEAD
+        pip install pytest pytest-cov pytest-mock
+=======
         pip install pytest-xdist  # For parallel test execution
+>>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
 
     - name: Run backend tests
       env:
@@ -47,11 +51,15 @@ jobs:
         SUPABASE_KEY: test-key
         FIREBASE_PROJECT_ID: test-project
       run: |
+<<<<<<< HEAD
+        python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing || echo "Tests completed with warnings"
+=======
         if [ -f ".coveragerc" ]; then
           python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing --cov-config=.coveragerc || echo "Tests completed with warnings"
         else
           python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing || echo "Tests completed with warnings"
         fi
+>>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v3
@@ -107,23 +115,38 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install flake8 black isort "black[jupyter]"
+<<<<<<< HEAD
+        pip install -r requirements.txt || echo "No requirements.txt found"
+=======
         pip install -r requirements.txt || echo "No requirements.txt found, continuing with basic linting"
+>>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
 
     - name: Run linting
       env:
         PYTHONPATH: .
       run: |
         # stop the build if there are Python syntax errors or undefined names
+<<<<<<< HEAD
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=.venv,node_modules,__pycache__,.pytest_cache || echo "Syntax check completed"
+        # exit-zero treats all errors as warnings
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=.venv,node_modules,__pycache__,.pytest_cache
+=======
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=old_app_directory,.venv,node_modules,__pycache__,.pytest_cache,build,dist || echo "Syntax check completed"
         # exit-zero treats all errors as warnings
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=old_app_directory,.venv,node_modules,__pycache__,.pytest_cache,build,dist
+>>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
 
     - name: Check code formatting
       env:
         PYTHONPATH: .
       run: |
+<<<<<<< HEAD
+        black --check --diff --line-length=127 . --exclude="\.venv|node_modules" || echo "Black formatting check completed with warnings"
+        isort --check-only --diff . --skip=.venv --skip=node_modules || echo "isort check completed with warnings"
+=======
         black --check --diff --line-length=127 . --exclude="old_app_directory|\.venv|node_modules|build|dist" || echo "Black formatting check completed with warnings"
         isort --check-only --diff . --skip=old_app_directory --skip=.venv --skip=node_modules --skip=build --skip=dist || echo "isort check completed with warnings"
+>>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
 
   lint-frontend:
     runs-on: ubuntu-latest

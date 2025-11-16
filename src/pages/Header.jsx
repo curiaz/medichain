@@ -6,8 +6,12 @@ import MedichainLogo from "../components/MedichainLogo"
 import "../assets/styles/Header.css"
 
 const Header = () => {
+<<<<<<< HEAD
+  const { logout, user } = useAuth()
+=======
   const { logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+>>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -17,7 +21,12 @@ const Header = () => {
 
   const handleProfileClick = () => {
     console.log('Profile icon clicked in Header!')
-    navigate('/profile')
+    // Navigate to appropriate profile page based on user role
+    if (user?.profile?.role === 'doctor') {
+      navigate('/doctor-profile')
+    } else {
+      navigate('/profile')
+    }
   }
 
   return (

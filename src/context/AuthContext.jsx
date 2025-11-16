@@ -116,6 +116,22 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: error };
       }
 
+<<<<<<< HEAD
+      if (response.data.success) {
+        // Check if account requires reactivation
+        if (response.data.requires_reactivation) {
+          return {
+            success: true,
+            requiresReactivation: true,
+            message: 'Account is deactivated',
+            user: response.data.user,
+            token: idToken
+          };
+        }
+
+        localStorage.setItem('medichain_token', idToken);
+        localStorage.setItem('medichain_user', JSON.stringify(response.data.user));
+=======
       // 🔧 FIXED: Try Firebase authentication first
       // This handles users who signed up via Firebase (normal or social)
       try {
@@ -128,6 +144,7 @@ export const AuthProvider = ({ children }) => {
         const response = await axios.post(`${API_URL}/auth/login`, {
           id_token: idToken
         });
+>>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
 
         if (response.data.success) {
           const userData = response.data.data.user;
@@ -209,6 +226,48 @@ export const AuthProvider = ({ children }) => {
         }
       }
     } catch (error) {
+<<<<<<< HEAD
+      // Special handling for disabled user (deactivated doctor accounts)
+      if (error.code === 'auth/user-disabled') {
+        console.log('🔍 Detected disabled user, checking if deactivated doctor...');
+        
+        // Try to check if this is a deactivated doctor account
+        try {
+          // Use Firebase Admin SDK through backend to check user status
+          const checkResponse = await axios.post(`${API_URL}/auth/check-deactivated`, {
+            email: email
+          });
+          
+          console.log('✅ Deactivation check response:', checkResponse.data);
+          
+          if (checkResponse.data.success && checkResponse.data.is_deactivated_doctor) {
+            // This is a deactivated doctor - return reactivation required
+            console.log('✅ This is a deactivated doctor - showing reactivation modal');
+            // DO NOT set error - we want to show the modal, not an error message
+            return {
+              success: true,
+              requiresReactivation: true,
+              message: 'Account is deactivated',
+              user: checkResponse.data.user,
+              email: email,
+              password: password // Store for reactivation
+            };
+          }
+        } catch (checkError) {
+          console.error('❌ Error checking deactivation status:', checkError);
+        }
+        
+        // If not a deactivated doctor, show the disabled error
+        console.log('⚠️ Not a deactivated doctor - showing disabled error');
+        setError('This account has been disabled. Please contact support.');
+        return {
+          success: false,
+          message: 'This account has been disabled. Please contact support.'
+        };
+      }
+      
+      setError(error.message || 'Login failed');
+=======
       console.error('[Auth] Login error:', error);
       
       // Network error
@@ -237,6 +296,7 @@ export const AuthProvider = ({ children }) => {
       // Generic error
       const errorMsg = error.response?.data?.error || error.message || 'Login failed. Please try again.';
       setError(errorMsg);
+>>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
       return {
         success: false,
         message: errorMsg
@@ -378,6 +438,25 @@ export const AuthProvider = ({ children }) => {
         };
       }
     } catch (error) {
+<<<<<<< HEAD
+      // Handle Firebase errors
+      let errorMessage = error.message || 'Signup failed';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please login instead or use a different email.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Please use a stronger password.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address.';
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      setError(errorMessage);
+      return {
+        success: false,
+        error: errorMessage
+=======
       console.error('[Auth] Signup error:', error);
       
       // Network error
@@ -397,6 +476,7 @@ export const AuthProvider = ({ children }) => {
       return {
         success: false,
         error: errorMsg
+>>>>>>> 7315ad242322e8c1189b814eceb20520246b27b0
       };
     } finally {
       setLoading(false);

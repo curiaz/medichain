@@ -360,3 +360,164 @@ def get_profile_stats():
             'error': str(e)
         }), 500
 
+
+@profile_bp.route('/delete-account', methods=['DELETE'])
+@firebase_auth_required
+def delete_account():
+    """Delete patient account or deactivate doctor account"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user['uid']
+        
+        # Get user profile to determine role
+        user_response = supabase.service_client.table('user_profiles').select('role').eq('firebase_uid', uid).execute()
+        if not user_response.data:
+            return jsonify({'success': False, 'error': 'User profile not found'}), 404
+        
+        user_role = user_response.data[0]['role']
+        
+        # Handle based on role
+        if user_role == 'doctor':
+            # DEACTIVATE doctor account instead of deleting
+            # This allows patients to still view doctor details
+            try:
+                print(f"🔒 Starting doctor account deactivation for UID: {uid}")
+                
+                # Prepare update data for user_profiles
+                user_update_data = {
+                    'is_active': False,
+                    'deactivated_at': datetime.now().isoformat()
+                }
+                
+                # Mark user profile as deactivated
+                print("📝 Updating user_profiles...")
+                user_update = supabase.service_client.table('user_profiles').update(
+                    user_update_data
+                ).eq('firebase_uid', uid).execute()
+                
+                if not user_update.data:
+                    raise Exception("Failed to update user_profiles - no data returned")
+                
+                print(f"✅ User profile deactivated: is_active=False, deactivated_at={user_update_data['deactivated_at']}")
+                
+                # Update doctor_profiles
+                doctor_update_data = {
+                    'account_status': 'deactivated'
+                }
+                
+                print("📝 Updating doctor_profiles...")
+                doctor_update = supabase.service_client.table('doctor_profiles').update(
+                    doctor_update_data
+                ).eq('firebase_uid', uid).execute()
+                
+                if doctor_update.data:
+                    print(f"✅ Doctor profile updated: account_status='deactivated'")
+                else:
+                    print("⚠️  Doctor profile update returned no data (profile may not exist)")
+                
+                # Disable Firebase account (can't login but data remains)
+                print("🔒 Disabling Firebase authentication...")
+                from firebase_admin import auth
+                auth.update_user(uid, disabled=True)
+                print(f"✅ Firebase user disabled for UID: {uid}")
+                
+                print(f"🎉 Doctor account deactivation completed successfully")
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Your doctor account has been deactivated. Your profile remains visible to patients, but you can no longer log in.',
+                    'action': 'deactivated'
+                }), 200
+                
+            except Exception as deactivate_error:
+                error_msg = str(deactivate_error)
+                print(f"❌ Doctor deactivation error: {error_msg}")
+                
+                # Check if it's a schema error
+                if 'schema cache' in error_msg.lower() or 'column' in error_msg.lower():
+                    return jsonify({
+                        'success': False,
+                        'error': 'Database schema is missing required columns. Please run the migration SQL file.',
+                        'details': error_msg,
+                        'migration_file': 'MIGRATION_ADD_DEACTIVATION.sql'
+                    }), 500
+                
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to deactivate account: {error_msg}'
+                }), 500
+        
+        elif user_role == 'patient':
+            # DELETE patient account completely
+            print(f"🗑️ Starting patient account deletion for UID: {uid}")
+            
+            try:
+                # Delete patient-related data
+                print("🗑️ Deleting appointments...")
+                supabase.service_client.table('appointments').delete().eq('patient_firebase_uid', uid).execute()
+                
+                print("🗑️ Deleting prescriptions...")
+                supabase.service_client.table('prescriptions').delete().eq('patient_firebase_uid', uid).execute()
+                
+                print("🗑️ Deleting medical records...")
+                supabase.service_client.table('medical_records').delete().eq('patient_firebase_uid', uid).execute()
+                
+                print("🗑️ Deleting AI diagnoses...")
+                supabase.service_client.table('ai_diagnoses').delete().eq('user_firebase_uid', uid).execute()
+                
+                # Delete common user data
+                print("🗑️ Deleting user documents...")
+                supabase.service_client.table('user_documents').delete().eq('user_firebase_uid', uid).execute()
+                
+                print("🗑️ Deleting privacy settings...")
+                supabase.service_client.table('privacy_settings').delete().eq('user_firebase_uid', uid).execute()
+                
+                print("🗑️ Deleting blockchain transactions...")
+                supabase.service_client.table('blockchain_transactions').delete().eq('user_firebase_uid', uid).execute()
+                
+                print("🗑️ Deleting credential updates...")
+                supabase.service_client.table('credential_updates').delete().eq('user_firebase_uid', uid).execute()
+                
+                # Delete user profile (must be last due to foreign keys)
+                print("🗑️ Deleting user profile...")
+                profile_delete = supabase.service_client.table('user_profiles').delete().eq('firebase_uid', uid).execute()
+                print(f"✅ User profile deleted: {bool(profile_delete.data)}")
+                
+            except Exception as db_error:
+                print(f"❌ Database deletion error: {str(db_error)}")
+                # Continue with Firebase deletion even if some database operations fail
+            
+            # Delete user from Firebase Authentication
+            print("🗑️ Deleting Firebase user...")
+            from auth.firebase_auth import firebase_auth_service
+            delete_result = firebase_auth_service.delete_user(uid)
+            
+            if not delete_result['success']:
+                print(f"❌ Firebase deletion failed: {delete_result.get('error', 'Unknown error')}")
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to delete Firebase account: {delete_result["error"]}'
+                }), 500
+            
+            print(f"✅ Firebase user deleted for UID: {uid}")
+            print(f"🎉 Patient account deletion completed successfully")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Account deleted successfully. You can now register with the same email if needed.',
+                'action': 'deleted'
+            }), 200
+        
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid user role'
+            }), 400
+        
+    except Exception as e:
+        print(f"Account deletion/deactivation error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to process account: {str(e)}'
+        }), 500
+
