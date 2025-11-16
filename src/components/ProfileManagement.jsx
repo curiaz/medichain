@@ -20,8 +20,9 @@ import {
 
 // Import styles
 import './ProfileManagement.css';
+import { API_CONFIG } from '../config/api';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = API_CONFIG.API_URL;
 
 const ProfileManagement = () => {
   // User context available if needed (not directly used but may be needed for auth)

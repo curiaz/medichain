@@ -8,6 +8,7 @@ import LoadingSpinner from "../components/LoadingSpinner"
 import RoleSelectionModal from "../components/RoleSelectionModal"
 import { showToast } from "../components/CustomToast"
 import medichainLogo from "../assets/medichain_logo.png"
+import { API_CONFIG } from '../config/api'
 
 const MedichainLogin = () => {
   const navigate = useNavigate()
@@ -179,7 +180,7 @@ const MedichainLogin = () => {
       
       if (reactivationToken) {
         // User is authenticated - use token-based reactivation
-        response = await fetch('http://localhost:5000/api/auth/reactivate-account', {
+        response = await fetch(`${API_CONFIG?.API_URL || 'http://localhost:5000/api'}/auth/reactivate-account`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -188,7 +189,7 @@ const MedichainLogin = () => {
         })
       } else if (email && password) {
         // User is disabled (deactivated doctor) - use email/password reactivation
-        response = await fetch('http://localhost:5000/api/auth/reactivate-disabled-account', {
+        response = await fetch(`${API_CONFIG.API_URL}/auth/reactivate-disabled-account`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
