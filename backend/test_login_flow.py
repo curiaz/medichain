@@ -7,7 +7,7 @@ import json
 import pytest
 
 # Configuration
-BASE_URL = "http://localhost:5000/api"
+BASE_URL = "https://medichain.clinic/api"
 
 @pytest.mark.skip(reason="This is an HTTP smoke script, not a pytest unit test")
 def test_health_check():
@@ -17,7 +17,7 @@ def test_health_check():
     print("="*60)
     
     try:
-        response = requests.get("http://localhost:5000/health")
+        response = requests.get("https://medichain.clinic/health")
         print(f"✅ Status Code: {response.status_code}")
         print(f"✅ Response: {response.json()}")
         return True

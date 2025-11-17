@@ -7,7 +7,7 @@ Tests both Firebase token and email/password authentication
 import requests
 import json
 
-API_URL = "http://localhost:5000/api"
+API_URL = "https://medichain.clinic/api"
 
 def test_health_check():
     """Test 1: Server health check"""
@@ -16,7 +16,7 @@ def test_health_check():
     print("="*60)
     
     try:
-        response = requests.get("http://localhost:5000/health")
+        response = requests.get("https://medichain.clinic/health")
         print(f"✅ Status: {response.status_code}")
         print(f"✅ Response: {response.json()}")
         return response.status_code == 200
@@ -190,7 +190,7 @@ def run_all_tests():
     print("\n" + "="*70)
     print("🧪 AUTHENTICATION FIX - TEST SUITE")
     print("="*70)
-    print("\nTesting backend at: http://localhost:5000")
+    print("\nTesting backend at: https://medichain.clinic")
     print("Make sure the backend server is running!\n")
     
     tests = [

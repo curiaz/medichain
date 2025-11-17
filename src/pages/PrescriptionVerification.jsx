@@ -25,7 +25,7 @@ const PrescriptionVerification = () => {
       setError(null);
 
       const response = await axios.get(
-        `http://localhost:5000/api/prescription/verify/${id}`
+        `https://medichain.clinic/api/prescription/verify/${id}`
       );
 
       if (response.data.success) {
@@ -48,7 +48,7 @@ const PrescriptionVerification = () => {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/prescription/mark-dispensed/${appointmentId}`
+        `https://medichain.clinic/api/prescription/mark-dispensed/${appointmentId}`
       );
 
       if (response.data.success) {

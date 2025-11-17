@@ -34,7 +34,7 @@ const DoctorAvailability = ({ embedded = false }) => {
       const token = await currentUser.getIdToken();
 
       const response = await axios.get(
-        "http://localhost:5000/api/appointments/availability",
+        "https://medichain.clinic/api/appointments/availability",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -139,7 +139,7 @@ const DoctorAvailability = ({ embedded = false }) => {
       console.log("Saving availability:", availabilityData);
 
       const response = await axios.put(
-        "http://localhost:5000/api/appointments/availability",
+        "https://medichain.clinic/api/appointments/availability",
         { 
           availability: availabilityData,
           is_accepting_appointments: isAcceptingAppointments
@@ -192,7 +192,7 @@ const DoctorAvailability = ({ embedded = false }) => {
 
       console.log(`🔄 Toggling accepting appointments to: ${newValue}`);
       const response = await axios.put(
-        "http://localhost:5000/api/appointments/availability",
+        "https://medichain.clinic/api/appointments/availability",
         { 
           availability: availability,
           is_accepting_appointments: newValue

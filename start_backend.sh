@@ -88,7 +88,7 @@ except Exception as e:
 # Step 6: Start the Flask server
 echo ""
 echo "6️⃣ Starting Flask development server..."
-echo "🚀 Server will be available at: http://localhost:5000"
+echo "🚀 Server will be available at: https://medichain.clinic"
 echo "📋 API endpoints:"
 echo "   GET    /api/profile/patient"
 echo "   PUT    /api/profile/patient"

@@ -63,7 +63,7 @@ const DoctorAIDiagnosisReview = () => {
             return;
           }
 
-          const response = await axios.get(`http://localhost:5000/api/medical-reports/appointment/${appointment.id}`, {
+          const response = await axios.get(`https://medichain.clinic/api/medical-reports/appointment/${appointment.id}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
 
@@ -167,7 +167,7 @@ const DoctorAIDiagnosisReview = () => {
 
       if (!token) return;
 
-      const response = await axios.get(`http://localhost:5000/api/medical-reports/appointment/${aptId}`, {
+      const response = await axios.get(`https://medichain.clinic/api/medical-reports/appointment/${aptId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -210,7 +210,7 @@ const DoctorAIDiagnosisReview = () => {
       }
 
       // Get all appointments for this doctor
-      const response = await axios.get('http://localhost:5000/api/appointments', {
+      const response = await axios.get('https://medichain.clinic/api/appointments', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -287,7 +287,7 @@ const DoctorAIDiagnosisReview = () => {
       }
 
       // Try to get appointment from appointments list first
-      const appointmentsResponse = await axios.get('http://localhost:5000/api/appointments', {
+      const appointmentsResponse = await axios.get('https://medichain.clinic/api/appointments', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -381,7 +381,7 @@ const DoctorAIDiagnosisReview = () => {
         token = localStorage.getItem('medichain_token');
       }
 
-      const response = await axios.get(`http://localhost:5000/api/medical-reports/appointment/${apptId}`, {
+      const response = await axios.get(`https://medichain.clinic/api/medical-reports/appointment/${apptId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -437,7 +437,7 @@ const DoctorAIDiagnosisReview = () => {
         status: 'active'
       };
 
-      const response = await axios.post('http://localhost:5000/api/medical-reports', medicalReportData, {
+      const response = await axios.post('https://medichain.clinic/api/medical-reports', medicalReportData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'

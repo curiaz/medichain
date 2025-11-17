@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Test configuration
-BASE_URL = 'http://localhost:5000'
+BASE_URL = 'https://medichain.clinic'
 TOKEN = None  # Will be set after login
 
 def print_section(title):

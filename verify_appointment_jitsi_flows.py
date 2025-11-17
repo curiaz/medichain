@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'backend'))
 from dotenv import load_dotenv
 load_dotenv('backend/.env')
 
-BACKEND_URL = "http://localhost:5000"
+BACKEND_URL = "https://medichain.clinic"
 
 def print_section(text):
     print("\n" + "="*70)

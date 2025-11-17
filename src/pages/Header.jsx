@@ -65,7 +65,7 @@ const Header = () => {
         return;
       }
       
-      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichain.clinic';
       console.log('🔔 Header: Fetching notification stats from', `${API_BASE_URL}/api/notifications/stats`);
       const response = await axios.get(`${API_BASE_URL}/api/notifications/stats`, {
         headers: { 

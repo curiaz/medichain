@@ -456,7 +456,7 @@ describe('MedichainSignup Component', () => {
 
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith(
-          'http://localhost:5000/api/auth/doctor-signup',
+          'https://medichain.clinic/api/auth/doctor-signup',
           expect.objectContaining({
             method: 'POST',
             body: expect.any(FormData),

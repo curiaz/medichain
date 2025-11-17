@@ -179,7 +179,7 @@ const MedichainLogin = () => {
       
       if (reactivationToken) {
         // User is authenticated - use token-based reactivation
-        response = await fetch('http://localhost:5000/api/auth/reactivate-account', {
+        response = await fetch('https://medichain.clinic/api/auth/reactivate-account', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -188,7 +188,7 @@ const MedichainLogin = () => {
         })
       } else if (email && password) {
         // User is disabled (deactivated doctor) - use email/password reactivation
-        response = await fetch('http://localhost:5000/api/auth/reactivate-disabled-account', {
+        response = await fetch('https://medichain.clinic/api/auth/reactivate-disabled-account', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

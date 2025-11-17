@@ -16,7 +16,7 @@ def test_api():
     # Test health endpoint
     print("\n1️⃣  Testing health endpoint...")
     try:
-        response = requests.get("http://localhost:5000/health")
+        response = requests.get("https://medichain.clinic/health")
         print(f"   Status: {response.status_code}")
         print(f"   Response: {json.dumps(response.json(), indent=2)}")
     except Exception as e:
@@ -26,7 +26,7 @@ def test_api():
     # Test AI health endpoint
     print("\n2️⃣  Testing AI health endpoint...")
     try:
-        response = requests.get("http://localhost:5000/api/ai/health")
+        response = requests.get("https://medichain.clinic/api/ai/health")
         print(f"   Status: {response.status_code}")
         data = response.json()
         print(f"   AI System: {data.get('ai_system')}")
@@ -44,7 +44,7 @@ def test_api():
         }
         
         response = requests.post(
-            "http://localhost:5000/api/diagnose",
+            "https://medichain.clinic/api/diagnose",
             json=test_data,
             headers={"Content-Type": "application/json"}
         )
@@ -87,7 +87,7 @@ def test_api():
         }
         
         response = requests.post(
-            "http://localhost:5000/api/diagnose",
+            "https://medichain.clinic/api/diagnose",
             json=test_data2,
             headers={"Content-Type": "application/json"}
         )

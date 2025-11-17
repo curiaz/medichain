@@ -81,10 +81,10 @@ const SelectGP = () => {
       }
       
       console.log("✅ SelectGP: Token found, making API call...");
-      console.log("🔍 SelectGP: API URL:", "http://localhost:5000/api/appointments/doctors/approved");
+      console.log("🔍 SelectGP: API URL:", "https://medichain.clinic/api/appointments/doctors/approved");
 
       const response = await axios.get(
-        "http://localhost:5000/api/appointments/doctors/approved",
+        "https://medichain.clinic/api/appointments/doctors/approved",
         {
           headers: {
             Authorization: `Bearer ${token}`,

@@ -2,7 +2,7 @@
 
 ## Base URL
 ```
-http://localhost:5000/api/notifications
+https://medichain.clinic/api/notifications
 ```
 
 ## Authentication
@@ -28,7 +28,7 @@ Authorization: Bearer <YOUR_FIREBASE_ID_TOKEN>
 
 **Request:**
 ```
-GET http://localhost:5000/api/notifications
+GET https://medichain.clinic/api/notifications
 ```
 
 **Headers:**
@@ -44,7 +44,7 @@ Content-Type: application/json
 
 **Example:**
 ```
-GET http://localhost:5000/api/notifications?is_read=false&category=appointment&limit=20
+GET https://medichain.clinic/api/notifications?is_read=false&category=appointment&limit=20
 ```
 
 **Success Response (200):**
@@ -86,7 +86,7 @@ GET http://localhost:5000/api/notifications?is_read=false&category=appointment&l
 
 **Request:**
 ```
-GET http://localhost:5000/api/notifications/stats
+GET https://medichain.clinic/api/notifications/stats
 ```
 
 **Headers:**
@@ -113,7 +113,7 @@ Authorization: Bearer <YOUR_FIREBASE_ID_TOKEN>
 
 **Request:**
 ```
-PUT http://localhost:5000/api/notifications/<notification_id>
+PUT https://medichain.clinic/api/notifications/<notification_id>
 ```
 
 **Headers:**
@@ -153,7 +153,7 @@ Content-Type: application/json
 
 **Request:**
 ```
-POST http://localhost:5000/api/notifications/read-all
+POST https://medichain.clinic/api/notifications/read-all
 ```
 
 **Headers:**
@@ -183,7 +183,7 @@ Content-Type: application/json
 
 **Request:**
 ```
-DELETE http://localhost:5000/api/notifications/<notification_id>
+DELETE https://medichain.clinic/api/notifications/<notification_id>
 ```
 
 **Headers:**
@@ -211,7 +211,7 @@ Authorization: Bearer <YOUR_FIREBASE_ID_TOKEN>
 
 ### Step 2: Test GET Notifications
 1. **Method:** GET
-2. **URL:** `http://localhost:5000/api/notifications`
+2. **URL:** `https://medichain.clinic/api/notifications`
 3. **Headers:**
    - `Authorization: Bearer <YOUR_TOKEN>`
 4. **Send Request**
@@ -219,7 +219,7 @@ Authorization: Bearer <YOUR_FIREBASE_ID_TOKEN>
 
 ### Step 3: Test GET Stats
 1. **Method:** GET
-2. **URL:** `http://localhost:5000/api/notifications/stats`
+2. **URL:** `https://medichain.clinic/api/notifications/stats`
 3. **Headers:**
    - `Authorization: Bearer <YOUR_TOKEN>`
 4. **Send Request**
@@ -227,7 +227,7 @@ Authorization: Bearer <YOUR_FIREBASE_ID_TOKEN>
 
 ### Step 4: Test Mark as Read
 1. **Method:** PUT
-2. **URL:** `http://localhost:5000/api/notifications/<NOTIFICATION_ID>`
+2. **URL:** `https://medichain.clinic/api/notifications/<NOTIFICATION_ID>`
    - Replace `<NOTIFICATION_ID>` with an actual ID from Step 2
 3. **Headers:**
    - `Authorization: Bearer <YOUR_TOKEN>`
@@ -243,7 +243,7 @@ Authorization: Bearer <YOUR_FIREBASE_ID_TOKEN>
 
 ### Step 5: Test Mark All as Read
 1. **Method:** POST
-2. **URL:** `http://localhost:5000/api/notifications/read-all`
+2. **URL:** `https://medichain.clinic/api/notifications/read-all`
 3. **Headers:**
    - `Authorization: Bearer <YOUR_TOKEN>`
    - `Content-Type: application/json`
@@ -292,7 +292,7 @@ To test if notifications are created when booking appointments:
 
 ### Environment Variables
 Create a Postman environment with:
-- `base_url`: `http://localhost:5000`
+- `base_url`: `https://medichain.clinic`
 - `firebase_token`: `<YOUR_FIREBASE_ID_TOKEN>`
 
 ### Collection Variables
@@ -356,7 +356,7 @@ Content-Type: application/json
 
 ## Base URL
 ```
-http://localhost:5000/api/notifications
+https://medichain.clinic/api/notifications
 ```
 
 ## Authentication
@@ -382,7 +382,7 @@ Authorization: Bearer <YOUR_FIREBASE_ID_TOKEN>
 
 **Request:**
 ```
-GET http://localhost:5000/api/notifications
+GET https://medichain.clinic/api/notifications
 ```
 
 **Headers:**
@@ -398,7 +398,7 @@ Content-Type: application/json
 
 **Example:**
 ```
-GET http://localhost:5000/api/notifications?is_read=false&category=appointment&limit=20
+GET https://medichain.clinic/api/notifications?is_read=false&category=appointment&limit=20
 ```
 
 **Success Response (200):**
@@ -440,7 +440,7 @@ GET http://localhost:5000/api/notifications?is_read=false&category=appointment&l
 
 **Request:**
 ```
-GET http://localhost:5000/api/notifications/stats
+GET https://medichain.clinic/api/notifications/stats
 ```
 
 **Headers:**
@@ -467,7 +467,7 @@ Authorization: Bearer <YOUR_FIREBASE_ID_TOKEN>
 
 **Request:**
 ```
-PUT http://localhost:5000/api/notifications/<notification_id>
+PUT https://medichain.clinic/api/notifications/<notification_id>
 ```
 
 **Headers:**
@@ -507,7 +507,7 @@ Content-Type: application/json
 
 **Request:**
 ```
-POST http://localhost:5000/api/notifications/read-all
+POST https://medichain.clinic/api/notifications/read-all
 ```
 
 **Headers:**
@@ -537,7 +537,7 @@ Content-Type: application/json
 
 **Request:**
 ```
-DELETE http://localhost:5000/api/notifications/<notification_id>
+DELETE https://medichain.clinic/api/notifications/<notification_id>
 ```
 
 **Headers:**
@@ -565,7 +565,7 @@ Authorization: Bearer <YOUR_FIREBASE_ID_TOKEN>
 
 ### Step 2: Test GET Notifications
 1. **Method:** GET
-2. **URL:** `http://localhost:5000/api/notifications`
+2. **URL:** `https://medichain.clinic/api/notifications`
 3. **Headers:**
    - `Authorization: Bearer <YOUR_TOKEN>`
 4. **Send Request**
@@ -573,7 +573,7 @@ Authorization: Bearer <YOUR_FIREBASE_ID_TOKEN>
 
 ### Step 3: Test GET Stats
 1. **Method:** GET
-2. **URL:** `http://localhost:5000/api/notifications/stats`
+2. **URL:** `https://medichain.clinic/api/notifications/stats`
 3. **Headers:**
    - `Authorization: Bearer <YOUR_TOKEN>`
 4. **Send Request**
@@ -581,7 +581,7 @@ Authorization: Bearer <YOUR_FIREBASE_ID_TOKEN>
 
 ### Step 4: Test Mark as Read
 1. **Method:** PUT
-2. **URL:** `http://localhost:5000/api/notifications/<NOTIFICATION_ID>`
+2. **URL:** `https://medichain.clinic/api/notifications/<NOTIFICATION_ID>`
    - Replace `<NOTIFICATION_ID>` with an actual ID from Step 2
 3. **Headers:**
    - `Authorization: Bearer <YOUR_TOKEN>`
@@ -597,7 +597,7 @@ Authorization: Bearer <YOUR_FIREBASE_ID_TOKEN>
 
 ### Step 5: Test Mark All as Read
 1. **Method:** POST
-2. **URL:** `http://localhost:5000/api/notifications/read-all`
+2. **URL:** `https://medichain.clinic/api/notifications/read-all`
 3. **Headers:**
    - `Authorization: Bearer <YOUR_TOKEN>`
    - `Content-Type: application/json`
@@ -646,7 +646,7 @@ To test if notifications are created when booking appointments:
 
 ### Environment Variables
 Create a Postman environment with:
-- `base_url`: `http://localhost:5000`
+- `base_url`: `https://medichain.clinic`
 - `firebase_token`: `<YOUR_FIREBASE_ID_TOKEN>`
 
 ### Collection Variables

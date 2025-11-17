@@ -4,7 +4,7 @@ Test script to diagnose signup flow issues
 import requests
 import json
 
-API_URL = "http://localhost:5000/api"
+API_URL = "https://medichain.clinic/api"
 
 def test_patient_signup():
     """Test patient signup flow"""

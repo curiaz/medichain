@@ -26,12 +26,12 @@
           }
         },
         "url": {
-          "raw": "http://localhost:5000/api/auth/password-reset-request",
-          "protocol": "http",
+          "raw": "https://medichain.clinic/api/auth/password-reset-request",
+          "protocol": "https",
           "host": [
-            "localhost"
+            "medichain",
+            "clinic"
           ],
-          "port": "5000",
           "path": [
             "api",
             "auth",

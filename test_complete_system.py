@@ -11,7 +11,7 @@ import json
 
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
-API_URL = "http://localhost:5000"
+API_URL = "https://medichain.clinic"
 
 client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 

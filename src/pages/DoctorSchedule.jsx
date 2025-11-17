@@ -99,7 +99,7 @@ const DoctorSchedule = () => {
       
       console.log(`✅ DoctorSchedule: Token obtained from ${tokenSource}`)
       
-      const resp = await axios.get("http://localhost:5000/api/appointments", {
+      const resp = await axios.get("https://medichain.clinic/api/appointments", {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.data?.success) {

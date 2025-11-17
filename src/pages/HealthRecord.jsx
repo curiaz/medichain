@@ -44,7 +44,7 @@ const HealthRecord = () => {
 
           if (token) {
             // Fetch user profile from backend
-            const response = await axios.get('http://localhost:5000/api/profile', {
+            const response = await axios.get('https://medichain.clinic/api/profile', {
               headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -134,7 +134,7 @@ const HealthRecord = () => {
       // Fetch appointments with symptoms and documents
       let appointmentsResponse;
       try {
-        appointmentsResponse = await axios.get('http://localhost:5000/api/appointments', {
+        appointmentsResponse = await axios.get('https://medichain.clinic/api/appointments', {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 10000 // 10 second timeout
         });
@@ -162,7 +162,7 @@ const HealthRecord = () => {
         const medicalReportsMap = new Map();
         if (appointmentIds.length > 0) {
           try {
-            const reportsResponse = await axios.get('http://localhost:5000/api/medical-reports/patient', {
+            const reportsResponse = await axios.get('https://medichain.clinic/api/medical-reports/patient', {
               headers: { Authorization: `Bearer ${token}` }
             });
             
@@ -330,7 +330,7 @@ const HealthRecord = () => {
 
           if (token) {
             const appointmentResponse = await axios.get(
-              `http://localhost:5000/api/appointments/${record.appointment_id}`,
+              `https://medichain.clinic/api/appointments/${record.appointment_id}`,
               { headers: { Authorization: `Bearer ${token}` } }
             );
             

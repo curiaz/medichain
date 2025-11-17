@@ -144,7 +144,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
 
       await waitFor(() => {
         expect(mockedAxios.post).toHaveBeenCalledWith(
-          'http://localhost:5000/api/auth/password-reset-request',
+          'https://medichain.clinic/api/auth/password-reset-request',
           { email: 'test@example.com' }
         );
         // The component shows either ui_message from response or "Reset code sent to your email!"
@@ -316,7 +316,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       // Wait for the API call
       await waitFor(() => {
         expect(mockedAxios.post).toHaveBeenCalledWith(
-          'http://localhost:5000/api/auth/verify-otp',
+          'https://medichain.clinic/api/auth/verify-otp',
           { email: 'test@example.com', otp: '123456' }
         );
       }, { timeout: 3000 });
@@ -394,7 +394,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
         expect(mockedAxios.post.mock.calls.length).toBeGreaterThan(initialCallCount);
         // Check that password-reset-request was called with correct email
         expect(mockedAxios.post).toHaveBeenCalledWith(
-          'http://localhost:5000/api/auth/password-reset-request',
+          'https://medichain.clinic/api/auth/password-reset-request',
           { email: 'test@example.com' }
         );
       }, { timeout: 3000 });
@@ -567,7 +567,7 @@ describe('ResetPassword Component - OTP Enhanced', () => {
       // Wait for the API call
       await waitFor(() => {
         expect(mockedAxios.post).toHaveBeenCalledWith(
-          'http://localhost:5000/api/auth/password-reset',
+          'https://medichain.clinic/api/auth/password-reset',
           {
             email: 'test@example.com',
             reset_token: 'test-token',

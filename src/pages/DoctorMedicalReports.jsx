@@ -43,7 +43,7 @@ const DoctorMedicalReports = () => {
         return;
       }
 
-      const response = await axios.get('http://localhost:5000/api/medical-reports/doctor', {
+      const response = await axios.get('https://medichain.clinic/api/medical-reports/doctor', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -55,7 +55,7 @@ const DoctorMedicalReports = () => {
           reportsData.map(async (report) => {
             try {
               // Get patient info from appointments or user_profiles
-              const appointmentsResponse = await axios.get('http://localhost:5000/api/appointments', {
+              const appointmentsResponse = await axios.get('https://medichain.clinic/api/appointments', {
                 headers: { Authorization: `Bearer ${token}` }
               });
               
@@ -201,7 +201,7 @@ const DoctorMedicalReports = () => {
 
           if (token) {
             const appointmentResponse = await axios.get(
-              `http://localhost:5000/api/appointments/${report.appointment_id}`,
+              `https://medichain.clinic/api/appointments/${report.appointment_id}`,
               { headers: { Authorization: `Bearer ${token}` } }
             );
             
@@ -299,7 +299,7 @@ const DoctorMedicalReports = () => {
 
           if (token) {
             const appointmentResponse = await axios.get(
-              `http://localhost:5000/api/appointments/${report.appointment_id}`,
+              `https://medichain.clinic/api/appointments/${report.appointment_id}`,
               { headers: { Authorization: `Bearer ${token}` } }
             );
             

@@ -125,7 +125,7 @@ const BookAppointmentForm = () => {
       console.log("✅ BookAppointmentForm: Fetching availability for doctor:", doctor.firebase_uid);
 
       const response = await axios.get(
-        `http://localhost:5000/api/appointments/availability/${doctor.firebase_uid}`,
+        `https://medichain.clinic/api/appointments/availability/${doctor.firebase_uid}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -208,7 +208,7 @@ const BookAppointmentForm = () => {
       }
 
       // Fetch user profile
-      const response = await axios.get('http://localhost:5000/api/profile/patient', {
+      const response = await axios.get('https://medichain.clinic/api/profile/patient', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -407,7 +407,7 @@ const BookAppointmentForm = () => {
       }));
 
       const response = await axios.post(
-        "http://localhost:5000/api/appointments",
+        "https://medichain.clinic/api/appointments",
         {
           doctor_firebase_uid: doctor.firebase_uid,
           appointment_date: selectedDate,

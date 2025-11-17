@@ -157,7 +157,7 @@ const SelectDateTime = () => {
       console.log("✅ SelectDateTime: Full doctor object:", doctor);
 
       const response = await axios.get(
-        `http://localhost:5000/api/appointments/availability/${doctor.firebase_uid}`,
+        `https://medichain.clinic/api/appointments/availability/${doctor.firebase_uid}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -271,7 +271,7 @@ const SelectDateTime = () => {
             
             // Retry with refreshed token
             const retryResponse = await axios.get(
-              `http://localhost:5000/api/appointments/availability/${doctor.firebase_uid}`,
+              `https://medichain.clinic/api/appointments/availability/${doctor.firebase_uid}`,
               {
                 headers: {
                   Authorization: `Bearer ${refreshedToken}`,

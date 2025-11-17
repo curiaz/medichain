@@ -33,7 +33,7 @@ const SymptomsSelection = () => {
         setLoading(true);
         setError(null);
         
-        const response = await axios.get("http://localhost:5000/api/symptoms");
+        const response = await axios.get("https://medichain.clinic/api/symptoms");
         
         if (response.data.success) {
           setSymptoms(response.data.symptoms);

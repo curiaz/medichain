@@ -55,7 +55,7 @@ def main():
     
     # Check 4: Check backend health
     checks.append(run_command(
-        "curl http://localhost:5000/health",
+        "curl https://medichain.clinic/health",
         "Verifying backend health"
     ))
     

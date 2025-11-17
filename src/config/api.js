@@ -10,13 +10,8 @@ const getBaseURL = () => {
     return process.env.REACT_APP_API_URL;
   }
   
-  // In development, use local Flask server
-  if (process.env.NODE_ENV === 'development') {
-    return 'http://localhost:5000';
-  }
-  
-  // In production, use deployed backend
-  return 'https://medichain.vercel.app';
+  // Use medichain.clinic as the backend URL
+  return 'https://medichain.clinic';
 };
 
 const API_BASE_URL = getBaseURL();

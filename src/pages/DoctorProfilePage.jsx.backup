@@ -128,7 +128,7 @@ const DoctorProfilePage = () => {
         firebase_uid: profile.firebase_uid
       };
 
-      const response = await fetch('http://localhost:5000/api/profile/update', {
+      const response = await fetch('https://medichain.clinic/api/profile/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -166,7 +166,7 @@ const DoctorProfilePage = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/profile/update-doctor-info', {
+      const response = await fetch('https://medichain.clinic/api/profile/update-doctor-info', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -231,7 +231,7 @@ const DoctorProfilePage = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/auth/verify-password', {
+      const response = await fetch('https://medichain.clinic/api/auth/verify-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -271,7 +271,7 @@ const DoctorProfilePage = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/profile/delete-account', {
+      const response = await fetch('https://medichain.clinic/api/profile/delete-account', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
