@@ -667,11 +667,26 @@ def handle_exception(e):
     """Handle all unhandled exceptions gracefully"""
     print(f"❌ Unhandled exception: {e}")
     traceback.print_exc()
-    return jsonify({
+    response = jsonify({
         "success": False,
         "error": "Internal server error",
         "message": str(e)
-    }), 500
+    })
+    # Add CORS headers to error responses
+    origin = request.headers.get("Origin", "")
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "https://medichain.clinic",
+        "https://www.medichain.clinic",
+        "https://medichain-8773b.web.app"
+    ]
+    if origin in allowed_origins:
+        response.headers.add("Access-Control-Allow-Origin", origin)
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+    return response, 500
 
 # Initialize AI system
 print("🚀 Starting Streamlined MediChain API v5.0...")
