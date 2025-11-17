@@ -100,7 +100,7 @@ const PatientDashboard = () => {
         return
       }
 
-      const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichain.clinic';
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichainn.onrender.com';
       const activities = []
 
       // Fetch appointments

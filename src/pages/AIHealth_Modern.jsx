@@ -313,7 +313,7 @@ const AIHealth = () => {
   useEffect(() => {
     const checkAIStatus = async () => {
       try {
-        const response = await fetch('https://medichain.clinic/api/health');
+        const response = await fetch('https://medichainn.onrender.com/api/health');
         if (response.ok) {
           setAiStatus('connected');
         } else {

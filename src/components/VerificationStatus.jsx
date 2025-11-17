@@ -58,7 +58,7 @@ const VerificationStatus = ({ status, userType, doctorProfile }) => {
 
       const token = await currentUser.getIdToken();
       const response = await axios.get(
-        `https://medichain.clinic/api/auth/verification-status?firebase_uid=${currentUser.uid}`,
+        `https://medichainn.onrender.com/api/auth/verification-status?firebase_uid=${currentUser.uid}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -89,7 +89,7 @@ const VerificationStatus = ({ status, userType, doctorProfile }) => {
 
       const token = await currentUser.getIdToken();
       const response = await axios.post(
-        'https://medichain.clinic/api/auth/resend-verification-request',
+        'https://medichainn.onrender.com/api/auth/resend-verification-request',
         { firebase_uid: currentUser.uid },
         {
           headers: {

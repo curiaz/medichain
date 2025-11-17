@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Notification Service - connects to the notification backend
-const NOTIFICATION_BASE_URL = process.env.REACT_APP_NOTIFICATION_API_URL || process.env.REACT_APP_API_URL || 'https://medichain.clinic';
+const NOTIFICATION_BASE_URL = process.env.REACT_APP_NOTIFICATION_API_URL || process.env.REACT_APP_API_URL || 'https://medichainn.onrender.com';
 
 const api = axios.create({
   baseURL: NOTIFICATION_BASE_URL,

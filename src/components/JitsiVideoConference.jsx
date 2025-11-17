@@ -63,7 +63,7 @@ const JitsiVideoConference = () => {
         }
 
         // Fetch appointments to find the one matching this room
-        const response = await axios.get('https://medichain.clinic/api/appointments', {
+        const response = await axios.get('https://medichainn.onrender.com/api/appointments', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -659,7 +659,7 @@ const JitsiVideoConference = () => {
         return;
       }
 
-      const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichain.clinic';
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichainn.onrender.com';
       
       // Update appointment status to completed
       const response = await axios.put(

@@ -210,7 +210,7 @@ const ProfilePage = () => {
         return;
       }
 
-      const response = await fetch('https://medichain.clinic/api/auth/profile', {
+      const response = await fetch('https://medichainn.onrender.com/api/auth/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -270,7 +270,7 @@ const ProfilePage = () => {
         return;
       }
 
-      const response = await fetch('https://medichain.clinic/api/auth/profile', {
+      const response = await fetch('https://medichainn.onrender.com/api/auth/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -383,7 +383,7 @@ const ProfilePage = () => {
             avatar_url_preview: base64String?.substring(0, 50)
           });
 
-          const response = await fetch('https://medichain.clinic/api/auth/profile', {
+          const response = await fetch('https://medichainn.onrender.com/api/auth/profile', {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -522,7 +522,7 @@ const ProfilePage = () => {
       console.log('📤 Sending verification request with email:', userEmail);
 
       // Verify password by attempting to re-authenticate
-      const response = await fetch('https://medichain.clinic/api/auth/verify-password', {
+      const response = await fetch('https://medichainn.onrender.com/api/auth/verify-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -570,7 +570,7 @@ const ProfilePage = () => {
       }
 
       // Call backend API to delete account
-      const response = await fetch('https://medichain.clinic/api/profile/delete-account', {
+      const response = await fetch('https://medichainn.onrender.com/api/profile/delete-account', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

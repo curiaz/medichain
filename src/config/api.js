@@ -10,8 +10,8 @@ const getBaseURL = () => {
     return process.env.REACT_APP_API_URL;
   }
   
-  // Use medichain.clinic as the backend URL
-  return 'https://medichain.clinic';
+  // Use Render backend URL
+  return 'https://medichainn.onrender.com';
 };
 
 const API_BASE_URL = getBaseURL();

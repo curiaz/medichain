@@ -33,7 +33,7 @@ const SymptomsSelection = () => {
         setLoading(true);
         setError(null);
         
-        const response = await axios.get("https://medichain.clinic/api/symptoms");
+        const response = await axios.get("https://medichainn.onrender.com/api/symptoms");
         
         if (response.data.success) {
           setSymptoms(response.data.symptoms);

@@ -52,7 +52,7 @@ const NotificationTable = ({ userId = 'default_user' }) => {
     total_pages: 0
   });
 
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichain.clinic';
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichainn.onrender.com';
 
   // Fetch notifications
   const fetchNotifications = useCallback(async (page = 1) => {
