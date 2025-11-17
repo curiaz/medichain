@@ -4,6 +4,7 @@ import { FileText, Calendar, Pill, Activity, Download, Stethoscope, File, Brain,
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { auth } from '../config/firebase';
+import { API_CONFIG } from '../config/api';
 import '../assets/styles/ModernDashboard.css';
 import '../assets/styles/HealthRecord.css';
 
@@ -44,7 +45,7 @@ const HealthRecord = () => {
 
           if (token) {
             // Fetch user profile from backend
-            const response = await axios.get('http://localhost:5000/api/profile', {
+            const response = await axios.get(`${API_CONFIG.API_URL}/profile`, {
               headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -162,7 +163,7 @@ const HealthRecord = () => {
         const medicalReportsMap = new Map();
         if (appointmentIds.length > 0) {
           try {
-            const reportsResponse = await axios.get('http://localhost:5000/api/medical-reports/patient', {
+            const reportsResponse = await axios.get(`${API_CONFIG.API_URL}/medical-reports/patient`, {
               headers: { Authorization: `Bearer ${token}` }
             });
             
@@ -330,7 +331,7 @@ const HealthRecord = () => {
 
           if (token) {
             const appointmentResponse = await axios.get(
-              `http://localhost:5000/api/appointments/${record.appointment_id}`,
+              `${API_CONFIG.API_URL}/appointments/${record.appointment_id}`,
               { headers: { Authorization: `Bearer ${token}` } }
             );
             

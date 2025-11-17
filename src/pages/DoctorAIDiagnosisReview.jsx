@@ -5,6 +5,7 @@ import { Brain, ChevronLeft, ChevronRight, Save, X, Edit2, Check, Search, User, 
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { auth } from '../config/firebase';
+import { API_CONFIG } from '../config/api';
 import '../assets/styles/ModernDashboard.css';
 import '../assets/styles/DoctorAIDiagnosisReview.css';
 
@@ -63,7 +64,7 @@ const DoctorAIDiagnosisReview = () => {
             return;
           }
 
-          const response = await axios.get(`http://localhost:5000/api/medical-reports/appointment/${appointment.id}`, {
+          const response = await axios.get(`${API_CONFIG.API_URL}/medical-reports/appointment/${appointment.id}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
 
@@ -167,7 +168,7 @@ const DoctorAIDiagnosisReview = () => {
 
       if (!token) return;
 
-      const response = await axios.get(`http://localhost:5000/api/medical-reports/appointment/${aptId}`, {
+      const response = await axios.get(`${API_CONFIG.API_URL}/medical-reports/appointment/${aptId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -210,7 +211,7 @@ const DoctorAIDiagnosisReview = () => {
       }
 
       // Get all appointments for this doctor
-      const response = await axios.get('http://localhost:5000/api/appointments', {
+      const response = await axios.get(`${API_CONFIG.API_URL}/appointments`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -381,7 +382,7 @@ const DoctorAIDiagnosisReview = () => {
         token = localStorage.getItem('medichain_token');
       }
 
-      const response = await axios.get(`http://localhost:5000/api/medical-reports/appointment/${apptId}`, {
+      const response = await axios.get(`${API_CONFIG.API_URL}/medical-reports/appointment/${apptId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -437,7 +438,7 @@ const DoctorAIDiagnosisReview = () => {
         status: 'active'
       };
 
-      const response = await axios.post('http://localhost:5000/api/medical-reports', medicalReportData, {
+      const response = await axios.post(`${API_CONFIG.API_URL}/medical-reports`, medicalReportData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'

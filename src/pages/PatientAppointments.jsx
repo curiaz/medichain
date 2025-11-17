@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from "react"
 import Header from "./Header"
 import { Calendar, Clock, Video, User, ArrowUpDown } from "lucide-react"
 import axios from "axios"
+import { API_CONFIG } from "../config/api"
 import { useNavigate } from "react-router-dom"
 import "../assets/styles/ModernDashboard.css"
 
@@ -44,7 +45,7 @@ const PatientAppointments = () => {
         navigate('/login')
         return
       }
-      const resp = await axios.get('http://localhost:5000/api/appointments', {
+      const resp = await axios.get(`${API_CONFIG.API_URL}/appointments`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (resp.data?.success) {

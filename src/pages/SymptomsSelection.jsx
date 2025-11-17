@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Header from "./Header";
 import { Search, X, Check, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import axios from "axios";
+import { API_CONFIG } from "../config/api";
 import "../assets/styles/ModernDashboard.css";
 import "../assets/styles/SymptomsSelection.css";
 
@@ -33,7 +34,7 @@ const SymptomsSelection = () => {
         setLoading(true);
         setError(null);
         
-        const response = await axios.get("http://localhost:5000/api/symptoms");
+        const response = await axios.get(`${API_CONFIG.API_URL}/symptoms`);
         
         if (response.data.success) {
           setSymptoms(response.data.symptoms);

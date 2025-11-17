@@ -16,7 +16,7 @@ const getBaseURL = () => {
   }
   
   // In production, use deployed backend
-  return 'https://medichain.vercel.app';
+  return 'https://medichainn.onrender.com';
 };
 
 const API_BASE_URL = getBaseURL();

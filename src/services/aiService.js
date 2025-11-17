@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { API_CONFIG } from '../config/api';
 
 // Streamlined AI Diagnosis Service - Version 5.0
-const AI_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const AI_BASE_URL = API_CONFIG.BASE_URL;
 
 const api = axios.create({
   baseURL: AI_BASE_URL,

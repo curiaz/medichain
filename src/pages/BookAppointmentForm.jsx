@@ -5,6 +5,7 @@ import { Calendar, Clock, User, Stethoscope, ArrowLeft, Check, AlertCircle } fro
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { auth } from "../config/firebase";
+import { API_CONFIG } from "../config/api";
 import "../assets/styles/ModernDashboard.css";
 import "../assets/styles/BookAppointmentForm.css";
 
@@ -125,7 +126,7 @@ const BookAppointmentForm = () => {
       console.log("✅ BookAppointmentForm: Fetching availability for doctor:", doctor.firebase_uid);
 
       const response = await axios.get(
-        `http://localhost:5000/api/appointments/availability/${doctor.firebase_uid}`,
+        `${API_CONFIG.API_URL}/appointments/availability/${doctor.firebase_uid}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -407,7 +408,7 @@ const BookAppointmentForm = () => {
       }));
 
       const response = await axios.post(
-        "http://localhost:5000/api/appointments",
+        `${API_CONFIG.API_URL}/appointments`,
         {
           doctor_firebase_uid: doctor.firebase_uid,
           appointment_date: selectedDate,

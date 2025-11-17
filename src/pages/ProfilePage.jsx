@@ -359,6 +359,160 @@ const ProfilePage = () => {
     }
   };
 
+  const handleAvatarUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size must be less than 5MB');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setError('');
+      
+      console.log('📷 Uploading avatar...');
+      
+      // Convert image to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64String = reader.result;
+          
+          // Send to backend
+          const token = localStorage.getItem('medichain_token');
+          if (!token) {
+            setError('Authentication token not found. Please log in again.');
+            return;
+          }
+
+          const updateData = {
+            firebase_uid: user.uid || user.profile?.firebase_uid,
+            avatar_url: base64String
+          };
+
+          console.log('📤 Sending avatar update:', {
+            firebase_uid: updateData.firebase_uid,
+            avatar_url_length: base64String?.length,
+            avatar_url_preview: base64String?.substring(0, 50)
+          });
+
+          const response = await fetch(`${API_CONFIG.API_URL}/auth/profile`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(updateData)
+          });
+
+          console.log('📥 Backend response status:', response.status);
+          console.log('📥 Backend response headers:', response.headers);
+
+          const result = await response.json();
+          
+          if (result.success) {
+            // Update local state
+            const updatedProfile = { ...profile, avatar_url: base64String };
+            setProfile(updatedProfile);
+            setSuccess('Profile photo updated successfully!');
+            setTimeout(() => setSuccess(''), 3000);
+            console.log('✅ Avatar uploaded successfully!');
+          } else {
+            setError(result.error || 'Failed to upload photo');
+            console.log('❌ Backend upload failed:', result.error);
+          }
+        } catch (err) {
+          console.error('❌ Error uploading avatar:', err);
+          setError('Failed to upload photo. Please try again.');
+        } finally {
+          setUploading(false);
+        }
+      };
+      
+      reader.onerror = () => {
+        setError('Failed to read image file');
+        setUploading(false);
+      };
+      
+      reader.readAsDataURL(file);
+      
+    } catch (err) {
+      console.error('❌ Error uploading avatar:', err);
+      setError('Failed to upload photo. Please try again.');
+      setUploading(false);
+    }
+  };
+
+  // eslint-disable-next-line no-unused-vars
+  const handleDocumentUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      setUploading(true);
+      setError('');
+      
+      console.log('📄 Uploading document...');
+      
+      // For now, we'll just show a success message
+      // Document upload functionality would need to be implemented with Supabase Storage
+      setSuccess('Document upload functionality coming soon!');
+      setTimeout(() => setSuccess(''), 3000);
+      console.log('✅ Document upload (placeholder)');
+      
+    } catch (err) {
+      console.error('❌ Error uploading document:', err);
+      setError('Failed to upload document. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // eslint-disable-next-line no-unused-vars
+  const handleDocumentDelete = async (documentId) => {
+    try {
+      setError('');
+      
+      console.log('🗑️ Deleting document...');
+      
+      // For now, we'll just show a success message
+      // Document deletion functionality would need to be implemented with Supabase Storage
+      setSuccess('Document deletion functionality coming soon!');
+      setTimeout(() => setSuccess(''), 3000);
+      console.log('✅ Document deletion (placeholder)');
+      
+    } catch (err) {
+      console.error('❌ Error deleting document:', err);
+      setError('Failed to delete document. Please try again.');
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    // Open the delete account modal
+    setShowDeleteModal(true);
+    setDeleteStep(1);
+    setDeletePassword('');
+    setPasswordError('');
+  };
+
+  const handleCloseDeleteModal = () => {
+    setShowDeleteModal(false);
+    setDeleteStep(1);
+    setDeletePassword('');
+    setPasswordError('');
+    setPasswordVerifying(false);
+  };
+
+>>>>>>> origin/fbasefixed
   const handleVerifyPassword = async () => {
     try {
       setPasswordVerifying(true);

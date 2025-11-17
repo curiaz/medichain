@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { API_CONFIG } from '../config/api';
 import { 
   User, Lock, ShieldOff, Edit3, Save, X, AlertCircle, CheckCircle, ArrowLeft, Camera,
   Briefcase, FileText, Eye, History, Shield, Upload
