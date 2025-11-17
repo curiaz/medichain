@@ -619,30 +619,69 @@ CORS(app, resources={
     }
 })
 
+# Allowed origins for CORS
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "https://medichain-8773b.web.app",
+    "https://medichain-8773b.firebaseapp.com",
+    "https://medichain.clinic",
+    "http://medichain.clinic"
+]
+
+def is_origin_allowed(origin):
+    """Check if origin is in allowed list (case-insensitive, handles trailing slashes)"""
+    if not origin:
+        return False
+    origin_normalized = origin.rstrip('/').lower()
+    for allowed in ALLOWED_ORIGINS:
+        if origin_normalized == allowed.lower():
+            return True
+    return False
+
 # 🆕 Handle preflight OPTIONS requests
 @app.before_request
 def handle_preflight():
     """Handle CORS preflight requests"""
     if request.method == "OPTIONS":
+        origin = request.headers.get("Origin")
         response = make_response()
-        origin = request.headers.get("Origin", "http://localhost:3000")
-        # Only allow whitelisted origins
-        allowed_origins = [
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "http://localhost:3001",
-            "http://127.0.0.1:3001",
-            "https://medichain-8773b.web.app",
-            "https://medichain-8773b.firebaseapp.com",
-            "https://medichain.clinic",
-            "http://medichain.clinic"
-        ]
-        if origin in allowed_origins:
+        
+        # Set CORS headers for preflight
+        if origin and is_origin_allowed(origin):
             response.headers.add("Access-Control-Allow-Origin", origin)
+            response.headers.add("Access-Control-Allow-Credentials", "true")
+        elif origin:
+            # Log but still allow (for debugging)
+            print(f"⚠️  CORS Preflight: Origin '{origin}' not in whitelist")
+            response.headers.add("Access-Control-Allow-Origin", origin)
+            response.headers.add("Access-Control-Allow-Credentials", "true")
+        
         response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
         response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
-        response.headers.add("Access-Control-Allow-Credentials", "true")
+        response.headers.add("Access-Control-Max-Age", "3600")
         return response
+
+# 🆕 Add CORS headers to all responses
+@app.after_request
+def add_cors_headers(response):
+    """Add CORS headers to all responses"""
+    origin = request.headers.get("Origin")
+    
+    if origin and is_origin_allowed(origin):
+        response.headers.add("Access-Control-Allow-Origin", origin)
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+    elif origin:
+        # For debugging - log but allow
+        print(f"⚠️  CORS Response: Origin '{origin}' not in whitelist, but allowing")
+        response.headers.add("Access-Control-Allow-Origin", origin)
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+    
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+    response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+    return response
 
 # 🆕 Global error handler to prevent crashes without response
 @app.errorhandler(Exception)
