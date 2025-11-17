@@ -18,7 +18,21 @@ const getManilaNow = () => {
   return manilaTime;
 };
 
+// Format a date to YYYY-MM-DD string consistently
+// This ensures calendar dates match backend dates which use Manila timezone
+// For calendar dates (no time component), we format directly to avoid timezone conversion issues
+const formatDateManila = (date) => {
+  if (!date) return '';
+  // Format date components directly to avoid timezone conversion issues
+  // This ensures dates match between frontend and backend regardless of browser timezone
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Filter out past time slots based on Manila timezone
+// If current time is past a slot, show the next available slot onwards
 const filterPastTimeSlots = (date, timeSlots) => {
   if (!date || !timeSlots || timeSlots.length === 0) return [];
   
@@ -31,14 +45,19 @@ const filterPastTimeSlots = (date, timeSlots) => {
     const currentMinute = now.getMinutes();
     const currentMinutes = currentHour * 60 + currentMinute;
     
+    // Filter out past time slots and return only future slots
+    // If it's past 7:00 AM (420 minutes), only show 7:30 AM (450 minutes) onwards
     return timeSlots.filter(time => {
       const [hours, minutes] = time.split(':').map(Number);
       const slotMinutes = hours * 60 + minutes;
+      
+      // Only include slots that are strictly in the future
+      // This ensures if current time is 7:15 AM, we show 7:30 AM onwards, not 7:00 AM
       return slotMinutes > currentMinutes;
     });
   }
   
-  // For future dates, return all slots
+  // For future dates, return all slots (they're already filtered for booked slots by backend)
   return timeSlots;
 };
 
@@ -64,6 +83,7 @@ const SelectDateTime = () => {
   const doctor = doctorFromState || doctorFromStorage;
 
   const [availability, setAvailability] = useState([]);
+  const [rawAvailability, setRawAvailability] = useState({}); // Store raw availability data
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [loading, setLoading] = useState(true);
@@ -156,6 +176,20 @@ const SelectDateTime = () => {
         console.log("🔍 SelectDateTime: Availability type:", typeof avail);
         console.log("🔍 SelectDateTime: Is array?", Array.isArray(avail));
         
+        // Store raw availability for later use
+        if (typeof avail === 'object' && !Array.isArray(avail)) {
+          setRawAvailability(avail);
+        } else if (Array.isArray(avail)) {
+          // Convert array to object format for consistency
+          const availObj = {};
+          avail.forEach(slot => {
+            if (slot.date && slot.time_slots) {
+              availObj[slot.date] = slot.time_slots;
+            }
+          });
+          setRawAvailability(availObj);
+        }
+        
         if (typeof avail === 'object' && !Array.isArray(avail)) {
           // New format: object with dates as keys
           const sortedDates = Object.keys(avail).sort();
@@ -168,20 +202,23 @@ const SelectDateTime = () => {
             .filter(date => date >= today) // Only include today and future dates
             .map(date => {
               const timeSlots = avail[date] || [];
-              // Filter past time slots for today
+              // Filter past time slots only for today
               const filteredSlots = filterPastTimeSlots(date, timeSlots);
               return {
                 date,
                 time_slots: filteredSlots
               };
             })
-            .filter(slot => slot.time_slots.length > 0); // Remove dates with no available slots
+            .filter(slot => slot.time_slots.length > 0); // Remove dates with no available slots after filtering
           
           console.log("✅ SelectDateTime: Formatted availability:", formattedAvailability);
           console.log("✅ SelectDateTime: Total dates with slots:", formattedAvailability.length);
           
-          // Extract available dates for calendar highlighting
-          const datesWithSlots = formattedAvailability.map(slot => slot.date);
+          // Extract available dates for calendar highlighting - include all future dates that have raw availability
+          const datesWithSlots = sortedDates.filter(date => date >= today && (avail[date] || []).length > 0);
+          console.log("📅 SelectDateTime: Today is:", today);
+          console.log("📅 SelectDateTime: Available dates for highlighting:", datesWithSlots);
+          console.log("📅 SelectDateTime: Raw availability keys:", sortedDates);
           setAvailableDates(datesWithSlots);
           
           if (formattedAvailability.length === 0) {
@@ -245,8 +282,22 @@ const SelectDateTime = () => {
             
             if (retryResponse.data.success) {
               console.log("✅ SelectDateTime: Retry successful!");
-              // Process the response same as above
+                // Process the response same as above
               const avail = retryResponse.data.availability || {};
+              
+              // Store raw availability
+              if (typeof avail === 'object' && !Array.isArray(avail)) {
+                setRawAvailability(avail);
+              } else if (Array.isArray(avail)) {
+                const availObj = {};
+                avail.forEach(slot => {
+                  if (slot.date && slot.time_slots) {
+                    availObj[slot.date] = slot.time_slots;
+                  }
+                });
+                setRawAvailability(availObj);
+              }
+              
               if (typeof avail === 'object' && !Array.isArray(avail)) {
                 const sortedDates = Object.keys(avail).sort();
                 const now = getManilaNow();
@@ -260,7 +311,7 @@ const SelectDateTime = () => {
                   })
                   .filter(slot => slot.time_slots.length > 0);
                 
-                const datesWithSlots = formattedAvailability.map(slot => slot.date);
+                const datesWithSlots = sortedDates.filter(date => date >= today && (avail[date] || []).length > 0);
                 setAvailableDates(datesWithSlots);
                 setAvailability(formattedAvailability);
                 setLoading(false);
@@ -319,7 +370,7 @@ const SelectDateTime = () => {
     } finally {
       setLoading(false);
     }
-  }, [doctor, isAuthenticated, user, navigate, getFirebaseToken, auth]);
+  }, [doctor, isAuthenticated, user, navigate, getFirebaseToken]);
 
   useEffect(() => {
     console.log("🔍 SelectDateTime: Component mounted");
@@ -389,15 +440,27 @@ const SelectDateTime = () => {
   const getAvailableTimesForDate = () => {
     if (!selectedDate) return [];
     
-    // First, try to find in the availability array
+    // First, try to find in the availability array (filtered availability)
     const dateSlot = availability.find(slot => slot.date === selectedDate);
-    if (dateSlot && dateSlot.time_slots) {
-      const timeSlots = dateSlot.time_slots || [];
-      return filterPastTimeSlots(selectedDate, timeSlots);
+    if (dateSlot && dateSlot.time_slots && dateSlot.time_slots.length > 0) {
+      // Already filtered, return as is
+      return dateSlot.time_slots;
+    }
+    
+    // If not found in filtered availability, check raw availability
+    // This handles cases where the date exists but was filtered out during initial processing
+    if (Object.keys(rawAvailability).length > 0) {
+      const rawTimeSlots = rawAvailability[selectedDate];
+      if (rawTimeSlots && Array.isArray(rawTimeSlots) && rawTimeSlots.length > 0) {
+        // Filter past time slots for this specific date
+        const filteredSlots = filterPastTimeSlots(selectedDate, rawTimeSlots);
+        console.log(`✅ SelectDateTime: Found ${filteredSlots.length} time slots for ${selectedDate} in raw availability`);
+        return filteredSlots;
+      }
     }
     
     // If no availability found for this date, return empty array
-    // This allows users to select any date, but they'll see "No available times"
+    console.log(`⚠️ SelectDateTime: No time slots found for date ${selectedDate}`);
     return [];
   };
 
@@ -420,16 +483,18 @@ const SelectDateTime = () => {
     const prevMonth = new Date(year, month, 0);
     const prevMonthDays = prevMonth.getDate();
     for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+      const dayDate = new Date(year, month - 1, prevMonthDays - i);
       days.push({
         date: prevMonthDays - i,
         isCurrentMonth: false,
-        fullDate: new Date(year, month - 1, prevMonthDays - i).toISOString().split('T')[0]
+        fullDate: formatDateManila(dayDate)
       });
     }
     
     // Add current month's days
     for (let day = 1; day <= daysInMonth; day++) {
-      const fullDate = new Date(year, month, day).toISOString().split('T')[0];
+      const dayDate = new Date(year, month, day);
+      const fullDate = formatDateManila(dayDate);
       days.push({
         date: day,
         isCurrentMonth: true,
@@ -441,10 +506,11 @@ const SelectDateTime = () => {
     // Add next month's leading days to fill the grid
     const remainingDays = 42 - days.length; // 6 rows * 7 days
     for (let day = 1; day <= remainingDays; day++) {
+      const dayDate = new Date(year, month + 1, day);
       days.push({
         date: day,
         isCurrentMonth: false,
-        fullDate: new Date(year, month + 1, day).toISOString().split('T')[0]
+        fullDate: formatDateManila(dayDate)
       });
     }
     
@@ -648,9 +714,14 @@ const SelectDateTime = () => {
                     const today = getManilaNow().toISOString().split('T')[0];
                     const isPast = day.fullDate < today;
 
-                    // For current month dates, show all as available (except past dates)
-                    // Only disable if it's past or from another month
-                    const shouldShowAsAvailable = isCurrentMonth && !isPast;
+                    // Check if this date has available slots (either in filtered or raw availability)
+                    const hasAvailableSlots = availableDates.includes(day.fullDate) || 
+                                             (rawAvailability[day.fullDate] && rawAvailability[day.fullDate].length > 0);
+
+                    // For current month dates, show as available if:
+                    // 1. Not in the past
+                    // 2. Has available slots (either in availableDates or rawAvailability)
+                    const shouldShowAsAvailable = isCurrentMonth && !isPast && hasAvailableSlots;
                     const isClickable = shouldShowAsAvailable;
 
                     return (

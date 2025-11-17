@@ -4,6 +4,7 @@ import { Plus, Activity, FileText, Calendar, User } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"
+import axios from "axios"
 import "../assets/styles/ModernDashboard.css"
 import "../assets/styles/PatientDashboard.css"
 
@@ -19,11 +20,35 @@ const PatientDashboard = () => {
   })
   const [, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [recentActivities, setRecentActivities] = useState([])
 
   useEffect(() => {
     // Load patient dashboard stats when component mounts or user changes
-    if (user?.uid) {
+    const userUid = user?.uid || user?.firebase_uid || user?.profile?.firebase_uid || user?.id;
+    if (userUid) {
       loadPatientStats()
+      loadRecentActivities()
+    }
+
+    // Listen for appointment booked event to refresh activities
+    const handleAppointmentBooked = () => {
+      setTimeout(() => {
+        loadRecentActivities()
+      }, 1500) // Delay to allow backend to process
+    }
+
+    window.addEventListener('appointmentBooked', handleAppointmentBooked)
+
+    // Auto-refresh activities every 30 seconds
+    const activityInterval = setInterval(() => {
+      if (userUid) {
+        loadRecentActivities()
+      }
+    }, 30000)
+
+    return () => {
+      window.removeEventListener('appointmentBooked', handleAppointmentBooked)
+      clearInterval(activityInterval)
     }
   }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -59,6 +84,141 @@ const PatientDashboard = () => {
 
   const handleMyAppointments = () => {
     navigate('/my-appointments')
+  }
+
+  const loadRecentActivities = async () => {
+    try {
+      const token = localStorage.getItem('medichain_token')
+      if (!token) {
+        setRecentActivities([])
+        return
+      }
+
+      const userUid = user?.uid || user?.firebase_uid || user?.profile?.firebase_uid || user?.id;
+      if (!userUid) {
+        setRecentActivities([])
+        return
+      }
+
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const activities = []
+
+      // Fetch appointments
+      try {
+        const appointmentsResp = await axios.get(`${API_BASE_URL}/api/appointments`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        
+        if (appointmentsResp.data?.success && Array.isArray(appointmentsResp.data.appointments)) {
+          const appointments = appointmentsResp.data.appointments.slice(0, 10) // Get last 10
+          appointments.forEach(appt => {
+            // Use created_at from appointment if available
+            const createdDate = appt.created_at || new Date().toISOString()
+            activities.push({
+              id: `appointment-${appt.id}`,
+              type: 'appointment',
+              action: 'Booked an appointment',
+              description: `Appointment with Dr. ${appt.doctor?.first_name || ''} ${appt.doctor?.last_name || ''}`.trim() || 'Booked an appointment',
+              date: createdDate,
+              status: appt.status || 'scheduled',
+              icon: Calendar
+            })
+          })
+        }
+      } catch (apptErr) {
+        console.error('Error fetching appointments for activity:', apptErr)
+      }
+
+      // Fetch profile to check for updates
+      try {
+        const profileResp = await axios.get(`${API_BASE_URL}/api/profile/patient`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        
+        if (profileResp.data?.success && profileResp.data.profile) {
+          const profile = profileResp.data.profile
+          const createdDate = profile.created_at || profile.createdAt
+          const updatedDate = profile.updated_at || profile.updatedAt
+          
+          // Check if profile was updated (not just created)
+          if (updatedDate && createdDate) {
+            const created = new Date(createdDate)
+            const updated = new Date(updatedDate)
+            const timeDiff = updated.getTime() - created.getTime()
+            
+            // If updated more than 1 minute after creation, it's an update
+            if (timeDiff > 60000) {
+              activities.push({
+                id: `profile-update-${updatedDate}`,
+                type: 'profile',
+                action: 'Updated profile',
+                description: 'Updated personal information',
+                date: updatedDate,
+                status: 'completed',
+                icon: User
+              })
+            }
+          }
+          
+          // Add account creation if recent (within last 30 days)
+          if (createdDate) {
+            const created = new Date(createdDate)
+            const now = new Date()
+            const daysSinceCreation = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)
+            
+            if (daysSinceCreation <= 30) {
+              activities.push({
+                id: `profile-created-${createdDate}`,
+                type: 'profile',
+                action: 'Account created',
+                description: 'Joined MediChain',
+                date: createdDate,
+                status: 'completed',
+                icon: User
+              })
+            }
+          }
+        }
+      } catch (profileErr) {
+        console.error('Error fetching profile for activity:', profileErr)
+      }
+
+      // Sort activities by date (newest first)
+      activities.sort((a, b) => {
+        const dateA = new Date(a.date)
+        const dateB = new Date(b.date)
+        return dateB - dateA // Newest first
+      })
+
+      // Take only the 5 most recent
+      setRecentActivities(activities.slice(0, 5))
+    } catch (err) {
+      console.error('Error loading recent activities:', err)
+      setRecentActivities([])
+    }
+  }
+
+  const formatTimeAgo = (dateStr) => {
+    if (!dateStr) return 'Unknown time'
+    try {
+      const date = new Date(dateStr)
+      const now = new Date()
+      const diffMs = now - date
+      const diffMins = Math.floor(diffMs / 60000)
+      const diffHours = Math.floor(diffMs / 3600000)
+      const diffDays = Math.floor(diffMs / 86400000)
+      const diffWeeks = Math.floor(diffDays / 7)
+
+      if (diffMins < 1) return 'Just now'
+      if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`
+      if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
+      if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
+      if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks !== 1 ? 's' : ''} ago`
+      
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined })
+    } catch (e) {
+      return 'Unknown time'
+    }
   }
   
   return (
@@ -146,21 +306,44 @@ const PatientDashboard = () => {
                   Recent Health Activity
                 </h3>
                 <div className="activity-list">
-                  <div className="activity-item">
-                    <span className="activity-time">2 days ago</span>
-                    <span className="activity-text">AI consultation for headache symptoms</span>
-                    <span className="activity-status completed">Completed</span>
-                  </div>
-                  <div className="activity-item">
-                    <span className="activity-time">1 week ago</span>
-                    <span className="activity-text">Doctor review on flu symptoms</span>
-                    <span className="activity-status reviewed">Reviewed</span>
-                  </div>
-                  <div className="activity-item">
-                    <span className="activity-time">2 weeks ago</span>
-                    <span className="activity-text">AI diagnosis for cold symptoms</span>
-                    <span className="activity-status completed">Completed</span>
-                  </div>
+                  {recentActivities.length > 0 ? (
+                    recentActivities.map((activity) => {
+                      const ActivityIcon = activity.icon || Activity
+                      return (
+                        <div key={activity.id} className="activity-item">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                            <div style={{
+                              width: '36px',
+                              height: '36px',
+                              borderRadius: '8px',
+                              background: activity.type === 'appointment' 
+                                ? 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)'
+                                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <ActivityIcon size={18} color="white" />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div className="activity-text" style={{ marginBottom: '4px' }}>
+                                {activity.description || activity.action}
+                              </div>
+                              <span className="activity-time">{formatTimeAgo(activity.date)}</span>
+                            </div>
+                          </div>
+                          <span className={`activity-status ${activity.status === 'scheduled' ? 'pending' : 'completed'}`}>
+                            {activity.status === 'scheduled' ? 'Scheduled' : 'Completed'}
+                          </span>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <div className="activity-item" style={{ justifyContent: 'center', padding: '20px' }}>
+                      <span style={{ color: '#64748b', fontSize: '14px' }}>No recent activity</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

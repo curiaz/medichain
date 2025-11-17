@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { NavLink, useNavigate } from "react-router-dom"
-import { Menu, X, User, LogOut, Bell, AlertCircle } from "lucide-react"
+import { Menu, X, User, LogOut, AlertCircle } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { auth } from "../config/firebase"
 import axios from "axios"
@@ -140,7 +140,7 @@ const Header = () => {
     // Listen for route changes
     window.addEventListener('popstate', handleRouteChange);
     return () => window.removeEventListener('popstate', handleRouteChange);
-  }, []);
+  }, [loadNotificationStats]);
 
   return (
     <>

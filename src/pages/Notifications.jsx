@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import Header from "./Header"
-import { Bell, Check, X, AlertCircle, Info, Heart, Calendar, FileText, Settings } from "lucide-react"
+import { Bell, Check, X, AlertCircle, Info, Heart, Calendar, FileText } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { auth } from "../config/firebase"
 import axios from "axios"
@@ -17,9 +17,44 @@ const Notifications = () => {
 
   useEffect(() => {
     // Load notifications when component mounts
-    if (user?.uid) {
+    // Get Firebase UID from user object - check multiple possible fields
+    const userUid = user?.uid || user?.firebase_uid || user?.profile?.firebase_uid || user?.id;
+    
+    console.log('🔔 Notifications: User object:', user);
+    console.log('🔔 Notifications: Checking UID fields - uid:', user?.uid, 'firebase_uid:', user?.firebase_uid, 'profile.firebase_uid:', user?.profile?.firebase_uid, 'id:', user?.id);
+    
+    if (userUid) {
+      console.log('🔔 Notifications: Component mounted, user UID:', userUid);
       loadNotifications();
       loadNotificationStats();
+      
+      // Listen for appointment booked event to refresh notifications
+      const handleAppointmentBooked = () => {
+        console.log('🔔 Notifications: Appointment booked, refreshing notifications...');
+        // Wait a bit for backend to create notification
+        setTimeout(() => {
+          loadNotifications();
+          loadNotificationStats();
+        }, 2000);
+      };
+      
+      window.addEventListener('appointmentBooked', handleAppointmentBooked);
+      
+      // Refresh notifications every 30 seconds
+      const interval = setInterval(() => {
+        console.log('🔔 Notifications: Auto-refreshing notifications...');
+        loadNotifications();
+        loadNotificationStats();
+      }, 30000);
+      
+      return () => {
+        window.removeEventListener('appointmentBooked', handleAppointmentBooked);
+        clearInterval(interval);
+      };
+    } else {
+      console.log('⚠️ Notifications: No user or no UID found, clearing notifications');
+      console.log('⚠️ Notifications: User object:', user);
+      setNotifications([]);
     }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -119,6 +154,11 @@ const Notifications = () => {
       console.log('✅ Notifications: Token obtained from', tokenSource);
       console.log('🔔 Notifications: Making API request to http://localhost:5000/api/notifications');
       
+      // Get Firebase UID from user object - check multiple possible fields
+      const userUid = user?.uid || user?.firebase_uid || user?.profile?.firebase_uid || user?.id;
+      console.log('🔔 Notifications: Current user UID:', userUid);
+      console.log('🔔 Notifications: User object structure:', { uid: user?.uid, firebase_uid: user?.firebase_uid, profile: user?.profile, id: user?.id });
+      
       // Make API request
       const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const response = await axios.get(`${API_BASE_URL}/api/notifications`, {
@@ -133,6 +173,18 @@ const Notifications = () => {
 
       console.log('📥 Notifications: API Response received:', response.status, response.statusText);
       console.log('📥 Notifications: Response data:', response.data);
+      console.log('📥 Notifications: Number of notifications:', response.data?.notifications?.length || 0);
+      console.log('📥 Notifications: Unread count:', response.data?.unread_count || 0);
+      
+      // Log each notification for debugging
+      if (response.data?.notifications && response.data.notifications.length > 0) {
+        console.log('📋 Notifications: Notification details:');
+        response.data.notifications.forEach((notif, index) => {
+          console.log(`   ${index + 1}. ID: ${notif.id}, Title: ${notif.title}, User ID: ${notif.user_id}, Read: ${notif.is_read}`);
+        });
+      } else {
+        console.log('⚠️ Notifications: No notifications found in response');
+      }
 
       if (response.data?.success) {
         // Transform backend data to match frontend format
@@ -646,31 +698,6 @@ const Notifications = () => {
 
             {/* Sidebar */}
             <div className="sidebar-area">
-              <div className="notification-settings-card">
-                <h3 className="card-title">
-                  <Settings size={20} />
-                  Notification Settings
-                </h3>
-                <div className="settings-list">
-                  <div className="setting-item">
-                    <span>Email notifications</span>
-                    <input type="checkbox" defaultChecked />
-                  </div>
-                  <div className="setting-item">
-                    <span>SMS alerts</span>
-                    <input type="checkbox" />
-                  </div>
-                  <div className="setting-item">
-                    <span>Appointment reminders</span>
-                    <input type="checkbox" defaultChecked />
-                  </div>
-                  <div className="setting-item">
-                    <span>Medication reminders</span>
-                    <input type="checkbox" defaultChecked />
-                  </div>
-                </div>
-              </div>
-
               <div className="quick-access-card">
                 <h3 className="card-title">
                   <Bell size={20} />
@@ -680,10 +707,6 @@ const Notifications = () => {
                   <button className="quick-action-btn" onClick={markAllAsRead}>
                     <Check size={16} />
                     Mark All Read
-                  </button>
-                  <button className="quick-action-btn">
-                    <Settings size={16} />
-                    Notification Settings
                   </button>
                   <button className="quick-action-btn">
                     <AlertCircle size={16} />

@@ -100,11 +100,39 @@ BEGIN
 END $$;
 
 -- Verify deletion
-SELECT 
-    COALESCE((SELECT COUNT(*) FROM user_profiles), 0) as remaining_users,
-    COALESCE((SELECT COUNT(*) FROM doctor_profiles WHERE EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'doctor_profiles')), 0) as remaining_doctors,
-    COALESCE((SELECT COUNT(*) FROM appointments WHERE EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'appointments')), 0) as remaining_appointments,
-    COALESCE((SELECT COUNT(*) FROM medical_records WHERE EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'medical_records')), 0) as remaining_medical_records;
+DO $$
+DECLARE
+    user_count INTEGER := 0;
+    doctor_count INTEGER := 0;
+    appointment_count INTEGER := 0;
+    medical_record_count INTEGER := 0;
+BEGIN
+    -- Count remaining users
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_profiles') THEN
+        SELECT COUNT(*) INTO user_count FROM user_profiles;
+    END IF;
+    
+    -- Count remaining doctors
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'doctor_profiles') THEN
+        SELECT COUNT(*) INTO doctor_count FROM doctor_profiles;
+    END IF;
+    
+    -- Count remaining appointments
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'appointments') THEN
+        SELECT COUNT(*) INTO appointment_count FROM appointments;
+    END IF;
+    
+    -- Count remaining medical records
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'medical_records') THEN
+        SELECT COUNT(*) INTO medical_record_count FROM medical_records;
+    END IF;
+    
+    RAISE NOTICE '=== Deletion Summary ===';
+    RAISE NOTICE 'Remaining users: %', user_count;
+    RAISE NOTICE 'Remaining doctors: %', doctor_count;
+    RAISE NOTICE 'Remaining appointments: %', appointment_count;
+    RAISE NOTICE 'Remaining medical records: %', medical_record_count;
+END $$;
 
 -- Note: Firebase Auth users are NOT deleted by this script
 -- You need to delete them manually from Firebase Console or use Firebase Admin SDK

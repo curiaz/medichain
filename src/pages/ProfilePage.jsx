@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   User, Heart, FileText, Lock, Shield, Edit3, Save, X, AlertCircle, 
-  CheckCircle, ArrowLeft, Upload, Trash2, Eye, EyeOff
+  CheckCircle, ArrowLeft, Upload, Trash2, Eye
 } from 'lucide-react';
 import './ProfilePage.css';
 
@@ -73,58 +73,122 @@ const ProfilePage = () => {
     if (user) {
       loadProfile();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const loadProfile = () => {
+  const loadProfile = async (skipRedirect = false) => {
     try {
       setLoading(true);
       console.log('🔍 Loading patient profile, user object:', user);
       
-      if (!user) {
+      if (!user && !skipRedirect) {
         console.error('❌ No user found, redirecting to login');
         navigate('/login');
         return;
       }
 
-      // Load personal info
-      setFormData({
-        first_name: user.first_name || '',
-        last_name: user.last_name || '',
-        phone: user.phone || '',
-        email: user.email || '',
-        date_of_birth: user.date_of_birth || '',
-        gender: user.gender || '',
-        address: user.address || '',
-        city: user.city || '',
-        state: user.state || '',
-        zip_code: user.zip_code || '',
-        emergency_contact: user.emergency_contact || ''
-      });
+      // If user is available, use it first (fast)
+      if (user) {
+        // Load personal info
+        setFormData({
+          first_name: user.first_name || '',
+          last_name: user.last_name || '',
+          phone: user.phone || '',
+          email: user.email || '',
+          date_of_birth: user.date_of_birth || '',
+          gender: user.gender || '',
+          address: user.address || '',
+          city: user.city || '',
+          state: user.state || '',
+          zip_code: user.zip_code || '',
+          emergency_contact: user.emergency_contact || ''
+        });
 
-      // Load medical info
-      setMedicalInfo({
-        medical_conditions: user.medical_conditions || [],
-        allergies: user.allergies || [],
-        current_medications: user.current_medications || [],
-        blood_type: user.blood_type || '',
-        medical_notes: user.medical_notes || ''
-      });
+        // Load medical info
+        setMedicalInfo({
+          medical_conditions: user.medical_conditions || [],
+          allergies: user.allergies || [],
+          current_medications: user.current_medications || [],
+          blood_type: user.blood_type || '',
+          medical_notes: user.medical_notes || ''
+        });
 
-      // Load privacy settings
-      setPrivacySettings({
-        profile_visibility: user.profile_visibility || 'private',
-        show_email: user.show_email || false,
-        show_phone: user.show_phone || false,
-        medical_info_visible_to_doctors: user.medical_info_visible_to_doctors !== false,
-        allow_ai_analysis: user.allow_ai_analysis !== false,
-        share_data_for_research: user.share_data_for_research || false
-      });
+        // Load privacy settings
+        setPrivacySettings({
+          profile_visibility: user.profile_visibility || 'private',
+          show_email: user.show_email || false,
+          show_phone: user.show_phone || false,
+          medical_info_visible_to_doctors: user.medical_info_visible_to_doctors !== false,
+          allow_ai_analysis: user.allow_ai_analysis !== false,
+          share_data_for_research: user.share_data_for_research || false
+        });
+      }
+
+      // Fetch fresh data from backend
+      const token = localStorage.getItem('medichain_token');
+      if (token) {
+        try {
+          const response = await fetch('http://localhost:5000/api/profile/patient', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.profile) {
+              const profileData = result.profile.user_profile || result.profile;
+              
+              // Update form data with fresh backend data
+              setFormData({
+                first_name: profileData.first_name || '',
+                last_name: profileData.last_name || '',
+                phone: profileData.phone || '',
+                email: profileData.email || '',
+                date_of_birth: profileData.date_of_birth || '',
+                gender: profileData.gender || '',
+                address: profileData.address || '',
+                city: profileData.city || '',
+                state: profileData.state || '',
+                zip_code: profileData.zip_code || '',
+                emergency_contact: profileData.emergency_contact || ''
+              });
+
+              // Update medical info with fresh backend data
+              const medicalData = result.profile.medical_info || {};
+              setMedicalInfo({
+                medical_conditions: profileData.medical_conditions || medicalData.medical_conditions || [],
+                allergies: profileData.allergies || medicalData.allergies || [],
+                current_medications: profileData.current_medications || medicalData.current_medications || [],
+                blood_type: profileData.blood_type || medicalData.blood_type || '',
+                medical_notes: profileData.medical_notes || medicalData.medical_notes || ''
+              });
+
+              // Update privacy settings with fresh backend data
+              const privacyData = result.profile.privacy_settings || {};
+              setPrivacySettings({
+                profile_visibility: profileData.profile_visibility || privacyData.profile_visibility || 'private',
+                show_email: profileData.show_email !== undefined ? profileData.show_email : (privacyData.show_email || false),
+                show_phone: profileData.show_phone !== undefined ? profileData.show_phone : (privacyData.show_phone || false),
+                medical_info_visible_to_doctors: profileData.medical_info_visible_to_doctors !== false,
+                allow_ai_analysis: profileData.allow_ai_analysis !== false,
+                share_data_for_research: profileData.share_data_for_research || false
+              });
+            }
+          }
+        } catch (fetchErr) {
+          console.warn('⚠️  Could not fetch fresh profile data from backend, using cached data:', fetchErr);
+          // Continue with cached user data if backend fetch fails
+        }
+      }
 
       console.log('✅ Profile loaded successfully');
       setLoading(false);
     } catch (err) {
       console.error('❌ Error loading profile:', err);
-      setError('Failed to load profile');
+      if (!skipRedirect) {
+        setError('Failed to load profile');
+      }
       setLoading(false);
     }
   };
@@ -140,6 +204,8 @@ const ProfilePage = () => {
         return;
       }
 
+      console.log('📤 Sending profile update request:', formData);
+      
       const response = await fetch('http://localhost:5000/api/profile/patient/update', {
         method: 'PUT',
         headers: {
@@ -150,16 +216,18 @@ const ProfilePage = () => {
       });
 
       const result = await response.json();
+      console.log('📥 Profile update response:', result);
       
       if (result.success) {
         setSuccess('Personal information updated successfully!');
         setEditing(false);
         
-        // Reload page to refresh data from backend
+        // Reload profile data from backend without full page reload
         setTimeout(() => {
-          window.location.reload();
-        }, 1000);
+          loadProfile(true); // Pass skipRedirect=true to prevent redirect on refresh
+        }, 500);
       } else {
+        console.error('❌ Profile update failed:', result.error);
         setError(result.error || 'Failed to update');
       }
     } catch (err) {

@@ -1,8 +1,7 @@
 /* Symptoms Selection Styles */
 .symptoms-search-container {
-  margin: 24px 0;
+  margin: 20px 0;
   width: 100%;
-  max-width: 600px;
 }
 
 .symptoms-search-wrapper {
@@ -109,6 +108,9 @@
 
 .symptoms-grid-container {
   margin: 32px 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .symptoms-grid-title {
@@ -116,6 +118,7 @@
   font-weight: 600;
   color: #333;
   margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .symptoms-grid {
@@ -126,6 +129,30 @@
   width: 100%;
   /* Ensure no dead space - fill all available columns */
   grid-auto-flow: dense;
+  max-height: 500px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
+  flex-shrink: 1;
+}
+
+/* Custom scrollbar for symptoms grid */
+.symptoms-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.symptoms-grid::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.symptoms-grid::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 10px;
+}
+
+.symptoms-grid::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 .symptom-bubble {
@@ -288,6 +315,217 @@
 
 .symptoms-error button:hover {
   background: #1976D2;
+}
+
+/* Default - Single Column Layout */
+.symptoms-page-wrapper {
+  display: block;
+}
+
+.symptoms-sidebar {
+  display: none;
+}
+
+/* Title section spacing adjustments for symptoms page */
+.dashboard-header-section .dashboard-title-section {
+  margin-bottom: 16px;
+  gap: 8px;
+}
+
+.dashboard-header-section .dashboard-title {
+  margin-bottom: 8px;
+}
+
+.dashboard-header-section .dashboard-subtitle {
+  margin-bottom: 0;
+  font-size: 15px;
+}
+
+/* Desktop Layout - Two Column */
+@media (min-width: 1024px) {
+  .symptoms-page-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 32px;
+    align-items: start;
+  }
+
+  .symptoms-main-content {
+    min-height: 0;
+  }
+
+  .symptoms-sidebar {
+    display: block;
+    position: sticky;
+    top: 100px;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+  }
+
+  .symptoms-sidebar-card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e0e0e0;
+  }
+
+  .symptoms-sidebar-card h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e3f2fd;
+  }
+
+  .selected-symptoms-sidebar {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 24px;
+  }
+
+  .selected-symptoms-sidebar .selected-symptoms-bubbles {
+    max-height: 280px;
+  }
+
+  .symptoms-sidebar-stats {
+    padding: 16px;
+    background: #f5f9ff;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  .symptoms-sidebar-stats .count {
+    font-size: 32px;
+    font-weight: 700;
+    color: #2196F3;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .symptoms-sidebar-stats .label {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+  }
+
+  .symptoms-navigation-desktop {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  .next-button-symptoms-desktop {
+    width: 100%;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #2196F3, #1976D2);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+  }
+
+  .next-button-symptoms-desktop:hover:not(:disabled) {
+    background: linear-gradient(135deg, #1976D2, #1565C0);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(33, 150, 243, 0.3);
+  }
+
+  .next-button-symptoms-desktop:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+    box-shadow: none;
+  }
+
+  .back-button-symptoms-desktop {
+    width: 100%;
+    padding: 12px 24px;
+    background: #f5f5f5;
+    color: #333;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .back-button-symptoms-desktop:hover {
+    background: #e0e0e0;
+  }
+
+  /* Hide regular navigation on desktop */
+  .symptoms-navigation {
+    display: none;
+  }
+
+  /* Optimize grid for desktop */
+  .symptoms-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    max-height: 600px;
+  }
+
+  .symptoms-main-content {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 200px);
+    max-height: 800px;
+  }
+
+  .symptoms-grid-container {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin: 24px 0 0 0;
+  }
+
+  .symptom-bubble {
+    padding: 12px 16px;
+    font-size: 14px;
+    min-height: 48px;
+  }
+
+  /* Hide selected symptoms container at top on desktop (moved to sidebar) */
+  .selected-symptoms-container {
+    display: none;
+  }
+
+  /* Adjust margins */
+  .symptoms-grid-container {
+    margin: 24px 0 0 0;
+  }
+
+  /* Title section spacing on desktop */
+  .dashboard-header-section .dashboard-title-section {
+    margin-bottom: 20px;
+    gap: 10px;
+  }
+
+  .dashboard-header-section .dashboard-title {
+    margin-bottom: 8px;
+  }
+
+  .dashboard-header-section .dashboard-subtitle {
+    margin-bottom: 0;
+  }
 }
 
 /* Responsive */

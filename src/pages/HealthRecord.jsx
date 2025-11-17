@@ -67,8 +67,15 @@ const HealthRecord = () => {
   }, [user, getFirebaseToken]);
 
   useEffect(() => {
-    if (user?.uid) {
+    const userUid = user?.uid || user?.firebase_uid || user?.profile?.firebase_uid || user?.id;
+    if (userUid) {
       loadHealthRecords();
+    } else {
+      // If user exists but no UID found, still try to load (might work with token)
+      if (user) {
+        console.log('⚠️ HealthRecord: User exists but no UID found, attempting to load anyway');
+        loadHealthRecords();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -78,31 +85,70 @@ const HealthRecord = () => {
       setLoading(true);
       setError(null);
 
+      console.log('🔍 HealthRecord: Loading health records, user:', user);
+
       // Get authentication token
       let token = null;
       try {
+        // Try Firebase token first
         if (getFirebaseToken) {
-          token = await getFirebaseToken();
-        } else if (auth.currentUser) {
-          token = await auth.currentUser.getIdToken(true);
-        } else {
+          try {
+            token = await getFirebaseToken();
+            console.log('✅ HealthRecord: Got Firebase token');
+          } catch (firebaseErr) {
+            console.warn('⚠️ HealthRecord: Could not get Firebase token:', firebaseErr);
+          }
+        }
+        
+        // Fallback to auth.currentUser
+        if (!token && auth.currentUser) {
+          try {
+            token = await auth.currentUser.getIdToken(true);
+            console.log('✅ HealthRecord: Got token from auth.currentUser');
+          } catch (authErr) {
+            console.warn('⚠️ HealthRecord: Could not get token from auth.currentUser:', authErr);
+          }
+        }
+        
+        // Final fallback to medichain_token
+        if (!token) {
           token = localStorage.getItem('medichain_token');
+          if (token) {
+            console.log('✅ HealthRecord: Using medichain_token');
+          }
         }
       } catch (err) {
-        console.warn('Token fetch error:', err);
+        console.warn('⚠️ HealthRecord: Token fetch error:', err);
         token = localStorage.getItem('medichain_token');
       }
 
       if (!token) {
+        console.error('❌ HealthRecord: No authentication token available');
         setError('Please log in to view your health records');
         setLoading(false);
         return;
       }
 
+      console.log('🔍 HealthRecord: Fetching appointments...');
+
       // Fetch appointments with symptoms and documents
-      const appointmentsResponse = await axios.get('http://localhost:5000/api/appointments', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      let appointmentsResponse;
+      try {
+        appointmentsResponse = await axios.get('http://localhost:5000/api/appointments', {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000 // 10 second timeout
+        });
+        console.log('✅ HealthRecord: Appointments response:', appointmentsResponse.data);
+      } catch (apptErr) {
+        console.error('❌ HealthRecord: Error fetching appointments:', apptErr);
+        if (apptErr.response) {
+          console.error('   Response status:', apptErr.response.status);
+          console.error('   Response data:', apptErr.response.data);
+        }
+        setError(`Failed to load appointments: ${apptErr.response?.data?.error || apptErr.message}`);
+        setLoading(false);
+        return;
+      }
 
       if (appointmentsResponse.data?.success) {
         const appointments = appointmentsResponse.data.appointments || [];
@@ -168,14 +214,21 @@ const HealthRecord = () => {
           });
 
         setRecords(healthRecords);
-        console.log(`✅ Loaded ${healthRecords.length} health records`);
+        console.log(`✅ HealthRecord: Loaded ${healthRecords.length} health records`);
       } else {
-        setError(appointmentsResponse.data?.error || 'Failed to load health records');
+        const errorMsg = appointmentsResponse.data?.error || 'Failed to load health records';
+        console.error('❌ HealthRecord: Appointments response was not successful:', errorMsg);
+        setError(errorMsg);
       }
     } catch (err) {
-      console.error('Error loading health records:', err);
-      setError('Failed to load health records. Please try again.');
+      console.error('❌ HealthRecord: Error loading health records:', err);
+      if (err.response) {
+        console.error('   Response status:', err.response.status);
+        console.error('   Response data:', err.response.data);
+      }
+      setError(`Failed to load health records: ${err.response?.data?.error || err.message}`);
     } finally {
+      console.log('🏁 HealthRecord: Loading complete, setting loading to false');
       setLoading(false);
     }
   };

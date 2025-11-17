@@ -3,7 +3,8 @@ Enhanced Profile Management API Routes
 Comprehensive profile management with role-based features
 """
 from flask import Blueprint, request, jsonify
-from auth.firebase_auth import firebase_auth_required, firebase_role_required
+from functools import wraps
+from auth.firebase_auth import firebase_auth_required, firebase_role_required, firebase_auth_service
 from db.supabase_client import SupabaseClient
 import json
 import os
@@ -17,6 +18,148 @@ try:
 except Exception as e:
     print(f"⚠️  Warning: Supabase client initialization failed in profile routes: {e}")
     supabase = None
+
+
+def auth_required(f):
+    """Decorator that accepts both Firebase and JWT tokens"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get("Authorization")
+        
+        if not auth_header:
+            return jsonify({"error": "No authorization header provided"}), 401
+        
+        try:
+            token = auth_header.split(" ")[1]  # Remove 'Bearer ' prefix
+        except IndexError:
+            return jsonify({"error": "Invalid authorization header format"}), 401
+        
+        # Try Firebase token first
+        try:
+            firebase_result = firebase_auth_service.verify_token(token)
+            if firebase_result.get("success"):
+                request.firebase_user = firebase_result
+                print(f"✅ Firebase token verified for user: {firebase_result.get('email', 'unknown')}")
+                return f(*args, **kwargs)
+            else:
+                error_msg = firebase_result.get('error', '')
+                print(f"⚠️  Firebase token verification failed: {error_msg}")
+                if 'kid' in error_msg.lower():
+                    print(f"🔍 Token is JWT (no 'kid' claim), trying JWT fallbacks...")
+        except Exception as firebase_error:
+            error_str = str(firebase_error)
+            print(f"⚠️  Firebase token verification exception: {error_str}")
+            if "kid" in error_str.lower() or "invalid" in error_str.lower() or "malformed" in error_str.lower():
+                print(f"🔍 Token is not a Firebase token (likely JWT), trying JWT fallbacks...")
+        
+        # Try Supabase-style JWT
+        try:
+            import jwt
+            decoded = jwt.decode(token, options={"verify_signature": False})
+            if 'sub' in decoded and 'email' in decoded:
+                request.firebase_user = {
+                    "success": True,
+                    "uid": decoded.get('sub'),
+                    "email": decoded.get('email')
+                }
+                print(f"✅ Supabase JWT accepted for user: {decoded.get('email')}")
+                return f(*args, **kwargs)
+        except Exception as e:
+            print(f"⚠️  Token decoding failed (supabase-style): {e}")
+        
+        # Try app-issued JWTs (medichain_token)
+        try:
+            from auth.auth_utils import auth_utils
+            print(f"🔍 Attempting to decode JWT token (length: {len(token)})...")
+            app_payload = auth_utils.decode_token(token)
+            print(f"🔍 JWT decode result: {app_payload}")
+            
+            if app_payload and app_payload.get('email'):
+                user_id = app_payload.get('user_id')
+                print(f"🔍 JWT user_id: {user_id}")
+                
+                if user_id and supabase and supabase.service_client:
+                    try:
+                        print(f"🔍 Looking up user profile by id: {user_id}")
+                        user_profile_response = (
+                            supabase.service_client.table("user_profiles")
+                            .select("firebase_uid, email, role")
+                            .eq("id", user_id)
+                            .execute()
+                        )
+                        print(f"🔍 User profile lookup result: {user_profile_response.data}")
+                        
+                        if user_profile_response.data:
+                            user_profile = user_profile_response.data[0]
+                            firebase_uid = user_profile.get('firebase_uid')
+                            
+                            if firebase_uid:
+                                request.firebase_user = {
+                                    "success": True,
+                                    "uid": firebase_uid,
+                                    "email": app_payload.get('email'),
+                                    "role": app_payload.get('role') or user_profile.get('role')
+                                }
+                                print(f"✅ App JWT accepted for user: {app_payload.get('email')} (firebase_uid: {firebase_uid})")
+                                return f(*args, **kwargs)
+                            else:
+                                print(f"⚠️  User profile found but no firebase_uid for user_id: {user_id}")
+                        else:
+                            # Fallback: try to find by email if user_id lookup fails
+                            print(f"🔍 User profile not found by id, trying email lookup: {app_payload.get('email')}")
+                            user_profile_response = (
+                                supabase.service_client.table("user_profiles")
+                                .select("firebase_uid, email, role")
+                                .eq("email", app_payload.get('email'))
+                                .execute()
+                            )
+                            print(f"🔍 User profile lookup by email result: {user_profile_response.data}")
+                            
+                            if user_profile_response.data:
+                                user_profile = user_profile_response.data[0]
+                                firebase_uid = user_profile.get('firebase_uid')
+                                
+                                if firebase_uid:
+                                    request.firebase_user = {
+                                        "success": True,
+                                        "uid": firebase_uid,
+                                        "email": app_payload.get('email'),
+                                        "role": app_payload.get('role') or user_profile.get('role')
+                                    }
+                                    print(f"✅ App JWT accepted for user: {app_payload.get('email')} (firebase_uid: {firebase_uid}, found by email)")
+                                    return f(*args, **kwargs)
+                    except Exception as db_error:
+                        print(f"⚠️  Database lookup failed: {db_error}")
+                        import traceback
+                        traceback.print_exc()
+                else:
+                    print(f"⚠️  Missing user_id ({user_id}) or supabase client not available")
+                
+                # Fallback: use user_id directly if firebase_uid lookup fails
+                uid = app_payload.get('user_id') or app_payload.get('uid') or app_payload.get('sub')
+                print(f"⚠️  Using direct mapping with uid: {uid}")
+                request.firebase_user = {
+                    "success": True,
+                    "uid": uid,
+                    "email": app_payload.get('email'),
+                    "role": app_payload.get('role')
+                }
+                print(f"✅ App JWT accepted for user: {app_payload.get('email')} (uid: {uid}, using direct mapping)")
+                return f(*args, **kwargs)
+            else:
+                print(f"⚠️  JWT decode returned None or missing email: {app_payload}")
+        except Exception as e:
+            print(f"⚠️  App JWT decoding failed: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        # All token verification methods failed
+        return jsonify({
+            "error": "Invalid or expired token",
+            "details": "Token could not be verified as Firebase token or JWT. Please ensure you are logged in and try again."
+        }), 401
+    
+    return decorated_function
 
 @profile_bp.route('/complete', methods=['GET'])
 @firebase_auth_required
@@ -964,9 +1107,93 @@ def reactivate_account():
 
 # ========== PATIENT PROFILE ENDPOINTS ==========
 
+@profile_bp.route('/patient', methods=['GET'])
+@auth_required
+def get_patient_profile():
+    """Get patient profile information"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user['uid']
+        
+        print(f"[DEBUG] Getting patient profile for UID: {uid}")
+        
+        # Check if Supabase client is available
+        if not supabase or not supabase.service_client:
+            print("[ERROR] Supabase client is not available")
+            return jsonify({
+                'success': False,
+                'error': 'Database connection unavailable'
+            }), 500
+        
+        # Get patient profile from database
+        try:
+            profile_response = supabase.service_client.table('user_profiles').select('*').eq('firebase_uid', uid).execute()
+            
+            print(f"[DEBUG] Profile fetch response: {profile_response.data}")
+            
+            if not profile_response.data or len(profile_response.data) == 0:
+                print(f"[WARNING] No profile found for UID: {uid}")
+                return jsonify({
+                    'success': False,
+                    'error': 'Profile not found'
+                }), 404
+            
+            user_profile = profile_response.data[0]
+            
+            # Create medical info from user profile data
+            medical_info = {
+                'medical_conditions': user_profile.get('medical_conditions', []),
+                'allergies': user_profile.get('allergies', []),
+                'current_medications': user_profile.get('current_medications', []),
+                'blood_type': user_profile.get('blood_type', ''),
+                'medical_notes': user_profile.get('medical_notes', '')
+            }
+            
+            # Create privacy settings from user profile data
+            privacy_settings = {
+                'profile_visibility': user_profile.get('profile_visibility', 'private'),
+                'show_email': user_profile.get('show_email', False),
+                'show_phone': user_profile.get('show_phone', False),
+                'medical_info_visible_to_doctors': user_profile.get('medical_info_visible_to_doctors', True),
+                'allow_ai_analysis': user_profile.get('allow_ai_analysis', True),
+                'share_data_for_research': user_profile.get('share_data_for_research', False)
+            }
+            
+            profile_data = {
+                'user_profile': user_profile,
+                'medical_info': medical_info,
+                'privacy_settings': privacy_settings,
+                'documents': [],
+                'audit_trail': []
+            }
+            
+            return jsonify({
+                'success': True,
+                'profile': profile_data,
+                'message': 'Profile retrieved successfully'
+            }), 200
+            
+        except Exception as db_error:
+            print(f"[ERROR] Database error fetching profile: {db_error}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                'success': False,
+                'error': f'Database error: {str(db_error)}'
+            }), 500
+        
+    except Exception as e:
+        print(f"[ERROR] Error getting patient profile: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @profile_bp.route('/patient/update', methods=['PUT'])
-@firebase_auth_required
-@firebase_role_required('patient')
+@auth_required
 def update_patient_profile():
     """Update patient profile information"""
     try:
@@ -980,6 +1207,14 @@ def update_patient_profile():
         print(f"[DEBUG] Updating patient profile for UID: {uid}")
         print(f"[DEBUG] Update data: {data}")
         
+        # Check if Supabase client is available
+        if not supabase or not supabase.service_client:
+            print("[ERROR] Supabase client is not available")
+            return jsonify({
+                'success': False,
+                'error': 'Database connection unavailable'
+            }), 500
+        
         # Update user profile
         user_data = {k: v for k, v in data.items() if k in [
             'first_name', 'last_name', 'phone', 'date_of_birth', 'gender',
@@ -992,14 +1227,70 @@ def update_patient_profile():
         if 'gender' in user_data and user_data['gender'] == '':
             user_data['gender'] = None
         
-        if user_data:
-            user_data['updated_at'] = datetime.utcnow().isoformat()
-            user_response = supabase.service_client.table('user_profiles').update(user_data).eq('firebase_uid', uid).execute()
-            print(f"[DEBUG] Patient profile update response: {user_response.data}")
+        if not user_data:
+            return jsonify({
+                'success': False,
+                'error': 'No valid fields to update'
+            }), 400
+        
+        # Add updated_at timestamp
+        user_data['updated_at'] = datetime.utcnow().isoformat()
+        
+        print(f"[DEBUG] Updating user_profiles with data: {user_data}")
+        print(f"[DEBUG] Using firebase_uid filter: {uid}")
+        
+        # Update the user profile in Supabase
+        print(f"[DEBUG] Executing update query with firebase_uid={uid}")
+        user_response = supabase.service_client.table('user_profiles').update(user_data).eq('firebase_uid', uid).execute()
+        
+        print(f"[DEBUG] Supabase update response: {user_response}")
+        print(f"[DEBUG] Update response data type: {type(user_response.data)}")
+        print(f"[DEBUG] Update response data: {user_response.data}")
+        print(f"[DEBUG] Update response data length: {len(user_response.data) if user_response.data else 0}")
+        
+        # Check if update was successful - Supabase returns empty array if no rows matched
+        if not user_response.data or len(user_response.data) == 0:
+            print(f"[WARNING] Update returned no data. Checking if user exists with UID: {uid}")
+            # Check if user exists
+            check_response = supabase.service_client.table('user_profiles').select('id, firebase_uid, email, first_name, last_name').eq('firebase_uid', uid).execute()
+            print(f"[DEBUG] User check response: {check_response.data}")
+            
+            if not check_response.data or len(check_response.data) == 0:
+                return jsonify({
+                    'success': False,
+                    'error': f'User profile not found for UID: {uid}'
+                }), 404
+            
+            # If user exists but update returned no data, fetch the updated data manually
+            print(f"[DEBUG] User exists but update didn't return data. Fetching updated profile...")
+            updated_response = supabase.service_client.table('user_profiles').select('*').eq('firebase_uid', uid).execute()
+            print(f"[DEBUG] Fetched updated profile: {updated_response.data}")
+            
+            if updated_response.data and len(updated_response.data) > 0:
+                # Verify the update actually happened by checking a field
+                updated_profile = updated_response.data[0]
+                print(f"[DEBUG] Updated profile first_name: {updated_profile.get('first_name')}")
+                print(f"[DEBUG] Expected first_name: {user_data.get('first_name')}")
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Profile updated successfully',
+                    'profile': updated_profile
+                }), 200
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Update operation completed but could not retrieve updated data. Check database permissions.'
+                }), 500
+        
+        # If update returned data, verify it's the updated data
+        updated_profile = user_response.data[0]
+        print(f"[DEBUG] Update successful. Updated profile: {updated_profile}")
         
         return jsonify({
             'success': True,
-            'message': 'Profile updated successfully'
+            'message': 'Profile updated successfully',
+            'profile': updated_profile
         }), 200
         
     except Exception as e:
@@ -1013,8 +1304,7 @@ def update_patient_profile():
 
 
 @profile_bp.route('/patient/medical', methods=['PUT'])
-@firebase_auth_required
-@firebase_role_required('patient')
+@auth_required
 def update_patient_medical():
     """Update patient medical information"""
     try:
@@ -1054,8 +1344,7 @@ def update_patient_medical():
 
 
 @profile_bp.route('/patient/privacy', methods=['PUT'])
-@firebase_auth_required
-@firebase_role_required('patient')
+@auth_required
 def update_patient_privacy():
     """Update patient privacy settings"""
     try:
@@ -1096,8 +1385,7 @@ def update_patient_privacy():
 
 
 @profile_bp.route('/patient/documents', methods=['POST'])
-@firebase_auth_required
-@firebase_role_required('patient')
+@auth_required
 def upload_patient_document():
     """Upload patient health document"""
     try:

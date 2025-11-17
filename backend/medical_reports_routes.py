@@ -4,8 +4,9 @@ Handles medical reports (final diagnosis and prescription) linked to appointment
 """
 
 from flask import Blueprint, jsonify, request
+from functools import wraps
 from datetime import datetime
-from auth.firebase_auth import firebase_auth_required, firebase_role_required
+from auth.firebase_auth import firebase_auth_required, firebase_role_required, firebase_auth_service
 from db.supabase_client import SupabaseClient
 
 medical_reports_bp = Blueprint("medical_reports", __name__, url_prefix="/api/medical-reports")
@@ -17,6 +18,148 @@ try:
 except Exception as e:
     print(f"⚠️  Warning: Supabase client initialization failed in medical reports routes: {e}")
     supabase = None
+
+
+def auth_required(f):
+    """Decorator that accepts both Firebase and JWT tokens"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get("Authorization")
+        
+        if not auth_header:
+            return jsonify({"error": "No authorization header provided"}), 401
+        
+        try:
+            token = auth_header.split(" ")[1]  # Remove 'Bearer ' prefix
+        except IndexError:
+            return jsonify({"error": "Invalid authorization header format"}), 401
+        
+        # Try Firebase token first
+        try:
+            firebase_result = firebase_auth_service.verify_token(token)
+            if firebase_result.get("success"):
+                request.firebase_user = firebase_result
+                print(f"✅ Firebase token verified for user: {firebase_result.get('email', 'unknown')}")
+                return f(*args, **kwargs)
+            else:
+                error_msg = firebase_result.get('error', '')
+                print(f"⚠️  Firebase token verification failed: {error_msg}")
+                if 'kid' in error_msg.lower():
+                    print(f"🔍 Token is JWT (no 'kid' claim), trying JWT fallbacks...")
+        except Exception as firebase_error:
+            error_str = str(firebase_error)
+            print(f"⚠️  Firebase token verification exception: {error_str}")
+            if "kid" in error_str.lower() or "invalid" in error_str.lower() or "malformed" in error_str.lower():
+                print(f"🔍 Token is not a Firebase token (likely JWT), trying JWT fallbacks...")
+        
+        # Try Supabase-style JWT
+        try:
+            import jwt
+            decoded = jwt.decode(token, options={"verify_signature": False})
+            if 'sub' in decoded and 'email' in decoded:
+                request.firebase_user = {
+                    "success": True,
+                    "uid": decoded.get('sub'),
+                    "email": decoded.get('email')
+                }
+                print(f"✅ Supabase JWT accepted for user: {decoded.get('email')}")
+                return f(*args, **kwargs)
+        except Exception as e:
+            print(f"⚠️  Token decoding failed (supabase-style): {e}")
+        
+        # Try app-issued JWTs (medichain_token)
+        try:
+            from auth.auth_utils import auth_utils
+            print(f"🔍 Attempting to decode JWT token (length: {len(token)})...")
+            app_payload = auth_utils.decode_token(token)
+            print(f"🔍 JWT decode result: {app_payload}")
+            
+            if app_payload and app_payload.get('email'):
+                user_id = app_payload.get('user_id')
+                print(f"🔍 JWT user_id: {user_id}")
+                
+                if user_id and supabase and supabase.service_client:
+                    try:
+                        print(f"🔍 Looking up user profile by id: {user_id}")
+                        user_profile_response = (
+                            supabase.service_client.table("user_profiles")
+                            .select("firebase_uid, email, role")
+                            .eq("id", user_id)
+                            .execute()
+                        )
+                        print(f"🔍 User profile lookup result: {user_profile_response.data}")
+                        
+                        if user_profile_response.data:
+                            user_profile = user_profile_response.data[0]
+                            firebase_uid = user_profile.get('firebase_uid')
+                            
+                            if firebase_uid:
+                                request.firebase_user = {
+                                    "success": True,
+                                    "uid": firebase_uid,
+                                    "email": app_payload.get('email'),
+                                    "role": app_payload.get('role') or user_profile.get('role')
+                                }
+                                print(f"✅ App JWT accepted for user: {app_payload.get('email')} (firebase_uid: {firebase_uid})")
+                                return f(*args, **kwargs)
+                            else:
+                                print(f"⚠️  User profile found but no firebase_uid for user_id: {user_id}")
+                        else:
+                            # Fallback: try to find by email if user_id lookup fails
+                            print(f"🔍 User profile not found by id, trying email lookup: {app_payload.get('email')}")
+                            user_profile_response = (
+                                supabase.service_client.table("user_profiles")
+                                .select("firebase_uid, email, role")
+                                .eq("email", app_payload.get('email'))
+                                .execute()
+                            )
+                            print(f"🔍 User profile lookup by email result: {user_profile_response.data}")
+                            
+                            if user_profile_response.data:
+                                user_profile = user_profile_response.data[0]
+                                firebase_uid = user_profile.get('firebase_uid')
+                                
+                                if firebase_uid:
+                                    request.firebase_user = {
+                                        "success": True,
+                                        "uid": firebase_uid,
+                                        "email": app_payload.get('email'),
+                                        "role": app_payload.get('role') or user_profile.get('role')
+                                    }
+                                    print(f"✅ App JWT accepted for user: {app_payload.get('email')} (firebase_uid: {firebase_uid}, found by email)")
+                                    return f(*args, **kwargs)
+                    except Exception as db_error:
+                        print(f"⚠️  Database lookup failed: {db_error}")
+                        import traceback
+                        traceback.print_exc()
+                else:
+                    print(f"⚠️  Missing user_id ({user_id}) or supabase client not available")
+                
+                # Fallback: use user_id directly if firebase_uid lookup fails
+                uid = app_payload.get('user_id') or app_payload.get('uid') or app_payload.get('sub')
+                print(f"⚠️  Using direct mapping with uid: {uid}")
+                request.firebase_user = {
+                    "success": True,
+                    "uid": uid,
+                    "email": app_payload.get('email'),
+                    "role": app_payload.get('role')
+                }
+                print(f"✅ App JWT accepted for user: {app_payload.get('email')} (uid: {uid}, using direct mapping)")
+                return f(*args, **kwargs)
+            else:
+                print(f"⚠️  JWT decode returned None or missing email: {app_payload}")
+        except Exception as e:
+            print(f"⚠️  App JWT decoding failed: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        # All token verification methods failed
+        return jsonify({
+            "error": "Invalid or expired token",
+            "details": "Token could not be verified as Firebase token or JWT. Please ensure you are logged in and try again."
+        }), 401
+    
+    return decorated_function
 
 
 @medical_reports_bp.route("", methods=["POST"])
@@ -170,7 +313,7 @@ def get_medical_report_by_appointment(appointment_id):
 
 
 @medical_reports_bp.route("/patient", methods=["GET"])
-@firebase_auth_required
+@auth_required
 def get_patient_medical_reports():
     """Get all medical reports for the current patient"""
     try:

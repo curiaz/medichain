@@ -467,9 +467,18 @@ def doctor_signup():
                         "error": "Please enter your first and last name."
                     }), 400
                 
-                # Skip password validation for Google signup
-                password = None
-                password_hash = None
+                # Get and validate password for Google signup
+                password = request.form.get('password', '')
+                if not password or len(password) < 6:
+                    print("[DEBUG] ❌ Invalid password for Google signup")
+                    return jsonify({
+                        "success": False,
+                        "error": "Password must be at least 6 characters long."
+                    }), 400
+                
+                # Hash password for database storage
+                password_hash = auth_utils.hash_password(password)
+                print(f"[DEBUG] ✅ Password hash generated for Google signup")
                 
             except Exception as token_error:
                 print(f"[DEBUG] ❌ Token verification error: {token_error}")

@@ -68,9 +68,12 @@ class NotificationService:
             print(f"📝 Inserting notification into database:")
             print(f"   User ID: {user_id}")
             print(f"   Title: {title}")
+            print(f"   Message: {message}")
             print(f"   Category: {category}")
             print(f"   Type: {notification_type}")
+            print(f"   Priority: {priority}")
             print(f"   Metadata: {metadata}")
+            print(f"   Full notification_data: {notification_data}")
             
             response = self.supabase.service_client.table("notifications").insert(notification_data).execute()
             
@@ -79,9 +82,20 @@ class NotificationService:
             
             if response.data and len(response.data) > 0:
                 notification_id = response.data[0].get('id', 'unknown')
+                created_user_id = response.data[0].get('user_id', 'unknown')
                 print(f"✅ Notification created successfully for user {user_id}")
                 print(f"   Notification ID: {notification_id}")
+                print(f"   Created User ID: {created_user_id}")
                 print(f"   Title: {title}")
+                
+                # Verify the notification was created correctly by querying it back
+                verify_response = self.supabase.service_client.table("notifications").select("*").eq("id", notification_id).execute()
+                if verify_response.data and len(verify_response.data) > 0:
+                    print(f"   ✅ Verified: Notification exists in database")
+                    print(f"      Verified User ID: {verify_response.data[0].get('user_id')}")
+                else:
+                    print(f"   ⚠️  WARNING: Could not verify notification in database")
+                
                 return {"success": True, "notification": response.data[0], "notification_id": notification_id}
             else:
                 error_msg = "Failed to create notification - no data returned from database"

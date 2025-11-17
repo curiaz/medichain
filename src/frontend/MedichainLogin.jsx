@@ -8,7 +8,6 @@ import LoadingSpinner from "../components/LoadingSpinner"
 import RoleSelectionModal from "../components/RoleSelectionModal"
 import { showToast } from "../components/CustomToast"
 import medichainLogo from "../assets/medichain_logo.png"
-import { API_CONFIG } from '../config/api'
 
 const MedichainLogin = () => {
   const navigate = useNavigate()

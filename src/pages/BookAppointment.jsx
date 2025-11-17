@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "./Header";
-import { Calendar, Stethoscope, Users, Heart } from "lucide-react";
+import { Calendar, Stethoscope } from "lucide-react";
 import "../assets/styles/ModernDashboard.css";
 import "../assets/styles/BookAppointment.css";
 
@@ -17,24 +17,6 @@ const BookAppointment = () => {
       icon: <Stethoscope size={48} />,
       available: true,
       route: "/select-gp"
-    },
-    {
-      id: "specialist",
-      title: "Specialist",
-      subtitle: "Expert Consultation",
-      description: "Schedule an appointment with a medical specialist for specific health conditions",
-      icon: <Users size={48} />,
-      available: false,
-      route: "/select-specialist"
-    },
-    {
-      id: "emergency",
-      title: "Emergency",
-      subtitle: "Urgent Care",
-      description: "For urgent medical attention and emergency healthcare services",
-      icon: <Heart size={48} />,
-      available: false,
-      route: "/emergency"
     }
   ];
 
@@ -71,7 +53,7 @@ const BookAppointment = () => {
               <Calendar size={32} style={{ marginRight: "12px" }} />
               BOOK AN APPOINTMENT
             </h1>
-            <p className="dashboard-subtitle">Choose the type of appointment you need</p>
+            <p className="dashboard-subtitle">Book a consultation with a General Practitioner</p>
           </div>
         </div>
 

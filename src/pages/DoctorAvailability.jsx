@@ -20,24 +20,6 @@ const DoctorAvailability = ({ embedded = false }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  useEffect(() => {
-    // Fetch availability on mount
-    fetchAvailability();
-    
-    // Also listen for storage events (in case toggle was changed in another tab)
-    const handleStorageChange = (e) => {
-      if (e.key === 'availability_updated') {
-        fetchAvailability();
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
   const fetchAvailability = useCallback(async () => {
     try {
       setLoading(true);

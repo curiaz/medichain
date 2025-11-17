@@ -87,6 +87,8 @@ def auth_required(f):
                             user_profile = user_profile_response.data[0]
                             firebase_uid = user_profile.get('firebase_uid')
                             
+                            print(f"   ✅ Found user profile: user_id={user_id}, firebase_uid={firebase_uid}")
+                            
                             if firebase_uid:
                                 request.firebase_user = {
                                     "success": True,
@@ -94,7 +96,10 @@ def auth_required(f):
                                     "email": app_payload.get('email'),
                                     "role": app_payload.get('role')
                                 }
+                                print(f"   ✅ Using firebase_uid for notification queries: {firebase_uid}")
                                 return f(*args, **kwargs)
+                            else:
+                                print(f"   ⚠️  User profile found but firebase_uid is None/empty")
                         else:
                             # Fallback: try to find by email
                             user_profile_response = (
@@ -119,8 +124,10 @@ def auth_required(f):
                     except Exception as db_error:
                         print(f"⚠️  Database lookup failed for JWT user_id: {db_error}")
                 
-                # Fallback: use user_id directly
+                # Fallback: use user_id directly (this might be database ID, not Firebase UID!)
                 uid = app_payload.get('user_id') or app_payload.get('uid') or app_payload.get('sub')
+                print(f"   ⚠️  FALLBACK: Using user_id directly as UID: {uid}")
+                print(f"   ⚠️  WARNING: This might be database ID, not Firebase UID! Notifications might not be found.")
                 request.firebase_user = {
                     "success": True,
                     "uid": uid,
@@ -143,7 +150,12 @@ def get_notifications():
         firebase_user = request.firebase_user
         uid = firebase_user["uid"]
         
-        print(f"📥 Fetching notifications for user: {uid}")
+        print(f"📥 Fetching notifications for user:")
+        print(f"   Firebase User: {firebase_user}")
+        print(f"   UID: {uid}")
+        print(f"   UID Type: {type(uid)}")
+        print(f"   Email: {firebase_user.get('email', 'N/A')}")
+        print(f"   Role: {firebase_user.get('role', 'N/A')}")
         
         # Get query parameters
         is_read = request.args.get('is_read')
@@ -158,13 +170,17 @@ def get_notifications():
             return jsonify({"success": False, "error": "Database connection unavailable"}), 500
         
         # Build query - use service_client to bypass RLS
+        print(f"   Building query with user_id='{uid}'")
         query = supabase.service_client.table("notifications").select("*").eq("user_id", uid)
         
         if is_read is not None:
-            query = query.eq("is_read", is_read.lower() == 'true')
+            is_read_value = is_read.lower() == 'true'
+            query = query.eq("is_read", is_read_value)
+            print(f"   Filtering by is_read={is_read_value}")
         
         if category:
             query = query.eq("category", category)
+            print(f"   Filtering by category={category}")
         
         query = query.order("created_at", desc=True).limit(limit)
         
@@ -173,6 +189,17 @@ def get_notifications():
         print(f"   Query response: {response}")
         print(f"   Response data type: {type(response.data)}")
         print(f"   Response data length: {len(response.data) if response.data else 0}")
+        
+        # Debug: Also check what user_ids exist in notifications table
+        all_notifications_check = supabase.service_client.table("notifications").select("id, user_id, title, created_at").limit(10).execute()
+        if all_notifications_check.data:
+            print(f"   🔍 Sample notifications in database (first 10):")
+            for notif in all_notifications_check.data:
+                print(f"      - ID: {notif.get('id')}, User ID: '{notif.get('user_id')}', Title: {notif.get('title')}")
+                if notif.get('user_id') == uid:
+                    print(f"        ✅ This notification matches current user's UID!")
+        else:
+            print(f"   ⚠️  No notifications found in database at all")
         
         # Parse metadata JSON strings or dicts
         notifications = []
@@ -332,27 +359,4 @@ def get_notification_stats():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-
-        firebase_user = request.firebase_user
-        uid = firebase_user["uid"]
-        
-        # Get total count - use service_client to bypass RLS
-        total_response = supabase.service_client.table("notifications").select("id", count="exact").eq("user_id", uid).execute()
-        total_count = total_response.count if hasattr(total_response, 'count') else 0
-        
-        # Get unread count - use service_client to bypass RLS
-        unread_response = supabase.service_client.table("notifications").select("id", count="exact").eq("user_id", uid).eq("is_read", False).execute()
-        unread_count = unread_response.count if hasattr(unread_response, 'count') else 0
-        
-        return jsonify({
-            "success": True,
-            "stats": {
-                "total": total_count,
-                "unread": unread_count,
-                "read": total_count - unread_count
-            }
-        }), 200
-        
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
 

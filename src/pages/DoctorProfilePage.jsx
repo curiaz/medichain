@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   User, Lock, ShieldOff, Edit3, Save, X, AlertCircle, CheckCircle, ArrowLeft, Camera,
-  Briefcase, FileText, Eye, History, Shield, Upload, Trash2
+  Briefcase, FileText, Eye, History, Shield, Upload
 } from 'lucide-react';
 import './ProfilePage.css';
 
@@ -185,6 +185,7 @@ const DoctorProfilePage = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleSaveProfessionalInfo = async () => {
     try {
       setSaving(true);
@@ -248,6 +249,7 @@ const DoctorProfilePage = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleSavePrivacySettings = async () => {
     try {
       setSaving(true);

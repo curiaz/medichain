@@ -142,7 +142,7 @@ const DoctorSchedule = () => {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [getFirebaseToken, user?.uid])
 
   useEffect(() => { loadAppointments() }, [loadAppointments])
 

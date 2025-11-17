@@ -625,7 +625,40 @@ export const AuthProvider = ({ children }) => {
           firstName = nameParts[0] || email.split('@')[0];
           lastName = nameParts.slice(1).join(' ') || '';
         } else {
-          throw new Error('No Firebase user found');
+          // Firebase session might be expired, but we have the token
+          // Use the provided token and extract user info from sessionStorage if available
+          console.log('[Auth] No Firebase user found, but token provided. Checking sessionStorage...');
+          currentIdToken = idToken;
+          
+          // Try to get user info from sessionStorage
+          const googleData = sessionStorage.getItem('google_signup_data');
+          if (googleData) {
+            try {
+              const data = JSON.parse(googleData);
+              email = data.email || '';
+              firstName = data.firstName || '';
+              lastName = data.lastName || '';
+              displayName = data.displayName || `${firstName} ${lastName}`.trim();
+              console.log('[Auth] Retrieved user info from sessionStorage:', { email, firstName, lastName });
+            } catch (e) {
+              console.error('[Auth] Error parsing Google signup data:', e);
+              // If we can't get user info, we'll let the backend verify the token
+              // and extract user info from there
+              email = '';
+              displayName = '';
+              firstName = '';
+              lastName = '';
+            }
+          } else {
+            // No sessionStorage data, but we have the token - backend will verify it
+            email = '';
+            displayName = '';
+            firstName = '';
+            lastName = '';
+          }
+          
+          // Continue with the token - backend will verify it
+          console.log('[Auth] Proceeding with provided token for backend verification');
         }
       } else {
         // First time sign-in - open popup
