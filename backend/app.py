@@ -640,10 +640,11 @@ def handle_preflight():
         response.headers.add("Access-Control-Allow-Credentials", "true")
         return response
 
-# 🆕 Add CORS headers to all responses
+# 🆕 Add CORS headers to all responses (Flask-CORS handles most cases, but we ensure error responses have them)
 @app.after_request
 def after_request(response):
-    """Add CORS headers to all responses"""
+    """Ensure CORS headers are present on all responses (Flask-CORS handles most, but we add for safety)"""
+    # Flask-CORS already handles this, so we only add if missing
     origin = request.headers.get("Origin", "")
     allowed_origins = [
         "http://localhost:3000",
@@ -654,11 +655,11 @@ def after_request(response):
         "https://www.medichain.clinic",
         "https://medichain-8773b.web.app"
     ]
-    if origin in allowed_origins:
+    if origin in allowed_origins and "Access-Control-Allow-Origin" not in response.headers:
         response.headers.add("Access-Control-Allow-Origin", origin)
         response.headers.add("Access-Control-Allow-Credentials", "true")
-    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-    response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
     return response
 
 # 🆕 Global error handler to prevent crashes without response
