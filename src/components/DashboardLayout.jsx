@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { X, User, LogOut, Home, Users, FileText, Calendar, Activity, ChevronDown, TrendingUp, Brain, Database, Bell, Settings } from 'lucide-react';
+import { X, User, LogOut, Home, Users, FileText, Calendar, Activity, ChevronDown, TrendingUp, Brain, Database, Bell, Settings, AlertCircle } from 'lucide-react';
 
 const DashboardLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -48,8 +49,19 @@ const DashboardLayout = ({ children }) => {
 
   const menuItems = getMenuItems();
 
-  const handleLogout = () => {
+  const handleLogoutClick = () => {
+    setProfileOpen(false);
+    setShowLogoutConfirm(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutConfirm(false);
     logout();
+    navigate('/');
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false);
   };
 
   const handleProfileClick = () => {
@@ -177,7 +189,7 @@ const DashboardLayout = ({ children }) => {
                     Profile
                   </button>
                   <button
-                    onClick={handleLogout}
+                    onClick={handleLogoutClick}
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                   >
                     <LogOut size={16} className="mr-2" />
@@ -196,6 +208,43 @@ const DashboardLayout = ({ children }) => {
           </div>
         </main>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+          onClick={handleLogoutCancel}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0 w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mr-4">
+                <AlertCircle className="w-6 h-6 text-orange-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Confirm Logout</h3>
+            </div>
+            <div className="mb-6">
+              <p className="text-sm text-gray-600">Are you sure you want to log out?</p>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleLogoutCancel}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogoutConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -131,6 +131,42 @@
   color: #dc2626;
 }
 
+/* Notification Badge */
+.notification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: #ef4444;
+  color: white;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  position: absolute;
+  top: -8px;
+  right: -12px;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.9;
+  }
+}
+
+.nav-link span {
+  position: relative;
+}
+
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   .nav-links {
@@ -370,5 +406,133 @@
   .burger-menu-button svg {
     width: 18px;
     height: 18px;
+  }
+}
+
+/* Logout Confirmation Modal */
+.logout-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+}
+
+.logout-modal {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 400px;
+  padding: 24px;
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.logout-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.logout-modal-icon {
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.logout-modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.logout-modal-body {
+  margin-bottom: 24px;
+}
+
+.logout-modal-body p {
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.logout-modal-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.logout-modal-button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  outline: none;
+}
+
+.logout-modal-button-cancel {
+  background: white;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.logout-modal-button-cancel:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.logout-modal-button-confirm {
+  background: #ef4444;
+  color: white;
+}
+
+.logout-modal-button-confirm:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.logout-modal-button:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 480px) {
+  .logout-modal {
+    padding: 20px;
+    margin: 16px;
+  }
+  
+  .logout-modal-title {
+    font-size: 18px;
+  }
+  
+  .logout-modal-footer {
+    flex-direction: column-reverse;
+  }
+  
+  .logout-modal-button {
+    width: 100%;
   }
 }

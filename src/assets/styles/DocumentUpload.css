@@ -1,129 +1,149 @@
 /* Document Upload Styles */
-.symptoms-summary-box {
+.document-upload-unified-container {
   margin: 24px 0;
-  padding: 20px;
+  padding: 24px;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e8e8e8;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.symptoms-summary-box {
+  margin: 0 0 20px 0;
+  padding: 16px 20px;
   background: #f5f9ff;
   border-radius: 12px;
-  border: 2px solid #e3f2fd;
+  border: 1px solid #e3f2fd;
 }
 
 .summary-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #1976D2;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .symptoms-summary-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .symptom-tag {
-  padding: 6px 12px;
+  padding: 5px 12px;
   background: white;
   border: 1px solid #2196F3;
   border-radius: 16px;
-  font-size: 13px;
+  font-size: 12px;
   color: #1976D2;
   font-weight: 500;
 }
 
-.document-upload-container {
-  margin: 32px 0;
+.document-upload-section {
+  margin: 0;
 }
 
 .upload-dropzone {
-  border: 3px dashed #e0e0e0;
-  border-radius: 12px;
-  padding: 48px 24px;
+  border: 2px dashed #d0d0d0;
+  border-radius: 16px;
+  padding: 40px 32px;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
   background: #fafafa;
+  position: relative;
 }
 
 .upload-dropzone:hover {
   border-color: #2196F3;
   background: #f5f9ff;
+  border-width: 2px;
 }
 
 .upload-dropzone.dragging {
   border-color: #2196F3;
   background: #e3f2fd;
-  transform: scale(1.02);
+  border-width: 2px;
+  box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.1);
 }
 
 .upload-icon {
   color: #2196F3;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  opacity: 0.8;
 }
 
 .upload-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
-}
-
-.upload-subtitle {
-  font-size: 16px;
-  color: #666;
-  margin-bottom: 8px;
-}
-
-.upload-hint {
-  font-size: 14px;
-  color: #999;
-  margin-top: 8px;
-}
-
-.uploaded-files-container {
-  margin-top: 32px;
-  padding: 20px;
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e0e0e0;
-}
-
-.uploaded-files-title {
   font-size: 18px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 16px;
+  margin-bottom: 6px;
+}
+
+.upload-subtitle {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.upload-hint {
+  font-size: 12px;
+  color: #999;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+.uploaded-files-container {
+  margin-top: 20px;
+  padding: 20px;
+  background: #fafafa;
+  border-radius: 12px;
+  border: 1px solid #e8e8e8;
+}
+
+.uploaded-files-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .uploaded-files-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .uploaded-file-item {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
-  background: #f9f9f9;
-  border-radius: 8px;
-  border: 1px solid #e0e0e0;
-  transition: all 0.2s;
+  gap: 14px;
+  padding: 14px 16px;
+  background: #fafafa;
+  border-radius: 10px;
+  border: 1px solid #e8e8e8;
+  transition: all 0.2s ease;
 }
 
 .uploaded-file-item:hover {
-  background: #f5f5f5;
+  background: #f5f9ff;
   border-color: #2196F3;
+  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.1);
 }
 
 .file-icon-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  background: #e3f2fd;
-  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+  border-radius: 10px;
   color: #1976D2;
   flex-shrink: 0;
 }
@@ -134,18 +154,18 @@
 }
 
 .file-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   color: #333;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .file-size {
-  font-size: 13px;
-  color: #666;
+  font-size: 12px;
+  color: #888;
 }
 
 .remove-file-btn {
@@ -173,9 +193,9 @@
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 1px solid #e0e0e0;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #e8e8e8;
 }
 
 .document-nav-right {
@@ -230,22 +250,106 @@
   box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
 }
 
+/* Title section spacing adjustments for document upload page */
+.dashboard-header-section .dashboard-title-section {
+  margin-bottom: 16px;
+  gap: 8px;
+}
+
+.dashboard-header-section .dashboard-title {
+  margin-bottom: 8px;
+}
+
+.dashboard-header-section .dashboard-subtitle {
+  margin-bottom: 0;
+  font-size: 15px;
+}
+
+/* Medicine Allergies Section */
+.medicine-allergies-box {
+  margin: 0 0 20px 0;
+  padding: 20px;
+  background: #fff8e1;
+  border-radius: 12px;
+  border: 1px solid #ffecb3;
+}
+
+.allergies-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.allergies-icon {
+  color: #f57c00;
+  flex-shrink: 0;
+}
+
+.allergies-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e65100;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.allergies-subtitle {
+  font-size: 13px;
+  color: #8d6e00;
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
+.allergies-textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #ffd54f;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #333;
+  background: white;
+  resize: vertical;
+  min-height: 80px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.allergies-textarea:focus {
+  outline: none;
+  border-color: #f57c00;
+  box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.1);
+}
+
+.allergies-textarea::placeholder {
+  color: #999;
+  font-style: italic;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .upload-dropzone {
-    padding: 32px 16px;
+    padding: 32px 20px;
   }
 
   .upload-title {
-    font-size: 18px;
+    font-size: 16px;
   }
 
   .upload-subtitle {
-    font-size: 14px;
+    font-size: 13px;
+  }
+
+  .upload-hint {
+    font-size: 11px;
   }
 
   .document-navigation {
     flex-direction: column;
+    margin-top: 24px;
+    padding-top: 20px;
   }
 
   .document-nav-right {
@@ -256,6 +360,44 @@
   .skip-button-docs,
   .next-button-docs {
     flex: 1;
+  }
+
+  .document-upload-unified-container {
+    padding: 20px 16px;
+    margin: 20px 0;
+  }
+
+  .symptoms-summary-box {
+    margin: 0 0 16px 0;
+    padding: 14px 16px;
+  }
+
+  .medicine-allergies-box {
+    margin: 0 0 16px 0;
+    padding: 16px;
+  }
+
+  .allergies-title {
+    font-size: 13px;
+  }
+
+  .allergies-subtitle {
+    font-size: 12px;
+  }
+
+  .allergies-textarea {
+    font-size: 13px;
+    padding: 10px 14px;
+    min-height: 70px;
+  }
+}
+
+/* Desktop improvements */
+@media (min-width: 1024px) {
+  .document-upload-unified-container {
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
   }
 }
 

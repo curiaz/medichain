@@ -1212,6 +1212,49 @@ def create_appointment():
             except Exception as dob_error:
                 print(f"⚠️  Could not update date_of_birth: {dob_error}")
 
+        # Update user profile with medicine allergies if provided
+        medicine_allergies_text = data.get("medicine_allergies", "").strip()
+        if medicine_allergies_text:
+            try:
+                # Get current user profile to retrieve existing allergies
+                user_profile_response = supabase.service_client.table("user_profiles").select("allergies").eq("firebase_uid", uid).execute()
+                existing_allergies = []
+                if user_profile_response.data and user_profile_response.data[0].get("allergies"):
+                    existing_allergies = user_profile_response.data[0].get("allergies", [])
+                    if not isinstance(existing_allergies, list):
+                        existing_allergies = []
+                
+                # Parse medicine allergies from text (split by comma, newline, or semicolon)
+                # Remove empty strings and trim whitespace
+                new_allergies = [
+                    allergy.strip() 
+                    for allergy in medicine_allergies_text.replace('\n', ',').replace(';', ',').split(',')
+                    if allergy.strip()
+                ]
+                
+                # Merge with existing allergies, avoiding duplicates (case-insensitive)
+                existing_lower = [a.lower() for a in existing_allergies if a]
+                merged_allergies = existing_allergies.copy() if existing_allergies else []
+                
+                for new_allergy in new_allergies:
+                    if new_allergy.lower() not in existing_lower:
+                        merged_allergies.append(new_allergy)
+                        existing_lower.append(new_allergy.lower())
+                
+                # Update user profile with merged allergies
+                if merged_allergies != existing_allergies:
+                    supabase.service_client.table("user_profiles").update({
+                        "allergies": merged_allergies
+                    }).eq("firebase_uid", uid).execute()
+                    print(f"✅ Updated allergies for user {uid}: {merged_allergies}")
+                else:
+                    print(f"ℹ️  No new allergies to add for user {uid} (already exists)")
+                    
+            except Exception as allergies_error:
+                print(f"⚠️  Could not update allergies: {allergies_error}")
+                import traceback
+                traceback.print_exc()
+
         # Create the appointment with meeting_link properly stored
         appointment_data = {
             "patient_firebase_uid": uid,
@@ -1225,6 +1268,7 @@ def create_appointment():
             "status": "scheduled",
             "symptoms": data.get("symptoms", []),  # Store symptoms array
             "documents": data.get("documents", []),  # Store documents metadata
+            "medicine_allergies": data.get("medicine_allergies", "").strip(),  # Store medicine allergies
             "ai_diagnosis_processed": False  # Will be processed after booking
         }
 
@@ -1357,6 +1401,8 @@ def create_appointment():
             
             # Patient notification - Appointment created
             print(f"📤 Creating patient notification...")
+            print(f"   Patient UID being used: '{uid}'")
+            print(f"   UID type: {type(uid)}")
             patient_notification_result = notification_service.create_appointment_notification(
                 user_id=uid,
                 appointment_id=appointment_id,
@@ -1367,6 +1413,25 @@ def create_appointment():
                 meeting_url=meeting_url
             )
             print(f"   Patient notification result: {patient_notification_result}")
+            
+            # Verify the notification was created with correct user_id
+            if patient_notification_result.get("success"):
+                notif_id = patient_notification_result.get("notification_id")
+                if notif_id:
+                    try:
+                        verify_notif = supabase.service_client.table("notifications").select("id, user_id, title").eq("id", notif_id).execute()
+                        if verify_notif.data:
+                            stored_user_id = verify_notif.data[0].get('user_id')
+                            print(f"   ✅ Verified notification in DB:")
+                            print(f"      Notification ID: {notif_id}")
+                            print(f"      Stored User ID: '{stored_user_id}'")
+                            print(f"      Expected User ID: '{uid}'")
+                            if stored_user_id != uid:
+                                print(f"      ⚠️  WARNING: User ID mismatch! Expected '{uid}' but got '{stored_user_id}'")
+                            else:
+                                print(f"      ✅ User ID matches correctly")
+                    except Exception as verify_error:
+                        print(f"   ⚠️  Could not verify notification: {verify_error}")
             
             # Doctor notification - New appointment request
             print(f"📤 Creating doctor notification...")
@@ -2497,6 +2562,38 @@ def get_doctor_availability_by_uid(doctor_firebase_uid):
                 time_slots_per_date = {}
                 now_manila = get_manila_now()
                 today_manila = now_manila.date()
+                today_str = today_manila.isoformat()
+                current_hour = now_manila.hour
+                current_minute = now_manila.minute
+                current_total_minutes = current_hour * 60 + current_minute
+                
+                # Fetch booked appointments for this doctor to exclude them
+                try:
+                    booked_appointments_response = (
+                        supabase.service_client.table("appointments")
+                        .select("appointment_date, appointment_time")
+                        .eq("doctor_firebase_uid", doctor_firebase_uid)
+                        .eq("status", "scheduled")  # Only consider scheduled appointments
+                        .gte("appointment_date", today_str)  # Only future or today
+                        .execute()
+                    )
+                    
+                    # Create a set of booked slots for quick lookup: {(date, time), ...}
+                    booked_slots = set()
+                    if booked_appointments_response.data:
+                        for apt in booked_appointments_response.data:
+                            apt_date = apt.get("appointment_date")
+                            apt_time = apt.get("appointment_time")
+                            if apt_date and apt_time:
+                                # Normalize time format (might be "HH:MM:SS" or "HH:MM")
+                                time_part = apt_time.split(":")[:2]  # Take only HH:MM
+                                normalized_time = f"{time_part[0]}:{time_part[1]}"
+                                booked_slots.add((apt_date, normalized_time))
+                    
+                    print(f"🔍 Found {len(booked_slots)} booked appointments for doctor {doctor_firebase_uid}")
+                except Exception as booked_error:
+                    print(f"⚠️  Warning: Error fetching booked appointments: {booked_error}")
+                    booked_slots = set()  # Continue without excluding booked slots if query fails
                 
                 for day_offset in range(30):
                     date = today_manila + timedelta(days=day_offset)
@@ -2504,6 +2601,10 @@ def get_doctor_availability_by_uid(doctor_firebase_uid):
                     
                     # Generate time slots for this date from all ranges
                     all_slots = []
+                    
+                    # Debug: Log first few dates being processed
+                    if day_offset < 3:
+                        print(f"🔍 Processing day_offset={day_offset}, date={date_str}, today_manila={today_manila.isoformat()}")
                     
                     for time_range in time_ranges:
                         start_time = time_range.get("start_time", "07:00")
@@ -2517,41 +2618,44 @@ def get_doctor_availability_by_uid(doctor_firebase_uid):
                         end_minutes = end_hour * 60 + end_min
                         
                         # Generate time slots for this range
-                        current_minutes = start_minutes
+                        current_slot_minutes = start_minutes
                         
-                        while current_minutes < end_minutes:
-                            hour = current_minutes // 60
-                            minute = current_minutes % 60
+                        while current_slot_minutes < end_minutes:
+                            hour = current_slot_minutes // 60
+                            minute = current_slot_minutes % 60
                             time_str = f"{hour:02d}:{minute:02d}"
+                            
+                            # Skip if this slot is booked
+                            if (date_str, time_str) in booked_slots:
+                                current_slot_minutes += interval
+                                continue
                             
                             # Check if this time slot is in the future (for today only)
                             if day_offset == 0:
-                                # Create datetime in Manila timezone for this slot
-                                slot_time = datetime.strptime(time_str, "%H:%M").time()
-                                slot_datetime_naive = datetime.combine(date, slot_time)
+                                # For today, only include slots that are strictly in the future
+                                slot_total_minutes = hour * 60 + minute
                                 
-                                # Localize to Manila timezone
-                                if hasattr(MANILA_TZ, 'localize'):
-                                    # pytz timezone
-                                    slot_datetime_manila = MANILA_TZ.localize(slot_datetime_naive)
-                                else:
-                                    # zoneinfo or timezone offset
-                                    slot_datetime_manila = slot_datetime_naive.replace(tzinfo=MANILA_TZ)
-                                
-                                # Only include if slot is in the future
-                                if slot_datetime_manila > now_manila:
-                                    if time_str not in all_slots:
-                                        all_slots.append(time_str)
-                            else:
-                                # For future dates, include all slots
-                                if time_str not in all_slots:
-                                    all_slots.append(time_str)
+                                # If current time is past or equal to this slot, skip it
+                                # This ensures if current time is 7:15 AM, we show 7:30 AM onwards (not 7:00 AM or 7:15 AM)
+                                if slot_total_minutes <= current_total_minutes:
+                                    current_slot_minutes += interval
+                                    continue
+                            # For future dates, include all slots that aren't booked
                             
-                            current_minutes += interval
+                            if time_str not in all_slots:
+                                all_slots.append(time_str)
+                            
+                            current_slot_minutes += interval
                     
                     if all_slots:
                         time_slots_per_date[date_str] = sorted(all_slots)
+                        # Debug: Log dates with slots for first 3 days
+                        if day_offset < 3:
+                            print(f"✅ Generated {len(all_slots)} slots for {date_str}")
+                    elif day_offset < 3:
+                        print(f"⚠️ No slots generated for {date_str} (day_offset={day_offset})")
                 
+                print(f"📅 Total dates with slots: {len(time_slots_per_date)}, Dates: {list(time_slots_per_date.keys())[:5]}...")
                 return jsonify({
                     "success": True, 
                     "availability": time_slots_per_date,

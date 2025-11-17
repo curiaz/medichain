@@ -180,6 +180,60 @@ const BookAppointmentForm = () => {
     }
   }, [doctor, isAuthenticated, user, navigate]);
 
+  // Fetch user profile to get date of birth
+  const fetchUserProfile = useCallback(async () => {
+    if (!isAuthenticated || !user) {
+      return;
+    }
+
+    try {
+      // Get authentication token
+      let token = null;
+      try {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          token = await currentUser.getIdToken(true);
+        }
+      } catch (firebaseError) {
+        console.warn("⚠️ BookAppointmentForm: Could not get Firebase token for profile:", firebaseError);
+      }
+      
+      if (!token) {
+        token = localStorage.getItem('medichain_token');
+      }
+      
+      if (!token) {
+        console.warn("⚠️ BookAppointmentForm: No token available to fetch profile");
+        return;
+      }
+
+      // Fetch user profile
+      const response = await axios.get('http://localhost:5000/api/profile/patient', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (response.data?.success && response.data?.profile) {
+        const profileData = response.data.profile.user_profile || response.data.profile;
+        const dob = profileData.date_of_birth;
+        
+        if (dob) {
+          // Format date to YYYY-MM-DD for input field
+          const dobDate = new Date(dob);
+          if (!isNaN(dobDate.getTime())) {
+            const formattedDob = dobDate.toISOString().split('T')[0];
+            setDateOfBirth(formattedDob);
+            console.log("✅ BookAppointmentForm: Loaded date of birth from profile:", formattedDob);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("⚠️ BookAppointmentForm: Could not fetch user profile for DOB:", err);
+      // Continue without pre-filling DOB - user can still enter it manually
+    }
+  }, [isAuthenticated, user]);
+
   useEffect(() => {
     console.log("🔍 BookAppointmentForm: Component mounted");
     console.log("🔍 BookAppointmentForm: location.state =", location.state);
@@ -216,6 +270,9 @@ const BookAppointmentForm = () => {
       return;
     }
     
+    // Fetch user profile to pre-fill date of birth
+    fetchUserProfile();
+    
     // If date and time are passed from SelectDateTime, use them
     const dateFromState = location.state?.selectedDate;
     const timeFromState = location.state?.selectedTime;
@@ -234,7 +291,7 @@ const BookAppointmentForm = () => {
     
     console.log("✅ BookAppointmentForm: Doctor found, fetching availability");
     fetchDoctorAvailability();
-  }, [doctor, navigate, location, isAuthenticated, user, authLoading, fetchDoctorAvailability]);
+  }, [doctor, navigate, location, isAuthenticated, user, authLoading, fetchDoctorAvailability, fetchUserProfile]);
 
   const handleBookAppointment = async () => {
     if (!selectedDate || !selectedTime) {
@@ -361,6 +418,7 @@ const BookAppointmentForm = () => {
           follow_up_checkup: followUpCheckup,
           symptoms: location.state?.symptomKeys || location.state?.symptoms || [],
           documents: documentData,
+          medicine_allergies: location.state?.medicineAllergies || "",
         },
         {
           headers: {
@@ -377,6 +435,12 @@ const BookAppointmentForm = () => {
         sessionStorage.removeItem('selectedDate');
         sessionStorage.removeItem('selectedTime');
         sessionStorage.removeItem('appointmentType');
+        
+        // Trigger notification refresh event
+        window.dispatchEvent(new CustomEvent('appointmentBooked', { 
+          detail: { appointmentId: response.data.appointment?.id } 
+        }));
+        
         setTimeout(() => {
           navigate("/dashboard");
         }, 2000);
