@@ -604,7 +604,10 @@ CORS(app, resources={
             "http://localhost:3000",
             "http://127.0.0.1:3000",
             "http://localhost:3001",
-            "http://127.0.0.1:3001"
+            "http://127.0.0.1:3001",
+            "https://medichain.clinic",
+            "https://www.medichain.clinic",
+            "https://medichain-8773b.web.app"
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"],
@@ -625,7 +628,10 @@ def handle_preflight():
             "http://localhost:3000",
             "http://127.0.0.1:3000",
             "http://localhost:3001",
-            "http://127.0.0.1:3001"
+            "http://127.0.0.1:3001",
+            "https://medichain.clinic",
+            "https://www.medichain.clinic",
+            "https://medichain-8773b.web.app"
         ]
         if origin in allowed_origins:
             response.headers.add("Access-Control-Allow-Origin", origin)
@@ -633,6 +639,27 @@ def handle_preflight():
         response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
         response.headers.add("Access-Control-Allow-Credentials", "true")
         return response
+
+# 🆕 Add CORS headers to all responses
+@app.after_request
+def after_request(response):
+    """Add CORS headers to all responses"""
+    origin = request.headers.get("Origin", "")
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "https://medichain.clinic",
+        "https://www.medichain.clinic",
+        "https://medichain-8773b.web.app"
+    ]
+    if origin in allowed_origins:
+        response.headers.add("Access-Control-Allow-Origin", origin)
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+    response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+    return response
 
 # 🆕 Global error handler to prevent crashes without response
 @app.errorhandler(Exception)
