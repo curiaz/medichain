@@ -21,6 +21,7 @@
   align-items: center;
   padding: 0 40px;
   height: 100%;
+  overflow: visible;
 }
 
 .header-left {
@@ -35,6 +36,7 @@
   justify-content: center;
   padding: 0 2rem;
   min-width: 500px;
+  overflow: visible;
 }
 
 .logo-container {
@@ -75,6 +77,7 @@
   justify-content: center;
   gap: 2.5rem;
   width: 100%;
+  overflow: visible;
 }
 
 .nav-link {
@@ -86,11 +89,12 @@
   padding: 10px 20px;
   border-radius: 8px;
   text-transform: uppercase;
+  position: relative;
+  overflow: visible;
 }
 
 .nav-link.active {
   color: #2196f3;
-  background: rgba(33, 150, 243, 0.15);
   font-weight: 700;
 }
 
@@ -118,7 +122,6 @@
 .icon-button:hover {
   background: rgba(33, 150, 243, 0.1);
   color: #2196f3;
-  transform: translateY(-2px);
 }
 
 .icon-button:last-child {
@@ -136,20 +139,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
   background: #ef4444;
   color: white;
-  border-radius: 10px;
-  font-size: 11px;
+  border-radius: 9px;
+  font-size: 10px;
   font-weight: 700;
   line-height: 1;
   position: absolute;
   top: -8px;
-  right: -12px;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  right: -8px;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
   animation: pulse 2s infinite;
+  z-index: 10;
+  white-space: nowrap;
 }
 
 @keyframes pulse {
@@ -165,6 +170,9 @@
 
 .nav-link span {
   position: relative;
+  display: inline-block;
+  white-space: nowrap;
+  padding-right: 4px;
 }
 
 /* Responsive adjustments */
@@ -510,13 +518,8 @@
 
 .logout-modal-button-confirm:hover {
   background: #dc2626;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
-.logout-modal-button:active {
-  transform: translateY(0);
-}
 
 @media (max-width: 480px) {
   .logout-modal {

@@ -171,7 +171,7 @@ const Header = () => {
               className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
               onClick={() => loadNotificationStats()}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
+              <span>
                 NOTIFICATIONS
                 {unreadCount > 0 && (
                   <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
@@ -205,7 +205,7 @@ const Header = () => {
             className={({ isActive }) => "nav-link" + (isActive ? " active" : "")} 
             onClick={() => { setMobileOpen(false); loadNotificationStats(); }}
           >
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
+            <span>
               NOTIFICATIONS
               {unreadCount > 0 && (
                 <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>

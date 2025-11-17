@@ -709,7 +709,7 @@ def get_appointments():
                         profiles_resp = (
                             supabase.service_client
                             .table("user_profiles")
-                            .select("firebase_uid, first_name, last_name, email, date_of_birth")
+                            .select("firebase_uid, first_name, last_name, email, date_of_birth, allergies")
                             .in_("firebase_uid", patient_uids)
                             .execute()
                         )
@@ -733,6 +733,7 @@ def get_appointments():
                                 "last_name": last_name,
                                 "email": email,
                                 "date_of_birth": p.get("date_of_birth"),
+                                "allergies": p.get("allergies"),  # Include allergies from profile
                                 "from_db": True  # Flag to indicate this came from database
                             }
                             
@@ -751,7 +752,8 @@ def get_appointments():
                                     "first_name": "",
                                     "last_name": "",
                                     "email": "",
-                                    "date_of_birth": None
+                                    "date_of_birth": None,
+                                    "allergies": None
                                 }
                                 continue
                             
@@ -807,6 +809,7 @@ def get_appointments():
                                             "last_name": last_name,
                                             "email": firebase_email,
                                             "date_of_birth": cached_dob,  # Preserve DOB from database if available
+                                            "allergies": cached_patient.get("allergies"),  # Preserve allergies from database if available
                                             "from_firebase": True  # Flag to indicate this came from Firebase
                                         }
                                         
@@ -841,14 +844,16 @@ def get_appointments():
                                             "first_name": cached_fname,
                                             "last_name": cached_lname,
                                             "email": cached_email,
-                                            "date_of_birth": cached_patient.get("date_of_birth")
+                                            "date_of_birth": cached_patient.get("date_of_birth"),
+                                            "allergies": cached_patient.get("allergies")
                                         }
                                     else:
                                         appt["patient"] = {
                                             "first_name": "",
                                             "last_name": "",
                                             "email": "",
-                                            "date_of_birth": None
+                                            "date_of_birth": None,
+                                            "allergies": None
                                         }
                             else:
                                 # No fallback needed, use cached data
@@ -857,14 +862,16 @@ def get_appointments():
                                         "first_name": cached_fname,
                                         "last_name": cached_lname,
                                         "email": cached_email,
-                                        "date_of_birth": cached_patient.get("date_of_birth")
+                                        "date_of_birth": cached_patient.get("date_of_birth"),
+                                        "allergies": cached_patient.get("allergies")
                                     }
                                 else:
                                     appt["patient"] = {
                                         "first_name": "",
                                         "last_name": "",
                                         "email": "",
-                                        "date_of_birth": None
+                                        "date_of_birth": None,
+                                        "allergies": None
                                     }
                                 if cached_full_name or cached_email:
                                     print(f"✅ Enriched appointment {appt.get('id')} with patient: Name='{cached_full_name}' Email='{cached_email}'")
@@ -880,7 +887,8 @@ def get_appointments():
                                 "first_name": "",
                                 "last_name": "",
                                 "email": "",
-                                "date_of_birth": None
+                                "date_of_birth": None,
+                                "allergies": None
                             }
                     pass
         else:
@@ -1212,6 +1220,17 @@ def create_appointment():
             except Exception as dob_error:
                 print(f"⚠️  Could not update date_of_birth: {dob_error}")
 
+        # Get patient's existing allergies from profile to pre-fill
+        patient_allergies_from_profile = []
+        try:
+            patient_profile_response = supabase.service_client.table("user_profiles").select("allergies").eq("firebase_uid", uid).execute()
+            if patient_profile_response.data and patient_profile_response.data[0].get("allergies"):
+                patient_allergies_from_profile = patient_profile_response.data[0].get("allergies", [])
+                if not isinstance(patient_allergies_from_profile, list):
+                    patient_allergies_from_profile = []
+        except Exception as profile_allergies_error:
+            print(f"⚠️  Could not fetch patient allergies from profile: {profile_allergies_error}")
+        
         # Update user profile with medicine allergies if provided
         medicine_allergies_text = data.get("medicine_allergies", "").strip()
         if medicine_allergies_text:
@@ -1256,6 +1275,9 @@ def create_appointment():
                 traceback.print_exc()
 
         # Create the appointment with meeting_link properly stored
+        medicine_allergies_value = data.get("medicine_allergies", "").strip()
+        print(f"🔍 Creating appointment - medicine_allergies received: '{medicine_allergies_value}' (type: {type(medicine_allergies_value)})")
+        
         appointment_data = {
             "patient_firebase_uid": uid,
             "doctor_firebase_uid": data["doctor_firebase_uid"],
@@ -1268,9 +1290,11 @@ def create_appointment():
             "status": "scheduled",
             "symptoms": data.get("symptoms", []),  # Store symptoms array
             "documents": data.get("documents", []),  # Store documents metadata
-            "medicine_allergies": data.get("medicine_allergies", "").strip(),  # Store medicine allergies
+            "medicine_allergies": medicine_allergies_value,  # Store medicine allergies
             "ai_diagnosis_processed": False  # Will be processed after booking
         }
+        
+        print(f"📝 Appointment data to insert - medicine_allergies: '{appointment_data.get('medicine_allergies')}'")
 
         # Use service_client to bypass RLS policies when inserting appointments
         response = supabase.service_client.table("appointments").insert(appointment_data).execute()
@@ -1533,6 +1557,7 @@ def get_appointment_by_id(appointment_id):
             }), 404
         
         appointment = appointment_response.data[0]
+        print(f"🔍 Fetched appointment {appointment_id} - medicine_allergies: '{appointment.get('medicine_allergies')}' (type: {type(appointment.get('medicine_allergies'))})")
         
         # Check if user has access to this appointment (patient or doctor)
         patient_uid = appointment.get("patient_firebase_uid")
@@ -1545,11 +1570,11 @@ def get_appointment_by_id(appointment_id):
                 "error": "Access denied"
             }), 403
         
-        # Get patient information
+        # Get patient information (including allergies)
         patient_info = None
         if patient_uid:
             try:
-                patient_response = supabase.service_client.table("user_profiles").select("firebase_uid, first_name, last_name, email, date_of_birth").eq("firebase_uid", patient_uid).execute()
+                patient_response = supabase.service_client.table("user_profiles").select("firebase_uid, first_name, last_name, email, date_of_birth, allergies").eq("firebase_uid", patient_uid).execute()
                 if patient_response.data:
                     patient_info = patient_response.data[0]
             except Exception as patient_err:

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { API_CONFIG } from '../config/api';
+import { auth } from '../config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { 
   User, Lock, ShieldOff, Edit3, Save, X, AlertCircle, CheckCircle, ArrowLeft, Camera,
   Briefcase, FileText, Eye, History, Shield, Upload
@@ -61,7 +62,34 @@ const DoctorProfilePage = () => {
   const [passwordVerifying, setPasswordVerifying] = useState(false);
   const [passwordError, setPasswordError] = useState('');
 
+  // Monitor auth state changes in real-time
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (!firebaseUser) {
+        setError('You are not authenticated. Please log in to continue.');
+        setLoading(false);
+        // Redirect to login after showing notification
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
+
+  useEffect(() => {
+    // Check if auth.currentUser is null
+    if (!auth.currentUser) {
+      setError('You are not authenticated. Please log in to continue.');
+      setLoading(false);
+      // Redirect to login after showing notification
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+      return;
+    }
+
     if (user) {
       loadProfile();
       loadDocuments();

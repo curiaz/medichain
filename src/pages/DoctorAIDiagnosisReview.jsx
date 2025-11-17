@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Header from './Header';
-import { Brain, ChevronLeft, ChevronRight, Save, X, Edit2, Check, Search, User, Clock } from 'lucide-react';
+import { Brain, ChevronLeft, ChevronRight, Save, X, Edit2, Check, Search, User, Clock, AlertCircle, FileText, Image, Download, Eye, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { auth } from '../config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 import { API_CONFIG } from '../config/api';
 import '../assets/styles/ModernDashboard.css';
 import '../assets/styles/DoctorAIDiagnosisReview.css';
@@ -41,6 +42,10 @@ const DoctorAIDiagnosisReview = () => {
     instructions: '',
     duration_days: null
   });
+
+  // Patient files state
+  const [patientFiles, setPatientFiles] = useState([]);
+  const [viewingFile, setViewingFile] = useState(null);
 
   // Component for appointment item with status check
   const AppointmentItem = ({ appointment, aptDate, onSelect }) => {
@@ -133,7 +138,34 @@ const DoctorAIDiagnosisReview = () => {
     );
   };
 
+  // Monitor auth state changes in real-time
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (!firebaseUser) {
+        setError('You are not authenticated. Please log in to continue.');
+        setLoading(false);
+        // Redirect to login after showing notification
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
+
+  useEffect(() => {
+    // Check if auth.currentUser is null
+    if (!auth.currentUser) {
+      setError('You are not authenticated. Please log in to continue.');
+      setLoading(false);
+      // Redirect to login after showing notification
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+      return;
+    }
+
     // If appointment is passed via state, use it immediately
     if (appointment && appointment.id) {
       console.log('Appointment from state:', {
@@ -185,10 +217,8 @@ const DoctorAIDiagnosisReview = () => {
         setReviewStatus('pending');
       }
     } catch (err) {
-      // 404 means not reviewed yet
-      if (err.response?.status === 404) {
-        setReviewStatus('pending');
-      }
+      // Error fetching report - treat as not reviewed
+      setReviewStatus('pending');
     }
   };
 
@@ -338,8 +368,24 @@ const DoctorAIDiagnosisReview = () => {
       id: apptData.id,
       has_ai_diagnosis: !!apptData.ai_diagnosis,
       ai_diagnosis_processed: apptData.ai_diagnosis_processed,
-      detailed_results_count: apptData.ai_diagnosis?.detailed_results?.length || 0
+      detailed_results_count: apptData.ai_diagnosis?.detailed_results?.length || 0,
+      documents: apptData.documents,
+      medicine_allergies: apptData.medicine_allergies,
+      medicine_allergies_type: typeof apptData.medicine_allergies,
+      medicine_allergies_value: JSON.stringify(apptData.medicine_allergies),
+      patient_allergies: apptData.patient?.allergies,
+      patient_allergies_type: typeof apptData.patient?.allergies,
+      patient_allergies_value: JSON.stringify(apptData.patient?.allergies),
+      full_patient_object: apptData.patient
     });
+
+    // Load patient uploaded files
+    if (apptData.documents && Array.isArray(apptData.documents) && apptData.documents.length > 0) {
+      setPatientFiles(apptData.documents);
+      console.log('📄 Loaded patient files:', apptData.documents);
+    } else {
+      setPatientFiles([]);
+    }
 
     // Initialize from AI diagnosis
     if (apptData.ai_diagnosis?.detailed_results?.[0]) {
@@ -405,11 +451,8 @@ const DoctorAIDiagnosisReview = () => {
       }
     } catch (err) {
       // Medical report doesn't exist yet, that's okay - this is expected for new appointments
-      if (err.response?.status === 404) {
-        console.log('No existing medical report found - this is normal for new appointments');
-      } else {
-        console.warn('Error loading medical report:', err.response?.data?.error || err.message);
-      }
+      // Backend now returns 200 with success: false instead of 404, so this catch is for other errors
+      console.log('No existing medical report found - this is normal for new appointments');
     }
   };
 
@@ -468,11 +511,275 @@ const DoctorAIDiagnosisReview = () => {
     }
   };
 
+  // Helper function to get file URL
+  const getFileUrl = (file) => {
+    // First, check if file has base64 data (for inline display)
+    if (file.data || file.base64) {
+      const base64Data = file.data || file.base64;
+      // If it already has data URL prefix, return as is
+      if (base64Data.startsWith('data:')) {
+        return base64Data;
+      }
+      // Otherwise, construct data URL
+      const mimeType = file.type || 'application/octet-stream';
+      // Determine MIME type from filename if not provided
+      let finalMimeType = mimeType;
+      if (mimeType === 'application/octet-stream' && file.name) {
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        if (ext === 'pdf') finalMimeType = 'application/pdf';
+        else if (['jpg', 'jpeg'].includes(ext)) finalMimeType = 'image/jpeg';
+        else if (ext === 'png') finalMimeType = 'image/png';
+      }
+      return `data:${finalMimeType};base64,${base64Data}`;
+    }
+    
+    // Handle different file storage formats
+    if (file.url) return file.url;
+    if (file.file_url) return file.file_url;
+    if (file.file_path) {
+      // If it's already a full URL, return as is
+      if (file.file_path.startsWith('http')) return file.file_path;
+      // Try Supabase Storage URL format
+      if (file.file_path.startsWith('documents/')) {
+        // Construct file URL (API_URL already includes /api)
+        return `${API_CONFIG.API_URL}/files/${file.file_path}`;
+      }
+      return `${API_CONFIG.API_URL}/files/${file.file_path}`;
+    }
+    // If file has a name but no URL, try to construct from appointment
+    if (file.name && appointment?.id) {
+      // Try to fetch file from appointment documents endpoint
+      // API_URL already includes /api, so use /files/ not /api/files/
+      return `${API_CONFIG.API_URL}/files/appointments/${appointment.id}/documents/${encodeURIComponent(file.name)}`;
+    }
+    return null;
+  };
+
+  // Helper function to determine file type
+  const getFileType = (filename) => {
+    if (!filename) return 'unknown';
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (['pdf'].includes(ext)) return 'pdf';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'image';
+    if (['doc', 'docx'].includes(ext)) return 'document';
+    return 'other';
+  };
+
+  // File Viewer Component
+  const FileViewer = ({ file, onClose }) => {
+    const [fileUrl, setFileUrl] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const fileType = getFileType(file.name || file.filename);
+
+    useEffect(() => {
+      const loadFile = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          
+          // Check if file has base64 data (no need to fetch)
+          if (file.data || file.base64) {
+            const url = getFileUrl(file);
+            setFileUrl(url);
+            setLoading(false);
+            return;
+          }
+          
+          // Otherwise, get URL (might need authentication)
+          const url = getFileUrl(file);
+          
+          // If URL requires authentication, fetch with token
+          if (url && url.startsWith(API_CONFIG.API_URL)) {
+            try {
+              let token = null;
+              if (getFirebaseToken) {
+                token = await getFirebaseToken();
+              } else if (auth.currentUser) {
+                token = await auth.currentUser.getIdToken(true);
+              }
+              
+              if (token) {
+                // Test if file is accessible
+                const response = await fetch(url, {
+                  headers: {
+                    'Authorization': `Bearer ${token}`
+                  }
+                });
+                
+                if (response.ok) {
+                  // If response is JSON with a URL, use that
+                  const contentType = response.headers.get('content-type');
+                  if (contentType && contentType.includes('application/json')) {
+                    const data = await response.json();
+                    if (data.url) {
+                      setFileUrl(data.url);
+                    } else if (data.error) {
+                      throw new Error(data.message || data.error);
+                    } else {
+                      setFileUrl(url);
+                    }
+                  } else {
+                    // Convert blob to data URL for images/PDFs
+                    const blob = await response.blob();
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setFileUrl(reader.result);
+                    };
+                    reader.onerror = () => {
+                      setError('Failed to read file data');
+                      setLoading(false);
+                    };
+                    reader.readAsDataURL(blob);
+                    return; // Don't set loading to false yet, wait for reader
+                  }
+                } else {
+                  // Try to get error message from response
+                  const contentType = response.headers.get('content-type');
+                  if (contentType && contentType.includes('application/json')) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || errorData.error || `Failed to load file: ${response.statusText}`);
+                  } else {
+                    throw new Error(`Failed to load file: ${response.status} ${response.statusText}`);
+                  }
+                }
+              } else {
+                setFileUrl(url);
+              }
+            } catch (err) {
+              console.error('Error loading file:', err);
+              setError('Failed to load file. Please try again.');
+            }
+          } else {
+            setFileUrl(url);
+          }
+          
+          setLoading(false);
+        } catch (err) {
+          console.error('Error in loadFile:', err);
+          setError('Failed to load file');
+          setLoading(false);
+        }
+      };
+      
+      loadFile();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [file, appointment?.id]);
+
+    if (loading) {
+      return (
+        <div className="file-viewer-overlay" onClick={onClose}>
+          <div className="file-viewer-content" onClick={(e) => e.stopPropagation()}>
+            <div className="file-viewer-error">
+              <div className="loading-spinner" style={{ margin: '20px auto' }}></div>
+              <p>Loading file...</p>
+              <button onClick={onClose}>Close</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (error || !fileUrl) {
+      return (
+        <div className="file-viewer-overlay" onClick={onClose}>
+          <div className="file-viewer-content" onClick={(e) => e.stopPropagation()}>
+            <div className="file-viewer-error">
+              <AlertCircle size={48} />
+              <p>{error || 'File URL not available'}</p>
+              <button onClick={onClose}>Close</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="file-viewer-overlay" onClick={onClose}>
+        <div className="file-viewer-content" onClick={(e) => e.stopPropagation()}>
+          <div className="file-viewer-header">
+            <h3>{file.name || file.filename || 'Patient File'}</h3>
+            <button className="file-viewer-close" onClick={onClose}>
+              <X size={24} />
+            </button>
+          </div>
+          <div className="file-viewer-body">
+            {fileType === 'pdf' ? (
+              <iframe
+                src={fileUrl}
+                title={file.name || file.filename}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+              />
+            ) : fileType === 'image' ? (
+              <img
+                src={fileUrl}
+                alt={file.name || file.filename}
+                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                onError={(e) => {
+                  console.error('Image load error:', e);
+                  setError('Failed to load image');
+                }}
+              />
+            ) : (
+              <div className="file-viewer-unsupported">
+                <FileText size={48} />
+                <p>Preview not available for this file type</p>
+                <a href={fileUrl} download target="_blank" rel="noopener noreferrer">
+                  <Download size={20} />
+                  Download File
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const slides = [
     {
       title: 'Possible Conditions',
       content: (
         <div className="slide-content">
+          {/* Patient Uploaded Files Section */}
+          {patientFiles && patientFiles.length > 0 && (
+            <div className="slide-content-card patient-files-section">
+              <h4 className="files-section-title">
+                <FileText size={20} />
+                Patient Uploaded Files
+              </h4>
+              <div className="patient-files-grid">
+                {patientFiles.map((file, idx) => {
+                  const fileType = getFileType(file.name || file.filename);
+                  return (
+                    <div key={idx} className="patient-file-card" onClick={() => setViewingFile(file)}>
+                      <div className="file-icon">
+                        {fileType === 'pdf' ? (
+                          <FileText size={32} />
+                        ) : fileType === 'image' ? (
+                          <Image size={32} />
+                        ) : (
+                          <FileText size={32} />
+                        )}
+                      </div>
+                      <div className="file-info">
+                        <p className="file-name">{file.name || file.filename || 'Unknown File'}</p>
+                        {file.size && (
+                          <p className="file-size">{(file.size / 1024).toFixed(2)} KB</p>
+                        )}
+                      </div>
+                      <div className="file-action">
+                        <Eye size={18} />
+                        <span>View</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* AI Diagnosis Results */}
           {appointment?.ai_diagnosis?.detailed_results && appointment.ai_diagnosis.detailed_results.length > 0 ? (
             <>
               <p className="slide-intro">Based on the patient's symptoms, the AI has identified the following possible conditions:</p>
@@ -553,6 +860,103 @@ const DoctorAIDiagnosisReview = () => {
       title: 'Medication',
       content: (
         <div className="slide-content">
+          {/* Patient Medicine Allergies Section */}
+          {(() => {
+            // Get allergies from appointment first, then fallback to patient profile
+            let allergies = [];
+            
+            console.log('🔍 Checking allergies:', {
+              'appointment.medicine_allergies': appointment?.medicine_allergies,
+              'appointment.medicine_allergies type': typeof appointment?.medicine_allergies,
+              'appointment.patient?.allergies': appointment?.patient?.allergies,
+              'appointment.patient?.allergies type': typeof appointment?.patient?.allergies,
+              'full appointment object keys': appointment ? Object.keys(appointment) : 'no appointment'
+            });
+            
+            // Check appointment.medicine_allergies first
+            if (appointment?.medicine_allergies) {
+              if (typeof appointment.medicine_allergies === 'string' && appointment.medicine_allergies.trim()) {
+                allergies = appointment.medicine_allergies
+                  .split(/[,;\n]/)
+                  .map(a => a.trim())
+                  .filter(a => a.length > 0);
+                console.log('✅ Parsed medicine_allergies from string:', allergies);
+              } else if (Array.isArray(appointment.medicine_allergies)) {
+                allergies = appointment.medicine_allergies.filter(a => a && (typeof a === 'string' ? a.trim().length > 0 : true));
+                console.log('✅ Parsed medicine_allergies from array:', allergies);
+              } else {
+                console.warn('⚠️ medicine_allergies is neither string nor array:', appointment.medicine_allergies);
+              }
+            } else {
+              console.log('ℹ️ No appointment.medicine_allergies found');
+            }
+            
+            // Fallback to patient profile allergies if appointment doesn't have them
+            if (allergies.length === 0 && appointment?.patient?.allergies) {
+              if (Array.isArray(appointment.patient.allergies)) {
+                allergies = appointment.patient.allergies.filter(a => a && (typeof a === 'string' ? a.trim().length > 0 : true));
+                console.log('✅ Parsed patient.allergies from array:', allergies);
+              } else if (typeof appointment.patient.allergies === 'string' && appointment.patient.allergies.trim()) {
+                allergies = appointment.patient.allergies
+                  .split(/[,;\n]/)
+                  .map(a => a.trim())
+                  .filter(a => a.length > 0);
+                console.log('✅ Parsed patient.allergies from string:', allergies);
+              } else {
+                console.warn('⚠️ patient.allergies is neither string nor array:', appointment.patient.allergies);
+              }
+            } else if (allergies.length === 0) {
+              console.log('ℹ️ No patient.allergies found or already have allergies from appointment');
+            }
+            
+            console.log('📋 Final allergies array:', allergies);
+            
+            return allergies.length > 0 ? (
+              <div className="slide-content-card medicine-allergies-section" style={{
+                background: '#FFF3CD',
+                border: '2px solid #FFC107',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '20px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                  <AlertTriangle size={24} color="#FF9800" />
+                  <h4 style={{ margin: 0, color: '#856404', fontSize: '18px', fontWeight: '600' }}>
+                    Patient Medicine Allergies
+                  </h4>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {allergies.map((allergy, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        background: '#FFE082',
+                        color: '#856404',
+                        padding: '6px 12px',
+                        borderRadius: '16px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        border: '1px solid #FFC107'
+                      }}
+                    >
+                      {allergy}
+                    </span>
+                  ))}
+                </div>
+                <p style={{ 
+                  marginTop: '12px', 
+                  marginBottom: 0, 
+                  fontSize: '13px', 
+                  color: '#856404',
+                  fontStyle: 'italic'
+                }}>
+                  ⚠️ Please review medication recommendations carefully to avoid allergic reactions.
+                </p>
+              </div>
+            ) : null;
+          })()}
+
+          {/* AI Recommended Medication */}
           {appointment?.ai_diagnosis?.detailed_results?.[0]?.medication ? (
             <div className="slide-content-card medication-display">
               <div className="medication-card">
@@ -1007,6 +1411,14 @@ const DoctorAIDiagnosisReview = () => {
           </div>
         </div>
       </main>
+
+      {/* File Viewer Modal */}
+      {viewingFile && (
+        <FileViewer
+          file={viewingFile}
+          onClose={() => setViewingFile(null)}
+        />
+      )}
     </div>
   );
 };

@@ -922,6 +922,254 @@
   font-style: italic;
 }
 
+/* Patient Files Section */
+.patient-files-section {
+  margin-bottom: 24px;
+}
+
+.files-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.files-section-title svg {
+  color: #2196F3;
+}
+
+.patient-files-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.patient-file-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f9f9f9;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.patient-file-card:hover {
+  background: #f0f0f0;
+  border-color: #2196F3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.2);
+}
+
+.file-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #E3F2FD, #BBDEFB);
+  border-radius: 8px;
+  color: #2196F3;
+  flex-shrink: 0;
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-size {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
+}
+
+.file-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #2196F3;
+  color: white;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.file-action svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* File Viewer Modal */
+.file-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.file-viewer-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.file-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #2196F3, #00BCD4);
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.file-viewer-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-viewer-close {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.file-viewer-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.file-viewer-body {
+  flex: 1;
+  padding: 24px;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: #f5f5f5;
+}
+
+.file-viewer-body iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+  border: none;
+  border-radius: 8px;
+}
+
+.file-viewer-body img {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.file-viewer-error,
+.file-viewer-unsupported {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px;
+  text-align: center;
+}
+
+.file-viewer-error svg,
+.file-viewer-unsupported svg {
+  color: #999;
+}
+
+.file-viewer-error p,
+.file-viewer-unsupported p {
+  color: #666;
+  font-size: 16px;
+  margin: 0;
+}
+
+.file-viewer-unsupported a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #2196F3;
+  color: white;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.file-viewer-unsupported a:hover {
+  background: #1976D2;
+  transform: translateY(-2px);
+}
+
+.file-viewer-error button {
+  padding: 12px 24px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.file-viewer-error button:hover {
+  background: #1976D2;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .slide-navigation {
@@ -950,6 +1198,32 @@
   .save-button {
     width: 100%;
     justify-content: center;
+  }
+
+  .patient-files-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .file-viewer-content {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .file-viewer-header {
+    padding: 12px 16px;
+  }
+
+  .file-viewer-header h3 {
+    font-size: 14px;
+  }
+
+  .file-viewer-body {
+    padding: 16px;
+    min-height: 300px;
+  }
+
+  .file-viewer-body iframe {
+    min-height: 400px;
   }
 }
 

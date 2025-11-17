@@ -295,12 +295,14 @@ def get_medical_report_by_appointment(appointment_id):
                     "error": "Unauthorized access to medical report"
                 }), 403
         else:
-            # No medical report found - this is normal for new appointments
+            # No medical report found - this is normal for new/unreviewed appointments
+            # Return 200 with success: false instead of 404 to avoid console errors
+            # since this is an expected state, not an error condition
             return jsonify({
                 "success": False,
                 "error": "Medical report not found",
                 "medical_report": None
-            }), 404
+            }), 200
 
     except Exception as e:
         print(f"❌ Error fetching medical report: {e}")

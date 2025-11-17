@@ -359,6 +359,7 @@ const ProfilePage = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleAvatarUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -405,13 +406,13 @@ const ProfilePage = () => {
             avatar_url_preview: base64String?.substring(0, 50)
           });
 
-          const response = await fetch(`${API_CONFIG.API_URL}/auth/profile`, {
+          const response = await fetch('http://localhost:5000/api/profile/patient/update', {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify(updateData)
+            body: JSON.stringify({ avatar_url: base64String })
           });
 
           console.log('📥 Backend response status:', response.status);
@@ -420,9 +421,8 @@ const ProfilePage = () => {
           const result = await response.json();
           
           if (result.success) {
-            // Update local state
-            const updatedProfile = { ...profile, avatar_url: base64String };
-            setProfile(updatedProfile);
+            // Reload profile to get updated data
+            loadProfile(true);
             setSuccess('Profile photo updated successfully!');
             setTimeout(() => setSuccess(''), 3000);
             console.log('✅ Avatar uploaded successfully!');
@@ -453,31 +453,6 @@ const ProfilePage = () => {
   };
 
   // eslint-disable-next-line no-unused-vars
-  const handleDocumentUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    try {
-      setUploading(true);
-      setError('');
-      
-      console.log('📄 Uploading document...');
-      
-      // For now, we'll just show a success message
-      // Document upload functionality would need to be implemented with Supabase Storage
-      setSuccess('Document upload functionality coming soon!');
-      setTimeout(() => setSuccess(''), 3000);
-      console.log('✅ Document upload (placeholder)');
-      
-    } catch (err) {
-      console.error('❌ Error uploading document:', err);
-      setError('Failed to upload document. Please try again.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  // eslint-disable-next-line no-unused-vars
   const handleDocumentDelete = async (documentId) => {
     try {
       setError('');
@@ -496,6 +471,7 @@ const ProfilePage = () => {
     }
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleDeleteAccount = () => {
     // Open the delete account modal
     setShowDeleteModal(true);
@@ -512,7 +488,6 @@ const ProfilePage = () => {
     setPasswordVerifying(false);
   };
 
->>>>>>> origin/fbasefixed
   const handleVerifyPassword = async () => {
     try {
       setPasswordVerifying(true);
@@ -590,13 +565,6 @@ const ProfilePage = () => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleCloseDeleteModal = () => {
-    setShowDeleteModal(false);
-    setDeleteStep(1);
-    setDeletePassword('');
-    setPasswordError('');
   };
 
   const addArrayItem = (field, value) => {

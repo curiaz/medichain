@@ -398,14 +398,58 @@ const BookAppointmentForm = () => {
         appointment_type: location.state?.appointmentType || "general-practitioner",
       });
 
-      // Prepare document data (convert File objects to base64 or store metadata)
-      const documentData = (location.state?.documents || []).map(doc => ({
-        name: doc.name,
-        size: doc.size,
-        type: doc.type,
-        // Note: In production, files should be uploaded to storage first
-        // For now, we'll store metadata and handle file upload separately
-      }));
+      // Prepare document data (convert File objects to base64)
+      const documentData = await Promise.all(
+        (location.state?.documents || []).map(async (doc) => {
+          try {
+            // If doc is a File object, convert to base64
+            if (doc instanceof File || (doc.file && doc.file instanceof File)) {
+              const file = doc.file || doc;
+              
+              // Check file size (limit to 5MB to avoid database issues)
+              const maxSize = 5 * 1024 * 1024; // 5MB
+              if (file.size > maxSize) {
+                throw new Error(`File ${file.name} is too large. Maximum size is 5MB.`);
+              }
+              
+              return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  try {
+                    const base64String = reader.result;
+                    // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
+                    const base64Data = base64String.includes(',') 
+                      ? base64String.split(',')[1] 
+                      : base64String;
+                    
+                    resolve({
+                      name: file.name,
+                      size: file.size,
+                      type: file.type,
+                      data: base64Data, // Store base64 data
+                    });
+                  } catch (err) {
+                    reject(new Error(`Failed to process file ${file.name}: ${err.message}`));
+                  }
+                };
+                reader.onerror = () => reject(new Error(`Failed to read file ${file.name}`));
+                reader.readAsDataURL(file);
+              });
+            } else {
+              // If it's already metadata, just return it (might already have base64)
+              return {
+                name: doc.name || doc.filename,
+                size: doc.size,
+                type: doc.type,
+                data: doc.data || doc.base64, // Preserve existing base64 if present
+              };
+            }
+          } catch (err) {
+            console.error(`Error processing document: ${err.message}`);
+            throw new Error(`Failed to process document: ${err.message}`);
+          }
+        })
+      );
 
       const response = await axios.post(
         `${API_CONFIG.API_URL}/appointments`,
