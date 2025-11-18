@@ -8,12 +8,13 @@ import { showToast } from "../components/CustomToast"
 import medichainLogo from "../assets/medichain_logo.png"
 // eslint-disable-next-line no-unused-vars
 import axios from "axios"
+import { API_CONFIG } from "../config/api"
 
 const MedichainSignup = () => {
   const navigate = useNavigate()
   const { signup, signInWithGoogle } = useAuth() // Fix: Use signup instead of register
   const [searchParams] = useSearchParams()
-  const API_URL = 'https://medichainn.onrender.com/api'
+  const API_URL = API_CONFIG.API_URL
   
   const [formData, setFormData] = useState({
     firstName: "",

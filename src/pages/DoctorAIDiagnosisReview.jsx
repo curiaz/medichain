@@ -318,7 +318,7 @@ const DoctorAIDiagnosisReview = () => {
       }
 
       // Try to get appointment from appointments list first
-      const appointmentsResponse = await axios.get('http://localhost:5000/api/appointments', {
+      const appointmentsResponse = await axios.get(`${API_CONFIG.API_URL}/appointments`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
