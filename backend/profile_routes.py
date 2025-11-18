@@ -6,6 +6,7 @@ from flask import Blueprint, request, jsonify
 from functools import wraps
 from auth.firebase_auth import firebase_auth_required, firebase_role_required, firebase_auth_service
 from db.supabase_client import SupabaseClient
+from services.audit_service import audit_service
 import json
 import os
 from datetime import datetime
@@ -205,6 +206,18 @@ def get_complete_profile():
 @firebase_auth_required
 def update_profile():
     """Update user profile with comprehensive validation"""
+    # CRITICAL: Log at the VERY START - if you don't see this, the route isn't being called!
+    print("=" * 80)
+    print("[CRITICAL] ===== UPDATE PROFILE FUNCTION CALLED =====")
+    print("=" * 80)
+    try:
+        print(f"[CRITICAL] Request method: {request.method}")
+        print(f"[CRITICAL] Request path: {request.path}")
+        request_data = request.get_json()
+        print(f"[CRITICAL] Request data keys: {list(request_data.keys()) if request_data else 'None'}")
+    except Exception as log_err:
+        print(f"[CRITICAL] Error getting request data: {log_err}")
+    
     try:
         firebase_user = request.firebase_user
         uid = firebase_user['uid']
@@ -251,6 +264,19 @@ def update_profile():
                     'error': "Invalid gender value. Only 'male' or 'female' are allowed."
                 }), 400
         
+        # Get previous profile data for audit log (before update)
+        prev_user_profile = None
+        prev_doctor_profile = None
+        try:
+            prev_user_response = supabase.service_client.table('user_profiles').select('*').eq('firebase_uid', uid).execute()
+            prev_user_profile = prev_user_response.data[0] if prev_user_response.data else None
+            
+            if prev_user_profile and prev_user_profile.get('role') == 'doctor':
+                prev_doctor_response = supabase.service_client.table('doctor_profiles').select('*').eq('firebase_uid', uid).execute()
+                prev_doctor_profile = prev_doctor_response.data[0] if prev_doctor_response.data else None
+        except Exception as prev_err:
+            print(f"[WARNING] Could not fetch previous profile for audit log: {prev_err}")
+        
         # Update user profile
         if user_profile_data:
             user_response = supabase.service_client.table('user_profiles').update(user_profile_data).eq('firebase_uid', uid).execute()
@@ -277,6 +303,48 @@ def update_profile():
             doctor_response = supabase.service_client.table('doctor_profiles').select('*').eq('firebase_uid', uid).execute()
             if doctor_response.data:
                 updated_doctor = doctor_response.data[0]
+        
+        # ===== LOG TO BLOCKCHAIN AUDIT LEDGER =====
+        user_data = updated_user.data[0] if updated_user.data else None
+        if user_data:
+            user_email = user_data.get('email')
+            user_name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or user_email
+            user_role = user_data.get('role', 'patient')
+            
+            # Determine what was updated
+            updated_fields = []
+            if user_profile_data:
+                updated_fields.extend(list(user_profile_data.keys()))
+            if doctor_profile_data:
+                updated_fields.extend([f"doctor.{k}" for k in doctor_profile_data.keys()])
+            
+            action_desc = f"{user_role.capitalize()} updated profile"
+            if updated_fields:
+                action_desc += f" (fields: {', '.join(updated_fields[:5])}{'...' if len(updated_fields) > 5 else ''})"
+            
+            # Prepare data_before and data_after
+            data_before = prev_user_profile
+            if prev_doctor_profile:
+                data_before = {**(prev_user_profile or {}), 'doctor_profile': prev_doctor_profile}
+            
+            data_after = user_data
+            if updated_doctor:
+                data_after = {**user_data, 'doctor_profile': updated_doctor}
+            
+            # Log to blockchain audit ledger
+            audit_service.log_action(
+                admin_id=uid,
+                admin_email=user_email or "unknown",
+                admin_name=user_name or "Unknown User",
+                action_type="UPDATE_PROFILE",
+                action_description=action_desc,
+                entity_type="user_profile" if not doctor_profile_data else "profile",
+                entity_id=uid,
+                data_before=data_before,
+                data_after=data_after,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
         
         return jsonify({
             'success': True,
@@ -305,10 +373,43 @@ def upload_avatar():
         if not data or 'avatar_url' not in data:
             return jsonify({'success': False, 'error': 'Avatar URL required'}), 400
         
+        # Get previous avatar for audit
+        prev_avatar = None
+        try:
+            prev_response = supabase.service_client.table('user_profiles').select('avatar_url').eq('firebase_uid', uid).execute()
+            if prev_response.data:
+                prev_avatar = prev_response.data[0].get('avatar_url')
+        except:
+            pass
+        
         # Update avatar URL in user profile
         response = supabase.service_client.table('user_profiles').update({
             'avatar_url': data['avatar_url']
         }).eq('firebase_uid', uid).execute()
+        
+        # Log to audit ledger
+        try:
+            user_profile = supabase.service_client.table('user_profiles').select('email, first_name, last_name').eq('firebase_uid', uid).execute()
+            if user_profile.data:
+                user_data = user_profile.data[0]
+                user_email = user_data.get('email')
+                user_name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or user_email
+                
+                audit_service.log_action(
+                    admin_id=uid,
+                    admin_email=user_email,
+                    admin_name=user_name,
+                    action_type="UPLOAD_AVATAR",
+                    action_description="User uploaded/updated avatar",
+                    entity_type="user_avatar",
+                    entity_id=uid,
+                    data_before={"avatar_url": prev_avatar},
+                    data_after={"avatar_url": data['avatar_url']},
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent')
+                )
+        except Exception as audit_error:
+            print(f"[WARNING] Error logging avatar upload to audit ledger: {audit_error}")
         
         if response.data:
             return jsonify({
@@ -580,6 +681,30 @@ def delete_account():
                 
                 print(f"🎉 Doctor account deactivation completed successfully")
                 
+                # Log to audit ledger
+                try:
+                    user_profile = supabase.service_client.table('user_profiles').select('email, first_name, last_name').eq('firebase_uid', uid).execute()
+                    if user_profile.data:
+                        user_data = user_profile.data[0]
+                        user_email = user_data.get('email')
+                        user_name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or user_email
+                        
+                        audit_service.log_action(
+                            admin_id=uid,
+                            admin_email=user_email,
+                            admin_name=user_name,
+                            action_type="DEACTIVATE_ACCOUNT",
+                            action_description="Doctor deactivated their account",
+                            entity_type="doctor_account",
+                            entity_id=uid,
+                            data_before={"is_active": True},
+                            data_after={"is_active": False, "account_status": "deactivated"},
+                            ip_address=request.remote_addr,
+                            user_agent=request.headers.get('User-Agent')
+                        )
+                except Exception as audit_error:
+                    print(f"[WARNING] Error logging account deactivation to audit ledger: {audit_error}")
+                
                 return jsonify({
                     'success': True,
                     'message': 'Your doctor account has been deactivated. Your profile remains visible to patients, but you can no longer log in.',
@@ -739,6 +864,51 @@ def update_doctor_profile():
             # Update existing doctor profile
             doctor_response = supabase.service_client.table('doctor_profiles').update(update_data).eq('firebase_uid', uid).execute()
             print(f"[DEBUG] Doctor profile updated with data: {doctor_response.data}")
+        
+        # Get previous profile for audit
+        prev_user_profile = None
+        prev_doctor_profile = None
+        try:
+            prev_user = supabase.service_client.table('user_profiles').select('*').eq('firebase_uid', uid).execute()
+            if prev_user.data:
+                prev_user_profile = prev_user.data[0]
+            prev_doctor = supabase.service_client.table('doctor_profiles').select('*').eq('firebase_uid', uid).execute()
+            if prev_doctor.data:
+                prev_doctor_profile = prev_doctor.data[0]
+        except:
+            pass
+        
+        # Log to audit ledger
+        try:
+            user_profile = supabase.service_client.table('user_profiles').select('email, first_name, last_name').eq('firebase_uid', uid).execute()
+            if user_profile.data:
+                user_data = user_profile.data[0]
+                user_email = user_data.get('email')
+                user_name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or user_email
+                
+                data_before = prev_user_profile
+                if prev_doctor_profile:
+                    data_before = {**(prev_user_profile or {}), 'doctor_profile': prev_doctor_profile}
+                
+                data_after = user_data
+                if doctor_data or privacy_data:
+                    data_after = {**user_data, 'doctor_profile': {**doctor_data, **privacy_data}}
+                
+                audit_service.log_action(
+                    admin_id=uid,
+                    admin_email=user_email,
+                    admin_name=user_name,
+                    action_type="UPDATE_DOCTOR_PROFILE",
+                    action_description=f"Doctor updated profile (fields: {', '.join(data.keys())})",
+                    entity_type="doctor_profile",
+                    entity_id=uid,
+                    data_before=data_before,
+                    data_after=data_after,
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent')
+                )
+        except Exception as audit_error:
+            print(f"[WARNING] Error logging doctor profile update to audit ledger: {audit_error}")
         
         # Log activity (non-critical, don't fail if this errors)
         try:
@@ -940,7 +1110,40 @@ def update_privacy_settings():
         # Remove None values
         privacy_data = {k: v for k, v in privacy_data.items() if v is not None}
         
+        # Get previous privacy settings for audit
+        prev_privacy = None
+        try:
+            prev_response = supabase.service_client.table('doctor_profiles').select('profile_visibility, show_email, show_phone, allow_patient_messages, data_sharing').eq('firebase_uid', uid).execute()
+            if prev_response.data:
+                prev_privacy = prev_response.data[0]
+        except:
+            pass
+        
         doctor_response = supabase.service_client.table('doctor_profiles').update(privacy_data).eq('firebase_uid', uid).execute()
+        
+        # Log to audit ledger
+        try:
+            user_profile = supabase.service_client.table('user_profiles').select('email, first_name, last_name').eq('firebase_uid', uid).execute()
+            if user_profile.data:
+                user_data = user_profile.data[0]
+                user_email = user_data.get('email')
+                user_name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or user_email
+                
+                audit_service.log_action(
+                    admin_id=uid,
+                    admin_email=user_email,
+                    admin_name=user_name,
+                    action_type="UPDATE_DOCTOR_PRIVACY",
+                    action_description=f"Doctor updated privacy settings (fields: {', '.join(privacy_data.keys())})",
+                    entity_type="doctor_privacy",
+                    entity_id=uid,
+                    data_before=prev_privacy,
+                    data_after=privacy_data,
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent')
+                )
+        except Exception as audit_error:
+            print(f"[WARNING] Error logging doctor privacy update to audit ledger: {audit_error}")
         
         # Log activity (non-critical, don't fail if this errors)
         try:
@@ -1228,6 +1431,14 @@ def update_patient_profile():
                 'error': 'Database connection unavailable'
             }), 500
         
+        # Get previous profile for audit log (before update)
+        prev_profile = None
+        try:
+            prev_response = supabase.service_client.table('user_profiles').select('*').eq('firebase_uid', uid).execute()
+            prev_profile = prev_response.data[0] if prev_response.data else None
+        except Exception as prev_err:
+            print(f"[WARNING] Could not fetch previous profile for audit log: {prev_err}")
+        
         # Update user profile
         user_data = {k: v for k, v in data.items() if k in [
             'first_name', 'last_name', 'phone', 'date_of_birth', 'gender',
@@ -1316,6 +1527,34 @@ def update_patient_profile():
         updated_profile = user_response.data[0]
         print(f"[DEBUG] Update successful. Updated profile: {updated_profile}")
         
+        # Log to audit ledger
+        try:
+            print(f"[DEBUG] ===== STARTING AUDIT LOG FOR PATIENT PROFILE UPDATE =====")
+            print(f"[DEBUG] audit_service exists: {audit_service is not None}")
+            if audit_service:
+                print(f"[DEBUG] audit_service.supabase exists: {audit_service.supabase is not None}")
+                if audit_service.supabase:
+                    print(f"[DEBUG] audit_service.supabase.service_client exists: {audit_service.supabase.service_client is not None}")
+            user_email = updated_profile.get('email')
+            user_name = f"{updated_profile.get('first_name', '')} {updated_profile.get('last_name', '')}".strip() or user_email
+            
+            print(f"[DEBUG] Calling audit_service.log_action for profile update...")
+            audit_service.log_action(
+                admin_id=uid,
+                admin_email=user_email,
+                admin_name=user_name,
+                action_type="UPDATE_PROFILE",
+                action_description=f"Patient updated profile (fields: {', '.join(list(user_data.keys())[:5])}{'...' if len(user_data) > 5 else ''})",
+                entity_type="user_profile",
+                entity_id=uid,
+                data_before=prev_profile,
+                data_after=updated_profile,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
+        except Exception as audit_error:
+            print(f"[WARNING] Error logging profile update to audit ledger: {audit_error}")
+        
         return jsonify({
             'success': True,
             'message': 'Profile updated successfully',
@@ -1352,10 +1591,43 @@ def update_patient_medical():
             'medical_conditions', 'allergies', 'current_medications', 'blood_type', 'medical_notes'
         ]}
         
+        # Get previous medical info for audit
+        prev_profile = None
+        try:
+            prev_response = supabase.service_client.table('user_profiles').select('medical_conditions, allergies, current_medications, blood_type, medical_notes').eq('firebase_uid', uid).execute()
+            if prev_response.data:
+                prev_profile = prev_response.data[0]
+        except:
+            pass
+        
         if medical_data:
             medical_data['updated_at'] = datetime.utcnow().isoformat()
             user_response = supabase.service_client.table('user_profiles').update(medical_data).eq('firebase_uid', uid).execute()
             print(f"[DEBUG] Medical info update response: {user_response.data}")
+        
+        # Log to audit ledger
+        try:
+            user_profile = supabase.service_client.table('user_profiles').select('email, first_name, last_name').eq('firebase_uid', uid).execute()
+            if user_profile.data:
+                user_data = user_profile.data[0]
+                user_email = user_data.get('email')
+                user_name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or user_email
+                
+                audit_service.log_action(
+                    admin_id=uid,
+                    admin_email=user_email,
+                    admin_name=user_name,
+                    action_type="UPDATE_MEDICAL_INFO",
+                    action_description=f"Patient updated medical information (fields: {', '.join(medical_data.keys())})",
+                    entity_type="patient_medical_info",
+                    entity_id=uid,
+                    data_before=prev_profile,
+                    data_after=medical_data,
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent')
+                )
+        except Exception as audit_error:
+            print(f"[WARNING] Error logging medical info update to audit ledger: {audit_error}")
         
         return jsonify({
             'success': True,
@@ -1393,10 +1665,43 @@ def update_patient_privacy():
             'medical_info_visible_to_doctors', 'allow_ai_analysis', 'share_data_for_research'
         ]}
         
+        # Get previous privacy settings for audit
+        prev_profile = None
+        try:
+            prev_response = supabase.service_client.table('user_profiles').select('profile_visibility, show_email, show_phone, medical_info_visible_to_doctors, allow_ai_analysis, share_data_for_research').eq('firebase_uid', uid).execute()
+            if prev_response.data:
+                prev_profile = prev_response.data[0]
+        except:
+            pass
+        
         if privacy_data:
             privacy_data['updated_at'] = datetime.utcnow().isoformat()
             user_response = supabase.service_client.table('user_profiles').update(privacy_data).eq('firebase_uid', uid).execute()
             print(f"[DEBUG] Privacy settings update response: {user_response.data}")
+        
+        # Log to audit ledger
+        try:
+            user_profile = supabase.service_client.table('user_profiles').select('email, first_name, last_name').eq('firebase_uid', uid).execute()
+            if user_profile.data:
+                user_data = user_profile.data[0]
+                user_email = user_data.get('email')
+                user_name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or user_email
+                
+                audit_service.log_action(
+                    admin_id=uid,
+                    admin_email=user_email,
+                    admin_name=user_name,
+                    action_type="UPDATE_PRIVACY_SETTINGS",
+                    action_description=f"Patient updated privacy settings (fields: {', '.join(privacy_data.keys())})",
+                    entity_type="patient_privacy",
+                    entity_id=uid,
+                    data_before=prev_profile,
+                    data_after=privacy_data,
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent')
+                )
+        except Exception as audit_error:
+            print(f"[WARNING] Error logging privacy update to audit ledger: {audit_error}")
         
         return jsonify({
             'success': True,
@@ -1434,13 +1739,18 @@ def upload_patient_document():
         print(f"[DEBUG] Uploading document for patient UID: {uid}")
         print(f"[DEBUG] File: {file.filename}, Type: {document_type}")
         
+        # Reset file pointer after reading
+        file.seek(0)
+        file_size = len(file.read())
+        file.seek(0)
+        
         # For now, just store metadata (file storage would need to be implemented)
         document_data = {
             'firebase_uid': uid,
             'filename': file.filename,
             'document_type': document_type,
             'description': description,
-            'file_size': len(file.read()),
+            'file_size': file_size,
             'uploaded_at': datetime.utcnow().isoformat()
         }
         
