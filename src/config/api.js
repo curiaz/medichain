@@ -10,7 +10,13 @@ const getBaseURL = () => {
     return process.env.REACT_APP_API_URL;
   }
   
-  // Use Render backend URL
+  // Default to localhost in development, Render in production
+  // Check if we're in development (localhost frontend)
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:5000';
+  }
+  
+  // Use Render backend URL for production
   return 'https://medichainn.onrender.com';
 };
 

@@ -21,6 +21,7 @@ except ImportError:
 
 from auth.firebase_auth import firebase_auth_required
 from db.supabase_client import SupabaseClient
+from services.audit_service import audit_service
 
 appointments_bp = Blueprint("appointments", __name__, url_prefix="/api/appointments")
 # Initialize Supabase client with error handling
@@ -1036,10 +1037,23 @@ def get_appointments():
 @auth_required
 def create_appointment():
     """Create a new appointment and remove booked time from doctor availability"""
+    # CRITICAL: Log at the VERY START - if you don't see this, the route isn't being called!
+    print("=" * 80)
+    print("[CRITICAL] ===== CREATE APPOINTMENT FUNCTION CALLED =====")
+    print("=" * 80)
+    try:
+        print(f"[CRITICAL] Request method: {request.method}")
+        print(f"[CRITICAL] Request path: {request.path}")
+        request_data = request.get_json()
+        print(f"[CRITICAL] Request data keys: {list(request_data.keys()) if request_data else 'None'}")
+    except Exception as log_err:
+        print(f"[CRITICAL] Error getting request data: {log_err}")
+    
     try:
         firebase_user = request.firebase_user
         uid = firebase_user["uid"]
         data = request.get_json()
+        print(f"[DEBUG] User UID: {uid}")
 
         # Validate required fields
         required_fields = ["doctor_firebase_uid", "appointment_date", "appointment_time"]
@@ -1279,6 +1293,54 @@ def create_appointment():
             return jsonify({"success": False, "error": "Failed to create appointment"}), 500
         
         appointment_id = response.data[0].get("id")
+        appointment_data_saved = response.data[0]  # Save appointment data before other operations
+        print(f"[DEBUG] Appointment created successfully with ID: {appointment_id}")
+        print(f"[DEBUG] Appointment data saved: {appointment_data_saved.get('id') if appointment_data_saved else 'None'}")
+
+        # ===== LOG TO AUDIT LEDGER IMMEDIATELY =====
+        # Get user info for audit
+        try:
+            user_response = supabase.service_client.table("user_profiles").select("first_name, last_name, email").eq("firebase_uid", uid).execute()
+            user_email = user_response.data[0].get("email") if user_response.data else None
+            user_name = None
+            if user_response.data:
+                user_name = f"{user_response.data[0].get('first_name', '')} {user_response.data[0].get('last_name', '')}".strip() or user_email
+        except:
+            user_email = None
+            user_name = None
+        
+        # Get doctor name
+        try:
+            doctor_info = supabase.service_client.table("user_profiles").select("first_name, last_name, email").eq("firebase_uid", data["doctor_firebase_uid"]).execute()
+            doctor_name = "Unknown"
+            if doctor_info.data:
+                doctor_name = f"{doctor_info.data[0].get('first_name', '')} {doctor_info.data[0].get('last_name', '')}".strip() or doctor_info.data[0].get('email', 'Unknown')
+        except:
+            doctor_name = "Unknown"
+        
+        # Simplified data for audit
+        simplified_data = {
+            "appointment_id": str(appointment_id),
+            "patient_firebase_uid": uid,
+            "doctor_firebase_uid": data.get("doctor_firebase_uid"),
+            "appointment_date": appointment_date,
+            "appointment_time": appointment_time,
+            "status": "scheduled"
+        }
+        
+        # Log to blockchain audit ledger
+        audit_service.log_action(
+            admin_id=uid,
+            admin_email=user_email or "unknown",
+            admin_name=user_name or "Unknown User",
+            action_type="BOOK_APPOINTMENT",
+            action_description=f"Booked appointment with Dr. {doctor_name} on {appointment_date} at {appointment_time}",
+            entity_type="appointment",
+            entity_id=str(appointment_id),
+            data_after=simplified_data,
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent')
+        )
 
         # Process AI diagnosis if symptoms are provided
         symptoms_list = data.get("symptoms", [])
@@ -1486,11 +1548,13 @@ def create_appointment():
             traceback.print_exc()
             # Don't fail the appointment creation if notifications fail
 
+        # Audit logging is now done IMMEDIATELY after appointment creation (above)
+
         return (
             jsonify(
                 {
                     "success": True,
-                    "appointment": response.data[0] if response.data else None,
+                    "appointment": appointment_data_saved if appointment_data_saved else (response.data[0] if response.data else None),
                     "message": "Appointment booked successfully!",
                     "meeting_url": meeting_url,
                 }
@@ -1989,6 +2053,49 @@ def update_appointment(appointment_id):
             traceback.print_exc()
             # Don't fail the appointment update if notifications fail
 
+        # Log to audit ledger
+        try:
+            # Get user info
+            user_response = supabase.service_client.table("user_profiles").select("first_name, last_name, email, role").eq("firebase_uid", uid).execute()
+            if user_response.data:
+                user_data = user_response.data[0]
+                user_email = user_data.get("email")
+                user_name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or user_email
+                user_role = user_data.get("role", "unknown")
+                
+                # Determine action description based on what changed
+                changes = []
+                if "status" in data:
+                    changes.append(f"status: {current_appt.get('status')} → {data['status']}")
+                if "appointment_date" in data:
+                    changes.append(f"date: {current_appt.get('appointment_date')} → {data['appointment_date']}")
+                if "appointment_time" in data:
+                    changes.append(f"time: {current_appt.get('appointment_time')} → {data['appointment_time']}")
+                
+                action_desc = f"{user_role.capitalize()} updated appointment {appointment_id}"
+                if changes:
+                    action_desc += f" ({', '.join(changes)})"
+                
+                # Log to blockchain audit ledger
+                try:
+                    audit_service.log_action(
+                        admin_id=uid,
+                        admin_email=user_email or "unknown",
+                        admin_name=user_name or "Unknown User",
+                        action_type="UPDATE_APPOINTMENT",
+                        action_description=action_desc,
+                        entity_type="appointment",
+                        entity_id=str(appointment_id),
+                        data_before=current_appt,
+                        data_after=updated_appt,
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent')
+                    )
+                except:
+                    pass
+        except Exception as audit_error:
+            print(f"[WARNING] Error logging appointment update to audit ledger: {audit_error}")
+
         return jsonify({"success": True, "appointment": updated_appt}), 200
 
     except Exception as e:
@@ -2235,6 +2342,14 @@ def update_doctor_availability():
         
         print(f"🔄 PUT /availability: Doctor {uid}, is_accepting_appointments = {is_accepting_appointments} (raw: {is_accepting_appointments_raw}, type: {type(is_accepting_appointments_raw)})")
         
+        # Get previous availability for audit log (before update)
+        prev_availability = None
+        try:
+            prev_response = supabase.service_client.table("doctor_profiles").select("availability, is_accepting_appointments").eq("firebase_uid", uid).execute()
+            prev_availability = prev_response.data[0] if prev_response.data else None
+        except Exception as prev_err:
+            print(f"[WARNING] Could not fetch previous availability for audit log: {prev_err}")
+        
         # Update doctor's availability and accepting status
         try:
             # CRITICAL: Ensure is_accepting_appointments is explicitly set as a Python boolean
@@ -2279,6 +2394,37 @@ def update_doctor_availability():
                 response_value = response.data[0].get("is_accepting_appointments")
                 print(f"🔍 UPDATE RESPONSE VALUE: {response_value} (type: {type(response_value)})")
                 print(f"🔍 UPDATE RESPONSE VALUE is False? {response_value is False}")
+                
+                # Log to audit ledger
+                try:
+                    # Get doctor info
+                    doctor_response = supabase.service_client.table("user_profiles").select("first_name, last_name, email").eq("firebase_uid", uid).execute()
+                    if doctor_response.data:
+                        doctor_data = doctor_response.data[0]
+                        doctor_email = doctor_data.get("email")
+                        doctor_name = f"{doctor_data.get('first_name', '')} {doctor_data.get('last_name', '')}".strip() or doctor_email
+                        
+                        # Log to blockchain audit ledger
+                        try:
+                            audit_service.log_action(
+                                admin_id=uid,
+                                admin_email=doctor_email or "unknown",
+                                admin_name=doctor_name or "Unknown Doctor",
+                                action_type="UPDATE_AVAILABILITY",
+                                action_description=f"Doctor updated availability schedule (accepting appointments: {is_accepting_appointments})",
+                                entity_type="doctor_profile",
+                                entity_id=uid,
+                                data_before=prev_availability if 'prev_availability' in locals() else None,
+                                data_after=response.data[0] if response.data else None,
+                                ip_address=request.remote_addr,
+                                user_agent=request.headers.get('User-Agent')
+                            )
+                        except:
+                            pass
+                except Exception as audit_error:
+                    print(f"[WARNING] Error logging availability update to audit ledger: {audit_error}")
+                    import traceback
+                    traceback.print_exc()
                 print(f"🔍 UPDATE RESPONSE VALUE == False? {response_value == False}")
 
             # Verify the update was successful by reading back the value

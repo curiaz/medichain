@@ -8,6 +8,7 @@ from functools import wraps
 from datetime import datetime
 from auth.firebase_auth import firebase_auth_required, firebase_role_required, firebase_auth_service
 from db.supabase_client import SupabaseClient
+from services.audit_service import audit_service
 
 medical_reports_bp = Blueprint("medical_reports", __name__, url_prefix="/api/medical-reports")
 
@@ -226,6 +227,89 @@ def create_medical_report():
                 .execute()
             )
             print(f"✅ Created new medical report for appointment {data['appointment_id']} (marked as reviewed)")
+        
+        # Log to audit ledger - Medical Record Creation/Update
+        try:
+            doctor_profile = supabase.service_client.table('user_profiles').select('email, first_name, last_name').eq('firebase_uid', doctor_uid).execute()
+            if doctor_profile.data:
+                doctor_data = doctor_profile.data[0]
+                doctor_email = doctor_data.get('email')
+                doctor_name = f"{doctor_data.get('first_name', '')} {doctor_data.get('last_name', '')}".strip() or doctor_email
+                
+                action_type = "UPDATE_MEDICAL_RECORD" if existing_response.data else "CREATE_MEDICAL_RECORD"
+                action_desc = f"Doctor {'updated' if existing_response.data else 'created'} medical report for appointment {data['appointment_id']}"
+                
+                # Get previous report for updates
+                data_before = None
+                if existing_response.data and existing_response.data[0]:
+                    data_before = existing_response.data[0]
+                
+                audit_service.log_action(
+                    admin_id=doctor_uid,
+                    admin_email=doctor_email,
+                    admin_name=doctor_name,
+                    action_type=action_type,
+                    action_description=action_desc,
+                    entity_type="medical_record",
+                    entity_id=response.data[0]['id'] if response.data else None,
+                    data_before=data_before,
+                    data_after=response.data[0] if response.data else None,
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent')
+                )
+        except Exception as audit_error:
+            print(f"[WARNING] Error logging medical report to audit ledger: {audit_error}")
+        
+        # Log to audit ledger - Doctor Review of Diagnosis (Health Record Review)
+        try:
+            # Get doctor info
+            doctor_profile = supabase.service_client.table('user_profiles').select('email, first_name, last_name').eq('firebase_uid', doctor_uid).execute()
+            doctor_email = None
+            doctor_name = "Unknown Doctor"
+            if doctor_profile.data:
+                doctor_data = doctor_profile.data[0]
+                doctor_email = doctor_data.get('email')
+                doctor_name = f"{doctor_data.get('first_name', '')} {doctor_data.get('last_name', '')}".strip() or doctor_email
+            
+            # Get patient info
+            patient_profile = supabase.service_client.table('user_profiles').select('email, first_name, last_name').eq('firebase_uid', data['patient_firebase_uid']).execute()
+            patient_name = "Unknown Patient"
+            if patient_profile.data:
+                patient_data = patient_profile.data[0]
+                patient_name = f"{patient_data.get('first_name', '')} {patient_data.get('last_name', '')}".strip() or patient_data.get('email', 'Unknown Patient')
+            
+            # Get health record ID (medical record ID)
+            health_record_id = response.data[0]['id'] if response.data else None
+            
+            # Get diagnosis from the saved report
+            diagnosis = response.data[0].get('diagnosis', '') if response.data else data.get('diagnosis', '')
+            
+            # Log the review action
+            audit_service.log_action(
+                admin_id=doctor_uid,
+                admin_email=doctor_email or "unknown",
+                admin_name=doctor_name,
+                action_type="REVIEW_DIAGNOSIS",
+                action_description=f"Dr. {doctor_name} reviewed diagnosis for patient {patient_name} (Health Record ID: {health_record_id})",
+                entity_type="health_record",
+                entity_id=str(health_record_id) if health_record_id else None,
+                data_before=None,  # Could fetch previous diagnosis if needed
+                data_after={
+                    "health_record_id": health_record_id,
+                    "doctor_name": doctor_name,
+                    "patient_name": patient_name,
+                    "diagnosis": diagnosis,
+                    "appointment_id": data['appointment_id'],
+                    "review_status": "reviewed"
+                },
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
+            print(f"✅ Logged diagnosis review: Dr. {doctor_name} reviewed diagnosis for {patient_name} (Health Record ID: {health_record_id})")
+        except Exception as review_audit_error:
+            print(f"[WARNING] Error logging diagnosis review to audit ledger: {review_audit_error}")
+            import traceback
+            traceback.print_exc()
 
         if response.data and len(response.data) > 0:
             return jsonify({

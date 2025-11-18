@@ -29,6 +29,7 @@ def _import_sklearn():
         return None, None, None, None, None, None
 
 from db.supabase_client import SupabaseClient
+from services.audit_service import audit_service
 
 # Load environment variables
 load_dotenv()
@@ -597,6 +598,14 @@ app.register_blueprint(medical_reports_bp)
 app.register_blueprint(prescription_verification_bp)
 app.register_blueprint(profile_bp)
 
+# Register admin audit routes
+try:
+    from admin_audit_routes import admin_audit_bp
+    app.register_blueprint(admin_audit_bp)
+    print("[OK] Admin audit routes loaded")
+except ImportError as e:
+    print(f"[WARNING] Could not load admin audit routes: {e}")
+
 # 🔧 FIXED: CORS configuration with credentials support (removed "*" to fix CORS issues)
 CORS(app, resources={
     r"/api/*": {
@@ -846,6 +855,56 @@ def diagnose():
         
         # Run diagnosis
         result = ai_engine.diagnose(symptoms.strip())
+        
+        # Log to audit ledger if user is authenticated
+        try:
+            # Try to get user info from token if available
+            auth_header = request.headers.get('Authorization')
+            user_id = None
+            user_email = None
+            user_name = None
+            
+            if auth_header and auth_header.startswith('Bearer '):
+                try:
+                    from auth.firebase_auth import firebase_auth_service
+                    token = auth_header.split(' ')[1]
+                    decoded_token = firebase_auth_service.verify_token(token)
+                    if decoded_token:
+                        user_id = decoded_token.get('uid')
+                        user_email = decoded_token.get('email')
+                        user_name = decoded_token.get('name')
+                        
+                        # Try to get user name from database
+                        if user_id and not user_name:
+                            try:
+                                user_response = supabase.service_client.table('user_profiles').select('first_name, last_name, email').eq('firebase_uid', user_id).execute()
+                                if user_response.data:
+                                    user_data = user_response.data[0]
+                                    user_email = user_data.get('email', user_email)
+                                    user_name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip() or user_email
+                            except:
+                                pass
+                except:
+                    pass  # Not authenticated, log as anonymous
+            
+            # Log AI usage (even if anonymous)
+            audit_service.log_action(
+                admin_id=user_id or "anonymous",
+                admin_email=user_email,
+                admin_name=user_name or "Anonymous User",
+                action_type="AI_DIAGNOSIS",
+                action_description=f"Used AI diagnosis for symptoms: {symptoms.strip()[:100]}{'...' if len(symptoms.strip()) > 100 else ''}",
+                entity_type="ai_diagnosis",
+                entity_id=None,
+                data_after={
+                    "symptoms": symptoms.strip(),
+                    "result": result.get('predictions', [])[:3] if result.get('success') else None  # Store top 3 predictions
+                },
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
+        except Exception as audit_error:
+            print(f"[WARNING] Error logging AI diagnosis to audit ledger: {audit_error}")
         
         return jsonify(result)
         

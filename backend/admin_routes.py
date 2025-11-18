@@ -3,9 +3,10 @@ Admin Routes for User Management
 Admin-only endpoints for managing users, roles, and system statistics
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, g
 from auth.firebase_auth import firebase_role_required
 from db.supabase_client import SupabaseClient
+from services.audit_service import audit_service
 from datetime import datetime
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
@@ -17,6 +18,28 @@ try:
 except Exception as e:
     print(f"⚠️  Warning: Supabase client initialization failed in admin routes: {e}")
     supabase = None
+
+
+def get_admin_info():
+    """Helper function to get admin info from request context"""
+    firebase_user = getattr(request, 'firebase_user', None)
+    admin_id = firebase_user.get('uid') if firebase_user else None
+    admin_email = firebase_user.get('email') if firebase_user else None
+    admin_name = firebase_user.get('name') if firebase_user else None
+    
+    # Fallback to Flask g
+    if not admin_id:
+        admin_id = getattr(g, 'user_id', None) or getattr(g, 'firebase_uid', None) or getattr(g, 'uid', None)
+    if not admin_email:
+        admin_email = getattr(g, 'user_email', None) or getattr(g, 'email', None)
+    if not admin_name:
+        admin_name = getattr(g, 'user_name', None) or getattr(g, 'name', None)
+    
+    return {
+        'admin_id': admin_id or "unknown",
+        'admin_email': admin_email,
+        'admin_name': admin_name
+    }
 
 
 @admin_bp.route('/users', methods=['GET'])
@@ -146,6 +169,21 @@ def create_user():
         response = supabase.service_client.table("user_profiles").insert(user_data).execute()
 
         if response.data:
+            # Log to audit ledger
+            admin_info = get_admin_info()
+            audit_service.log_action(
+                admin_id=admin_info['admin_id'],
+                admin_email=admin_info['admin_email'],
+                admin_name=admin_info['admin_name'],
+                action_type="CREATE",
+                action_description=f"Created user: {data['email']} (role: {data['role']})",
+                entity_type="user",
+                entity_id=firebase_uid,
+                data_after=response.data[0],
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
+            
             return jsonify({
                 "success": True,
                 "user": response.data[0],
@@ -166,10 +204,12 @@ def update_user(user_id):
     try:
         data = request.get_json()
 
-        # Get existing user
+        # Get existing user (for audit log)
         existing = supabase.service_client.table("user_profiles").select("*").eq("firebase_uid", user_id).execute()
         if not existing.data:
             return jsonify({"success": False, "error": "User not found"}), 404
+        
+        data_before = existing.data[0]  # Store before state
 
         # Prepare update data (only allow certain fields to be updated)
         update_data = {}
@@ -183,6 +223,24 @@ def update_user(user_id):
         response = supabase.service_client.table("user_profiles").update(update_data).eq("firebase_uid", user_id).execute()
 
         if response.data:
+            # Log to audit ledger
+            admin_info = get_admin_info()
+            data_after = response.data[0]
+            
+            audit_service.log_action(
+                admin_id=admin_info['admin_id'],
+                admin_email=admin_info['admin_email'],
+                admin_name=admin_info['admin_name'],
+                action_type="UPDATE",
+                action_description=f"Updated user: {data_after.get('email', user_id)}",
+                entity_type="user",
+                entity_id=user_id,
+                data_before=data_before,
+                data_after=data_after,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
+            
             return jsonify({
                 "success": True,
                 "user": response.data[0]
@@ -206,10 +264,36 @@ def change_user_role(user_id):
         if not new_role or new_role not in ["patient", "doctor", "admin"]:
             return jsonify({"success": False, "error": "Invalid role"}), 400
 
+        # Get existing user (for audit log)
+        existing = supabase.service_client.table("user_profiles").select("*").eq("firebase_uid", user_id).execute()
+        if not existing.data:
+            return jsonify({"success": False, "error": "User not found"}), 404
+        
+        data_before = existing.data[0]
+        old_role = data_before.get("role")
+
         # Update role
         response = supabase.service_client.table("user_profiles").update({"role": new_role}).eq("firebase_uid", user_id).execute()
 
         if response.data:
+            # Log to audit ledger
+            admin_info = get_admin_info()
+            data_after = response.data[0]
+            
+            audit_service.log_action(
+                admin_id=admin_info['admin_id'],
+                admin_email=admin_info['admin_email'],
+                admin_name=admin_info['admin_name'],
+                action_type="UPDATE_ROLE",
+                action_description=f"Changed user role from {old_role} to {new_role}: {data_after.get('email', user_id)}",
+                entity_type="user",
+                entity_id=user_id,
+                data_before=data_before,
+                data_after=data_after,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
+            
             return jsonify({
                 "success": True,
                 "user": response.data[0],
@@ -234,10 +318,36 @@ def update_user_status(user_id):
         if is_active is None:
             return jsonify({"success": False, "error": "is_active field is required"}), 400
 
+        # Get existing user (for audit log)
+        existing = supabase.service_client.table("user_profiles").select("*").eq("firebase_uid", user_id).execute()
+        if not existing.data:
+            return jsonify({"success": False, "error": "User not found"}), 404
+        
+        data_before = existing.data[0]
+
         # Update status
         response = supabase.service_client.table("user_profiles").update({"is_active": bool(is_active)}).eq("firebase_uid", user_id).execute()
 
         if response.data:
+            # Log to audit ledger
+            admin_info = get_admin_info()
+            data_after = response.data[0]
+            status_text = "activated" if is_active else "deactivated"
+            
+            audit_service.log_action(
+                admin_id=admin_info['admin_id'],
+                admin_email=admin_info['admin_email'],
+                admin_name=admin_info['admin_name'],
+                action_type="UPDATE_STATUS",
+                action_description=f"{status_text.capitalize()} user account: {data_after.get('email', user_id)}",
+                entity_type="user",
+                entity_id=user_id,
+                data_before=data_before,
+                data_after=data_after,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
+            
             return jsonify({
                 "success": True,
                 "user": response.data[0],
@@ -478,9 +588,29 @@ def approve_doctor_admin(doctor_id):
             "email, first_name, last_name"
         ).eq("firebase_uid", doctor_profile["firebase_uid"]).execute()
         
+        # Get updated doctor profile for audit log
+        updated_response = supabase.service_client.table("doctor_profiles").select("*").eq("id", doctor_db_id).execute()
+        data_after = updated_response.data[0] if updated_response.data else doctor_profile
+        
         if user_response.data:
             user_data = user_response.data[0]
             doctor_name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip()
+            
+            # Log to audit ledger
+            admin_info = get_admin_info()
+            audit_service.log_action(
+                admin_id=admin_info['admin_id'],
+                admin_email=admin_info['admin_email'],
+                admin_name=admin_info['admin_name'],
+                action_type="APPROVE",
+                action_description=f"Approved doctor verification: {doctor_name} ({user_data.get('email', '')})",
+                entity_type="doctor_profile",
+                entity_id=doctor_profile.get("firebase_uid") or str(doctor_db_id),
+                data_before=doctor_profile,
+                data_after=data_after,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent')
+            )
             
             # Send approval email to doctor
             send_doctor_notification_email(
@@ -564,6 +694,10 @@ def decline_doctor_admin(doctor_id):
         }).eq("firebase_uid", doctor_profile["firebase_uid"]).execute()
         print(f"✅ User profile updated")
         
+        # Get updated doctor profile for audit log
+        updated_response = supabase.service_client.table("doctor_profiles").select("*").eq("id", doctor_db_id).execute()
+        data_after = updated_response.data[0] if updated_response.data else doctor_profile
+        
         # Get user email for notification
         user_response = supabase.service_client.table("user_profiles").select(
             "email, first_name, last_name"
@@ -572,6 +706,23 @@ def decline_doctor_admin(doctor_id):
         if user_response.data:
             user_data = user_response.data[0]
             doctor_name = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip()
+            
+            # Log to audit ledger
+            admin_info = get_admin_info()
+            audit_service.log_action(
+                admin_id=admin_info['admin_id'],
+                admin_email=admin_info['admin_email'],
+                admin_name=admin_info['admin_name'],
+                action_type="DECLINE",
+                action_description=f"Declined doctor verification: {doctor_name} ({user_data.get('email', '')}) - Reason: {reason}",
+                entity_type="doctor_profile",
+                entity_id=doctor_profile.get("firebase_uid") or str(doctor_db_id),
+                data_before=doctor_profile,
+                data_after=data_after,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent'),
+                metadata={"decline_reason": reason}
+            )
             
             print(f"📧 Sending decline email to: {user_data['email']}")
             # Send decline email to doctor
