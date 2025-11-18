@@ -539,8 +539,9 @@ const DoctorProfilePage = () => {
           <div className="profile-header-content">
             <div className="profile-header-left">
               <button 
-                onClick={() => window.history.back()}
+                onClick={() => navigate('/dashboard')}
                 className="profile-back-btn"
+                aria-label="Go back to dashboard"
               >
                 <ArrowLeft size={20} />
               </button>

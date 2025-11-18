@@ -1230,7 +1230,7 @@ def create_appointment():
                     patient_allergies_from_profile = []
         except Exception as profile_allergies_error:
             print(f"⚠️  Could not fetch patient allergies from profile: {profile_allergies_error}")
-        
+
         # Update user profile with medicine allergies if provided
         medicine_allergies_text = data.get("medicine_allergies", "").strip()
         if medicine_allergies_text:

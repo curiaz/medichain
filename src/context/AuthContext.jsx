@@ -137,14 +137,27 @@ export const AuthProvider = ({ children }) => {
       // This handles users who signed up via Firebase (normal or social)
       try {
         console.log('[Auth] Attempting Firebase login first...');
+        console.log('[Auth] API URL:', API_URL);
+        console.log('[Auth] Login endpoint:', `${API_URL}/auth/login`);
+        
         const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
         const idToken = await userCredential.user.getIdToken();
         
         console.log('[Auth] Firebase login successful, verifying with backend...');
+        console.log('[Auth] Sending request to:', `${API_URL}/auth/login`);
+        
         // Send Firebase token to backend
         const response = await axios.post(`${API_URL}/auth/login`, {
           id_token: idToken
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000 // 30 second timeout
         });
+        
+        console.log('[Auth] Backend response status:', response.status);
+        console.log('[Auth] Backend response data:', response.data);
 
         if (response.data.success) {
           // Check if account requires reactivation
@@ -234,10 +247,20 @@ export const AuthProvider = ({ children }) => {
             console.log('[Auth] Firebase login failed, trying Supabase auth...');
             
             try {
+              console.log('[Auth] Trying backend email/password login...');
+              console.log('[Auth] API URL:', API_URL);
+              
               const response = await axios.post(`${API_URL}/auth/login`, {
                 email: email.trim(),
                 password: password
+              }, {
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                timeout: 30000 // 30 second timeout
               });
+              
+              console.log('[Auth] Backend email/password response:', response.status, response.data);
 
               if (response.data.success) {
                 const token = response.data.data.token;

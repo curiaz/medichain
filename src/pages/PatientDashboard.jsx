@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from "react"
 import Header from "./Header"
-import { Plus, Activity, FileText, Calendar, User } from "lucide-react"
+import { Activity, FileText, Calendar, User } from "lucide-react"
 import { useAuth } from "../context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import DatabaseService from "../services/databaseService"
 import axios from "axios"
+import WelcomePopup from "../components/WelcomePopup"
+import OnboardingFormPopup from "../components/OnboardingFormPopup"
+import SkipConfirmationPopup from "../components/SkipConfirmationPopup"
+import SuccessPopup from "../components/SuccessPopup"
+import { API_CONFIG } from "../config/api"
 import "../assets/styles/ModernDashboard.css"
 import "../assets/styles/PatientDashboard.css"
 
@@ -21,6 +26,11 @@ const PatientDashboard = () => {
   const [, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [recentActivities, setRecentActivities] = useState([])
+  const [showWelcomePopup, setShowWelcomePopup] = useState(false)
+  const [showOnboardingForm, setShowOnboardingForm] = useState(false)
+  const [showSkipConfirmation, setShowSkipConfirmation] = useState(false)
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     // Load patient dashboard stats when component mounts or user changes
@@ -28,6 +38,7 @@ const PatientDashboard = () => {
     if (userUid) {
       loadPatientStats()
       loadRecentActivities()
+      checkAndShowWelcomePopup()
     }
 
     // Listen for appointment booked event to refresh activities
@@ -51,6 +62,163 @@ const PatientDashboard = () => {
       clearInterval(activityInterval)
     }
   }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const checkAndShowWelcomePopup = () => {
+    console.log('🔍 Checking welcome popup conditions...');
+    
+    // FIRST: Check if user just signed up (highest priority - for new accounts)
+    const justSignedUp = sessionStorage.getItem('medichain_just_signed_up');
+    console.log('🔍 Just signed up flag:', justSignedUp);
+    
+    if (justSignedUp === 'true') {
+      console.log('✅ New signup detected - showing welcome popup');
+      sessionStorage.removeItem('medichain_just_signed_up');
+      setTimeout(() => {
+        setShowWelcomePopup(true);
+      }, 500);
+      return;
+    }
+
+    // SECOND: Check if popup has already been shown for this user
+    const welcomeShown = localStorage.getItem('medichain_welcome_shown');
+    const onboardingCompleted = localStorage.getItem('medichain_onboarding_completed');
+    
+    console.log('🔍 Welcome shown:', welcomeShown, 'Onboarding completed:', onboardingCompleted);
+    
+    if (welcomeShown === 'true' || onboardingCompleted) {
+      console.log('ℹ️ Welcome popup already shown or onboarding completed');
+      return;
+    }
+
+    // THIRD: Check if account was created recently (within last 7 days)
+    const userProfile = user?.profile || user;
+    const createdAt = userProfile?.created_at || userProfile?.createdAt;
+    
+    console.log('🔍 User created_at:', createdAt);
+    
+    if (createdAt) {
+      try {
+        const createdDate = new Date(createdAt);
+        const now = new Date();
+        const daysSinceCreation = (now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+        
+        console.log('🔍 Days since creation:', daysSinceCreation);
+        
+        // Show popup if account was created within last 7 days
+        if (daysSinceCreation <= 7 && daysSinceCreation >= 0) {
+          console.log('✅ Account created within 7 days - showing welcome popup');
+          // Small delay to ensure dashboard is fully loaded
+          setTimeout(() => {
+            setShowWelcomePopup(true);
+          }, 500);
+        } else {
+          console.log('ℹ️ Account created more than 7 days ago');
+        }
+      } catch (e) {
+        console.error('Error checking account creation date:', e);
+      }
+    } else {
+      console.log('ℹ️ No created_at date found in user profile');
+    }
+  }
+
+  const handleGetStarted = () => {
+    setShowWelcomePopup(false);
+    localStorage.setItem('medichain_welcome_shown', 'true');
+    // Show onboarding form
+    setShowOnboardingForm(true);
+  }
+
+  const handleOnboardingSkip = () => {
+    setShowOnboardingForm(false);
+    setShowSkipConfirmation(true);
+  }
+
+  const handleSkipConfirmationOk = () => {
+    setShowSkipConfirmation(false);
+    localStorage.setItem('medichain_onboarding_completed', 'skipped');
+  }
+
+  const handleOnboardingContinue = async (formData) => {
+    setIsSaving(true);
+    try {
+      const token = localStorage.getItem('medichain_token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const API_BASE_URL = API_CONFIG.API_URL;
+      const endpoint = `${API_BASE_URL}/profile/patient/update`;
+      
+      console.log('Saving onboarding data:', {
+        endpoint,
+        formData,
+        hasToken: !!token
+      });
+      
+      // Save to backend
+      const response = await axios.put(
+        endpoint,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000 // 30 second timeout
+        }
+      );
+
+      console.log('Backend response:', response.data);
+
+      if (response.data?.success) {
+        setShowOnboardingForm(false);
+        setShowSuccessPopup(true);
+        localStorage.setItem('medichain_onboarding_completed', 'completed');
+        
+        // Update user context if needed
+        if (response.data.profile) {
+          // Optionally update the user in context
+          console.log('Profile updated successfully:', response.data.profile);
+        }
+      } else {
+        throw new Error(response.data?.error || response.data?.message || 'Failed to save profile');
+      }
+    } catch (error) {
+      console.error('Error saving onboarding data:', error);
+      
+      // Get detailed error message
+      let errorMessage = 'Failed to save your information. Please try again later or update it in your profile.';
+      
+      if (error.response) {
+        // Server responded with error status
+        const status = error.response.status;
+        const data = error.response.data;
+        errorMessage = data?.error || data?.message || `Server error (${status}). Please try again.`;
+        console.error('Server error response:', { status, data });
+      } else if (error.request) {
+        // Request was made but no response received
+        errorMessage = 'Unable to connect to server. Please check your internet connection and try again.';
+        console.error('No response received:', error.request);
+      } else {
+        // Error setting up the request
+        errorMessage = error.message || 'An unexpected error occurred. Please try again.';
+        console.error('Request setup error:', error.message);
+      }
+      
+      alert(errorMessage);
+      setShowOnboardingForm(false);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const handleSuccessContinue = () => {
+    setShowSuccessPopup(false);
+    // Just close the popup - user stays on dashboard
+    // No reload needed - auth state is preserved
+    // Profile data will be refreshed on next component render or when user navigates
+  }
 
   const loadPatientStats = async () => {
     try {
@@ -223,6 +391,37 @@ const PatientDashboard = () => {
   
   return (
     <div className="dashboard-container fade-in">
+      {/* Welcome Popup */}
+      {showWelcomePopup && (
+        <WelcomePopup 
+          onGetStarted={handleGetStarted}
+        />
+      )}
+
+      {/* Onboarding Form Popup */}
+      {showOnboardingForm && (
+        <OnboardingFormPopup
+          onSkip={handleOnboardingSkip}
+          onContinue={handleOnboardingContinue}
+          user={user}
+          isSaving={isSaving}
+        />
+      )}
+
+      {/* Skip Confirmation Popup */}
+      {showSkipConfirmation && (
+        <SkipConfirmationPopup
+          onOk={handleSkipConfirmationOk}
+        />
+      )}
+
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <SuccessPopup
+          onContinue={handleSuccessContinue}
+        />
+      )}
+
       {/* Background crosses */}
       <div className="background-crosses">
         {[...Array(24)].map((_, i) => (
@@ -295,55 +494,8 @@ const PatientDashboard = () => {
                   <div className="action-content">
                     <h3>My Health Record</h3>
                     <p>View your complete medical history, prescriptions, and health reports</p>
-                    <span className="action-status">Coming Soon</span>
+                    <span className="action-status available">View Records</span>
                   </div>
-                </div>
-              </div>
-
-              <div className="content-card">
-                <h3>
-                  <Activity size={24} />
-                  Recent Health Activity
-                </h3>
-                <div className="activity-list">
-                  {recentActivities.length > 0 ? (
-                    recentActivities.map((activity) => {
-                      const ActivityIcon = activity.icon || Activity
-                      return (
-                        <div key={activity.id} className="activity-item">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                            <div style={{
-                              width: '36px',
-                              height: '36px',
-                              borderRadius: '8px',
-                              background: activity.type === 'appointment' 
-                                ? 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)'
-                                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0
-                            }}>
-                              <ActivityIcon size={18} color="white" />
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div className="activity-text" style={{ marginBottom: '4px' }}>
-                                {activity.description || activity.action}
-                              </div>
-                              <span className="activity-time">{formatTimeAgo(activity.date)}</span>
-                            </div>
-                          </div>
-                          <span className={`activity-status ${activity.status === 'scheduled' ? 'pending' : 'completed'}`}>
-                            {activity.status === 'scheduled' ? 'Scheduled' : 'Completed'}
-                          </span>
-                        </div>
-                      )
-                    })
-                  ) : (
-                    <div className="activity-item" style={{ justifyContent: 'center', padding: '20px' }}>
-                      <span style={{ color: '#64748b', fontSize: '14px' }}>No recent activity</span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -391,20 +543,50 @@ const PatientDashboard = () => {
                 )}
               </div>
 
-              <div className="quick-access-card">
-                <h3 className="card-title">
-                  <Plus size={20} />
-                  Quick Actions
+              <div className="content-card">
+                <h3>
+                  <Activity size={24} />
+                  Recent Health Activity
                 </h3>
-                <div className="quick-actions">
-                  <button className="quick-action-btn" onClick={handleHealthRecord}>
-                    <FileText size={16} />
-                    View Health Record
-                  </button>
-                  <button className="quick-action-btn" onClick={handleNewAppointment}>
-                    <Calendar size={16} />
-                    Book Appointment
-                  </button>
+                <div className="activity-list">
+                  {recentActivities.length > 0 ? (
+                    recentActivities.map((activity) => {
+                      const ActivityIcon = activity.icon || Activity
+                      return (
+                        <div key={activity.id} className="activity-item">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                            <div style={{
+                              width: '36px',
+                              height: '36px',
+                              borderRadius: '8px',
+                              background: activity.type === 'appointment' 
+                                ? 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)'
+                                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <ActivityIcon size={18} color="white" />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div className="activity-text" style={{ marginBottom: '4px' }}>
+                                {activity.description || activity.action}
+                              </div>
+                              <span className="activity-time">{formatTimeAgo(activity.date)}</span>
+                            </div>
+                          </div>
+                          <span className={`activity-status ${activity.status === 'scheduled' ? 'pending' : 'completed'}`}>
+                            {activity.status === 'scheduled' ? 'Scheduled' : 'Completed'}
+                          </span>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <div className="activity-item" style={{ justifyContent: 'center', padding: '20px' }}>
+                      <span style={{ color: '#64748b', fontSize: '14px' }}>No recent activity</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

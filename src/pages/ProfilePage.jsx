@@ -29,8 +29,7 @@ const ProfilePage = () => {
     address: '',
     city: '',
     state: '',
-    zip_code: '',
-    emergency_contact: ''
+    zip_code: ''
   });
 
   // Medical Info State
@@ -100,8 +99,7 @@ const ProfilePage = () => {
           address: user.address || '',
           city: user.city || '',
           state: user.state || '',
-          zip_code: user.zip_code || '',
-          emergency_contact: user.emergency_contact || ''
+          zip_code: user.zip_code || ''
         });
 
         // Load medical info
@@ -150,8 +148,7 @@ const ProfilePage = () => {
                 address: profileData.address || '',
                 city: profileData.city || '',
                 state: profileData.state || '',
-                zip_code: profileData.zip_code || '',
-                emergency_contact: profileData.emergency_contact || ''
+                zip_code: profileData.zip_code || ''
               });
 
               // Update medical info with fresh backend data
@@ -872,21 +869,9 @@ const ProfilePage = () => {
                     <option value="">Select gender</option>
                     <option value="male">Male</option>
                     <option value="female">Female</option>
-                    <option value="other">Other</option>
                   </select>
                 </div>
 
-                <div className="profile-form-group">
-                  <label className="profile-form-label">EMERGENCY CONTACT</label>
-                  <input
-                    type="text"
-                    value={formData.emergency_contact}
-                    onChange={(e) => setFormData({...formData, emergency_contact: e.target.value})}
-                    disabled={!editing}
-                    className="profile-form-input"
-                    placeholder="Name and phone number"
-                  />
-                </div>
               </div>
             </div>
           )}

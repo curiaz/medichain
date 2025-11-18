@@ -238,6 +238,19 @@ def update_profile():
             elif field in doctor_fields:
                 doctor_profile_data[field] = value
         
+        # Normalize gender field if present (only allow 'male' or 'female')
+        if 'gender' in user_profile_data and user_profile_data['gender']:
+            gender_lower = str(user_profile_data['gender']).lower().strip()
+            if gender_lower in ['male', 'm']:
+                user_profile_data['gender'] = 'male'
+            elif gender_lower in ['female', 'f']:
+                user_profile_data['gender'] = 'female'
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': "Invalid gender value. Only 'male' or 'female' are allowed."
+                }), 400
+        
         # Update user profile
         if user_profile_data:
             user_response = supabase.service_client.table('user_profiles').update(user_profile_data).eq('firebase_uid', uid).execute()
@@ -1224,8 +1237,24 @@ def update_patient_profile():
         # Convert empty strings to None for date and constrained fields
         if 'date_of_birth' in user_data and user_data['date_of_birth'] == '':
             user_data['date_of_birth'] = None
-        if 'gender' in user_data and user_data['gender'] == '':
-            user_data['gender'] = None
+        if 'gender' in user_data:
+            if user_data['gender'] == '':
+                user_data['gender'] = None
+            else:
+                # Normalize gender to lowercase to match database constraint
+                # Only accept 'male' or 'female'
+                gender_lower = user_data['gender'].lower().strip()
+                # Map common variations to valid values
+                if gender_lower in ['male', 'm']:
+                    user_data['gender'] = 'male'
+                elif gender_lower in ['female', 'f']:
+                    user_data['gender'] = 'female'
+                else:
+                    # Invalid gender value - return error
+                    return jsonify({
+                        'success': False,
+                        'error': f"Invalid gender value. Only 'male' or 'female' are allowed."
+                    }), 400
         
         if not user_data:
             return jsonify({

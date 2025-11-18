@@ -242,6 +242,10 @@ const MedichainSignup = () => {
               
               setInlineSuccess("Account created successfully! Welcome to MediChain.")
               showToast.success("Account created successfully! Welcome to MediChain.");
+              // Set flag for welcome popup (patient only)
+              if (formData.userType === 'patient') {
+                sessionStorage.setItem('medichain_just_signed_up', 'true');
+              }
               // Redirect to dashboard after successful account creation
               navigate("/dashboard", { replace: true });
               return;
@@ -304,6 +308,10 @@ const MedichainSignup = () => {
           setInlineSuccess("Account created successfully! Welcome to MediChain.")
           showToast.success(result.message || "Account created successfully! Welcome to MediChain.");
           sessionStorage.removeItem('google_signup_data');
+          // Set flag for welcome popup (patient only)
+          if (formData.userType === 'patient') {
+            sessionStorage.setItem('medichain_just_signed_up', 'true');
+          }
           // Redirect to dashboard after successful account creation
           navigate("/dashboard", { replace: true });
           return;

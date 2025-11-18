@@ -218,7 +218,7 @@ const DoctorAIDiagnosisReview = () => {
       }
     } catch (err) {
       // Error fetching report - treat as not reviewed
-      setReviewStatus('pending');
+        setReviewStatus('pending');
     }
   };
 
@@ -452,7 +452,7 @@ const DoctorAIDiagnosisReview = () => {
     } catch (err) {
       // Medical report doesn't exist yet, that's okay - this is expected for new appointments
       // Backend now returns 200 with success: false instead of 404, so this catch is for other errors
-      console.log('No existing medical report found - this is normal for new appointments');
+        console.log('No existing medical report found - this is normal for new appointments');
     }
   };
 
