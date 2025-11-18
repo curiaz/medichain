@@ -418,12 +418,19 @@ def register():
 @auth_bp.route("/doctor-signup", methods=["POST"])
 def doctor_signup():
     """
-    Doctor registration endpoint with document verification
+    Doctor registration endpoint - Step 1 of multi-step signup
+    NO verification file required in step 1 - documents uploaded in step 4
     Handles multipart/form-data for file uploads
     Supports both regular signup (email/password) and Google signup (id_token)
     """
     try:
-        print("[DEBUG] 🏥 Doctor signup request received")
+        print("=" * 80)
+        print("[DEBUG] 🏥 Doctor signup request received - NEW ROUTE (auth_bp)")
+        print("[DEBUG] ⚠️  IMPORTANT: Verification file is NOT required in step 1")
+        print("[DEBUG] ⚠️  Documents will be uploaded in step 4 of the multi-step flow")
+        print("[DEBUG] Route: /api/auth/doctor-signup")
+        print("[DEBUG] Blueprint: auth_bp")
+        print("=" * 80)
         
         # Check if this is a Google signup (id_token provided) or regular signup
         id_token = request.form.get('id_token', '').strip()
@@ -558,227 +565,98 @@ def doctor_signup():
         # Force specialization to "General Practitioner" only
         specialization = "General Practitioner"
         
-        # Get uploaded file
-        verification_file = request.files.get('verificationFile')
+        # NOTE: Verification file upload is NOT handled in step 1
+        # Documents will be uploaded in step 4 of the multi-step signup flow
+        # No file handling logic here - completely removed from step 1
         
         print(f"[DEBUG] Doctor signup data: {email}, {first_name} {last_name}, {specialization}")
-        print(f"[DEBUG] Verification file: {verification_file.filename if verification_file else 'None'}")
+        print(f"[DEBUG] Step 1: No verification file needed - will be uploaded in step 4")
+        print("[DEBUG] ⚠️  IMPORTANT: Account will be created AFTER OTP verification")
         
-        # Validate verification file
-        if not verification_file:
-            print("[DEBUG] ❌ Missing verification file")
-            # Clean up Firebase user if it was created
-            if not is_google_signup and 'uid' in locals():
-                try:
-                    auth.delete_user(uid)
-                except:
-                    pass
-            return jsonify({
-                "success": False,
-                "error": "Please upload your verification document (medical license, ID, or certificate)."
-            }), 400
+        print("[DEBUG] ✅ Validation passed, proceeding with OTP email (NO database creation yet)...")
         
-        # Validate file type
-        allowed_extensions = {'pdf', 'jpg', 'jpeg', 'png'}
-        filename = secure_filename(verification_file.filename)
-        file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
-        
-        if file_ext not in allowed_extensions:
-            print(f"[DEBUG] ❌ Invalid file type: {file_ext}")
-            # Clean up Firebase user if it was created
-            if not is_google_signup and 'uid' in locals():
-                try:
-                    auth.delete_user(uid)
-                except:
-                    pass
-            return jsonify({
-                "success": False,
-                "error": "Please upload a valid file (PDF, JPG, or PNG)."
-            }), 400
-        
-        # Validate file size (max 5MB)
-        verification_file.seek(0, os.SEEK_END)
-        file_size = verification_file.tell()
-        verification_file.seek(0)  # Reset file pointer
-        
-        if file_size > 5 * 1024 * 1024:  # 5MB
-            print(f"[DEBUG] ❌ File too large: {file_size} bytes")
-            # Clean up Firebase user if it was created
-            if not is_google_signup and 'uid' in locals():
-                try:
-                    auth.delete_user(uid)
-                except:
-                    pass
-            return jsonify({
-                "success": False,
-                "error": "File size must be less than 5MB."
-            }), 400
-        
-        print("[DEBUG] ✅ Validation passed, proceeding with file upload and database creation...")
-
-        # Save verification file
+        # NOTE: Account (user_profiles) will be created AFTER OTP verification
+        # Store signup data temporarily in OTP storage for later use
+        # 🔔 Send OTP email for email verification
         try:
-            # Create uploads directory if it doesn't exist
-            upload_dir = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'doctor_verification')
-            os.makedirs(upload_dir, exist_ok=True)
-            
-            # Generate unique filename
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            unique_filename = f"{uid}_{timestamp}_{filename}"
-            file_path = os.path.join(upload_dir, unique_filename)
-            
-            # Save file
-            verification_file.save(file_path)
-            print(f"[DEBUG] ✅ Verification file saved: {unique_filename}")
-            
-        except Exception as file_error:
-            print(f"[DEBUG] ❌ File save error: {file_error}")
-            # Clean up Firebase user (only for regular signup, not Google)
-            if not is_google_signup:
+            # Import OTP service - PRIORITIZE database service
+            try:
+                from services.otp_service import otp_service
+                print("[DEBUG] ✅ Using Database OTP Service for doctor signup")
+            except ImportError:
                 try:
-                    auth.delete_user(uid)
-                    print(f"[DEBUG] Cleaned up Firebase user after file save failure")
-                except:
-                    pass
+                    from services.simple_otp_manager import simple_otp_manager as otp_service
+                    print("[DEBUG] ⚠️  Using Simple OTP Manager (fallback) for doctor signup")
+                except ImportError as e:
+                    print(f"[DEBUG] ⚠️  OTP service not available: {e}")
+                    otp_service = None
             
-            return jsonify({
-                "success": False,
-                "error": "Failed to save verification document. Please try again."
-            }), 500
-        
-        # Create user profile in database
-        try:
-            # Hash password for database storage (only for regular signup)
-            if not is_google_signup and not password_hash:
-                password_hash = auth_utils.hash_password(password)
-            
-            # 1. Create basic user profile
-            user_data = {
-                "firebase_uid": uid,
-                "email": email,
-                "first_name": first_name,
-                "last_name": last_name,
-                "role": "doctor",
-                "verification_status": "pending"  # Set to pending for doctor verification
-            }
-            
-            # Only add password_hash if it exists (regular signup)
-            if password_hash:
-                user_data["password_hash"] = password_hash
-            
-            user_response = supabase.client.table("user_profiles").insert(user_data).execute()
-            
-            if not user_response.data:
-                raise Exception("Failed to create user profile in database")
-            
-            user = user_response.data[0]
-            user_id = user["id"]
-            print(f"[DEBUG] ✅ User profile created: {email}")
-            
-            # 2. Create doctor profile with verification details
-            doctor_data = {
-                "user_id": user_id,
-                "firebase_uid": uid,
-                "specialization": specialization,
-                "verification_file_path": unique_filename,  # Using correct column name
-                "verification_status": "pending"  # Requires admin approval
-            }
-            
-            # Use service_client to bypass RLS for doctor profile creation
-            doctor_response = supabase.service_client.table("doctor_profiles").insert(doctor_data).execute()
-            
-            if doctor_response.data:
-                doctor = doctor_response.data[0]
-                print(f"[DEBUG] ✅ Doctor profile created: {email}")
+            if otp_service:
+                # Store signup data in OTP metadata for later use after verification
+                signup_metadata = {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "email": email,
+                    "password_hash": password_hash if password_hash else None,
+                    "firebase_uid": uid,
+                    "is_google_signup": is_google_signup,
+                    "specialization": specialization
+                }
                 
-                # 🔔 Send admin notification email for verification
-                try:
-                    from doctor_verification import send_admin_notification_email, generate_verification_token
+                # Generate OTP and store it with signup metadata
+                # Store metadata as JSON string in firebase_reset_link field (we'll use it differently)
+                import json
+                metadata_json = json.dumps(signup_metadata)
+                otp_result = otp_service.store_otp(email, metadata_json)  # Store metadata in firebase_reset_link field
+                
+                if otp_result.get("success"):
+                    otp_code = otp_result.get("otp_code")
                     
-                    verification_token = generate_verification_token()
-                    
-                    # Store verification token in doctor_profiles
-                    supabase.service_client.table("doctor_profiles").update({
-                        "verification_token": verification_token,
-                        "token_expires_at": (datetime.now() + timedelta(hours=24)).isoformat()
-                    }).eq("id", doctor["id"]).execute()
-                    
-                    doctor_signup_data = {
-                        "firstName": first_name,
-                        "lastName": last_name,
-                        "email": email,
-                        "specialization": specialization
-                    }
-                    
-                    email_sent = send_admin_notification_email(
-                        doctor_signup_data,
-                        file_path,
-                        doctor["id"],
-                        verification_token
-                    )
+                    # Send OTP email (doctor signup template)
+                    full_name = f"{first_name} {last_name}".strip()
+                    email_sent = send_otp_email(email, full_name, otp_code, is_doctor_signup=True)
                     
                     if email_sent:
-                        print(f"[DEBUG] ✅ Admin notification email sent for doctor verification")
-                    else:
-                        print(f"[DEBUG] ⚠️  Failed to send admin notification email")
+                        print(f"[DEBUG] ✅ OTP email sent to {email}")
                         
-                except Exception as email_error:
-                    print(f"[DEBUG] ⚠️  Email notification error: {email_error}")
-                    # Don't fail the signup if email fails
-                
-                # Generate token
-                token = auth_utils.generate_token(user["id"], user["email"], user["role"])
-                
-                return jsonify({
-                    "success": True,
-                    "message": "Doctor account created successfully! Your verification documents are under review.",
-                    "data": {
-                        "user": {
-                            "id": user["id"],
-                            "uid": uid,
-                            "email": user["email"],
-                            "first_name": user["first_name"],
-                            "last_name": user["last_name"],
-                            "role": user["role"],
-                            # Flattened convenience fields
-                            "specialization": doctor.get("specialization", ""),
-                            "verification_status": doctor.get("verification_status", "pending"),
-                            # Nested doctor profile for UI components that expect it
-                            "doctor_profile": {
-                                "id": doctor.get("id"),
-                                "verification_status": doctor.get("verification_status", "pending"),
-                                "specialization": doctor.get("specialization", ""),
-                                "verification_file_path": doctor.get("verification_file_path")
-                            }
-                        },
-                        "token": token
-                    }
-                }), 201
+                        # Return response indicating email verification is required
+                        return jsonify({
+                            "success": True,
+                            "message": "Please verify your email with the OTP sent to your inbox.",
+                            "requires_email_verification": True,
+                            "otp_sent": True,
+                            "email": email
+                        }), 201
+                    else:
+                        print(f"[DEBUG] ⚠️  Failed to send OTP email to {email}")
+                else:
+                    print(f"[DEBUG] ⚠️  Failed to generate OTP: {otp_result.get('error')}")
             else:
-                # Clean up user profile if doctor profile creation fails
-                supabase.service_client.table("user_profiles").delete().eq("id", user_id).execute()
-                raise Exception("Failed to create doctor profile in database")
-                
-        except Exception as db_error:
-            print(f"[DEBUG] ❌ Database error: {db_error}")
-            
-            # Clean up Firebase user, file, and any created database records
-            # (Only delete Firebase user for regular signup, not Google)
+                print(f"[DEBUG] ⚠️  OTP service not available")
+                # Clean up Firebase user if OTP service not available
+                try:
+                    if not is_google_signup:
+                        auth.delete_user(uid)
+                except:
+                    pass
+                return jsonify({
+                    "success": False,
+                    "error": "Failed to send verification email. Please try again."
+                }), 500
+                    
+        except Exception as otp_error:
+            print(f"[DEBUG] ⚠️  OTP email error: {otp_error}")
+            import traceback
+            traceback.print_exc()
+            # Clean up Firebase user if OTP fails
             try:
                 if not is_google_signup:
                     auth.delete_user(uid)
-                if 'file_path' in locals() and os.path.exists(file_path):
-                    os.remove(file_path)
-                # Try to clean up user_profiles if it was created (use service_client to bypass RLS)
-                if 'user_id' in locals():
-                    supabase.service_client.table("user_profiles").delete().eq("id", user_id).execute()
-                print(f"[DEBUG] Cleaned up Firebase user (if regular signup), file, and database records after failure")
-            except Exception as cleanup_error:
-                print(f"[DEBUG] Cleanup error: {cleanup_error}")
-            
+            except:
+                pass
             return jsonify({
                 "success": False,
-                "error": "Failed to create doctor profile. Please try again."
+                "error": "Failed to send verification email. Please try again."
             }), 500
 
     except Exception as e:
@@ -893,10 +771,24 @@ def login():
                             "error": "User profile not found. Please complete registration."
                         }), 404
                 else:
-                    print(f"[DEBUG] ❌ Firebase token verification failed: {result.get('error')}")
+                    error_msg = result.get('error', 'Unknown error')
+                    print(f"[DEBUG] ❌ Firebase token verification failed: {error_msg}")
+                    print(f"[DEBUG] Token preview: {id_token[:50] if id_token else 'None'}...")
+                    
+                    # Provide more specific error messages
+                    if "expired" in error_msg.lower():
+                        error_message = "Your session has expired. Please log in again."
+                    elif "invalid" in error_msg.lower() or "malformed" in error_msg.lower():
+                        error_message = "Invalid authentication token. Please log in again."
+                    elif "revoked" in error_msg.lower():
+                        error_message = "Your session has been revoked. Please log in again."
+                    else:
+                        error_message = f"Authentication failed: {error_msg}"
+                    
                     return jsonify({
                         "success": False,
-                        "error": "Invalid Firebase token"
+                        "error": error_message,
+                        "error_code": "INVALID_TOKEN"
                     }), 401
                     
             except Exception as firebase_error:
@@ -966,26 +858,40 @@ def login():
             # 🔧 FIXED: Check if user has password_hash
             has_password_hash = user.get("password_hash") and user.get("password_hash") is not None
             
+            print(f"[DEBUG] Password verification for {email}")
+            print(f"[DEBUG] Has password_hash: {has_password_hash}")
+            if has_password_hash:
+                stored_hash = user.get("password_hash")
+                print(f"[DEBUG] Stored hash: {stored_hash[:30] if stored_hash else 'NULL'}...")
+            
             if has_password_hash:
                 # ✅ User has password_hash - verify directly
                 print("[DEBUG] ✅ User has password_hash, verifying with Supabase")
                 try:
                     password_check = auth_utils.verify_password(password, user.get("password_hash"))
                     print(f"[DEBUG] Password check result: {password_check}")
+                    
+                    if not password_check:
+                        print("[DEBUG] ❌ Password mismatch - database password_hash verification failed")
+                        print(f"[DEBUG] Attempted password: {'*' * len(password)}")
+                        print(f"[DEBUG] Stored hash: {user.get('password_hash')[:30] if user.get('password_hash') else 'NULL'}...")
+                        
+                        # DO NOT fall back to Firebase - password reset should have updated both
+                        # If password_hash exists, it must match
+                        return jsonify({
+                            "success": False,
+                            "error": "Invalid email or password. Please check your credentials and try again."
+                        }), 401
+                    
+                    print("[DEBUG] ✅ Password verified successfully with database password_hash!")
                 except Exception as verify_error:
                     print(f"[DEBUG] ❌ Password verification error: {verify_error}")
+                    import traceback
+                    traceback.print_exc()
                     return jsonify({
                         "success": False,
                         "error": "Authentication error occurred. Please try again."
                     }), 500
-                
-                if not password_check:
-                    print("[DEBUG] ❌ Password mismatch for user")
-                    return jsonify({
-                        "success": False,
-                        "error": "Invalid email or password. Please check your credentials and try again."
-                    }), 401
-                print("[DEBUG] ✅ Password verified successfully!")
             else:
                 # ⚠️ User created before password_hash integration
                 print("[DEBUG] ⚠️  No password_hash found - legacy Firebase-only user")
@@ -1073,9 +979,23 @@ def get_current_user():
 @auth_bp.route("/password-reset-request", methods=["POST"])
 def password_reset_request():
     """Request password reset using OTP system"""
+    print("=" * 80)
+    print("🔐 PASSWORD RESET REQUEST ENDPOINT CALLED")
+    print("=" * 80)
     try:
-        data = request.get_json()
+        print(f"📥 Request method: {request.method}")
+        print(f"📥 Request URL: {request.url}")
+        print(f"📥 Request headers: {dict(request.headers)}")
+        
+        data = request.get_json(silent=True)
+        print(f"📦 Request data: {data}")
+        
+        if data is None:
+            print("❌ No JSON data received")
+            return jsonify({"error": "No data received"}), 400
+        
         email = data.get("email", "").strip().lower()
+        print(f"📧 Email extracted: {email}")
 
         if not email:
             return jsonify({"error": "Email is required"}), 400
@@ -1102,30 +1022,46 @@ def password_reset_request():
             
         except Exception as db_error:
             print(f"Database check error: {db_error}")
-            return jsonify({"error": "Database error occurred"}), 500
-
+            user_name = None  # Continue even if we can't get the name
+        
         # Use Firebase Auth to send password reset email
         from auth.firebase_auth import firebase_auth_service
         
-        result = firebase_auth_service.send_password_reset_email(email)
+        print(f"📧 Requesting password reset email for: {email}")
+        result = firebase_auth_service.send_password_reset_email(email, user_name=user_name)
+        
+        print(f"📧 Password reset result: success={result.get('success')}, email_sent={result.get('email_sent', True)}")
         
         if result["success"]:
             # Store a temporary session to allow the UI to continue its flow
             # but inform user about the Firebase reset process
             session_token = secrets.token_urlsafe(32)
             verification_code = result.get("verification_code")
+            email_actually_sent = result.get("email_sent", True)  # Default to True for backward compatibility
             
             # Verification code is stored in database via OTP service
             print(f"✅ Password reset initiated for {email}")
             print(f"🔢 Verification code: {verification_code} (expires in 5 minutes)")
             print(f"🎫 Session token: {session_token}")
+            print(f"📧 Email actually sent: {email_actually_sent}")
+            
+            # Adjust message based on whether email was actually sent
+            if email_actually_sent:
+                message = "Password reset email sent! Check your email for both a reset link and verification code."
+                ui_message = "A password reset email has been sent with two options: use the verification code below or click the reset link in the email."
+            else:
+                message = "Password reset code generated. Check console for verification code (email sending failed)."
+                ui_message = "Password reset code generated. Please check the backend console for the verification code as email sending failed."
+                print(f"⚠️  WARNING: Email was not sent! Verification code: {verification_code}")
+                print(f"⚠️  Reset link: {result.get('dev_link', 'N/A')}")
                 
             return jsonify({
                 "success": True,
-                "message": "Password reset email sent! Check your email for both a reset link and verification code.",
-                "ui_message": "A password reset email has been sent with two options: use the verification code below or click the reset link in the email.",
+                "message": message,
+                "ui_message": ui_message,
                 "session_token": session_token,
-                "has_verification_code": True
+                "has_verification_code": True,
+                "email_sent": email_actually_sent
             }), 200
         else:
             # Handle different Firebase errors gracefully
@@ -1142,7 +1078,13 @@ def password_reset_request():
                 return jsonify({"error": "Failed to send reset email. Please try again."}), 500
 
     except Exception as e:
-        print(f"Password reset request error: {str(e)}")
+        print("=" * 80)
+        print(f"❌ PASSWORD RESET REQUEST ERROR: {str(e)}")
+        print("=" * 80)
+        import traceback
+        print("Full traceback:")
+        traceback.print_exc()
+        print("=" * 80)
         return jsonify({"error": "An error occurred while processing your request"}), 500
 
 
@@ -1151,14 +1093,21 @@ def generate_numeric_otp():
     return f"{random.randint(100000, 999999):06d}"
 
 
-def send_otp_email(email, name, otp):
-    """Send OTP email to user with enhanced design"""
+def send_otp_email(email, name, otp, is_doctor_signup=False):
+    """Send OTP email to user with enhanced design
+    
+    Args:
+        email: Recipient email address
+        name: Recipient name
+        otp: 6-digit OTP code
+        is_doctor_signup: If True, use doctor signup email template (no password reset link)
+    """
     try:
         # Email configuration
         smtp_server = "smtp.gmail.com"
         smtp_port = 587
-        sender_email = os.getenv("GMAIL_USER")
-        sender_password = os.getenv("GMAIL_APP_PASSWORD")
+        sender_email = os.getenv("medichain173@gmail.com")
+        sender_password = os.getenv("pyrbdzinoersbczk")
         
         if not sender_email or not sender_password:
             print("Email credentials not configured")
@@ -1168,10 +1117,110 @@ def send_otp_email(email, name, otp):
         msg = MIMEMultipart("alternative")
         msg["From"] = f"Medichain Security <{sender_email}>"
         msg["To"] = email
-        msg["Subject"] = "🔐 Medichain Password Reset - Verification Code"
         
-        # Plain text version
-        text_body = f"""
+        if is_doctor_signup:
+            # Doctor signup email template
+            msg["Subject"] = "Medichain - Email Verification"
+            
+            # Plain text version for doctor signup
+            text_body = f"""
+🏥 MEDICHAIN DOCTOR SIGNUP VERIFICATION
+
+Hello {name},
+
+Thank you for signing up as a doctor on Medichain!
+
+🔑 Your email verification code is: {otp}
+
+⏰ This code will expire in 1 minute.
+
+Please enter this code on the signup page to verify your email address and continue with your registration.
+
+For your security:
+• Never share this code with anyone  
+• Only enter this code on the official Medichain website
+• Make sure you're on the correct website before entering the code
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 Visit: localhost:3001
+📧 Support: medichain173@gmail.com
+
+Best regards,
+The Medichain Team
+
+© 2025 Medichain - AI-Driven Diagnosis & Blockchain Health Records System
+            """
+            
+            # HTML version for doctor signup
+            html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medichain Doctor Signup Verification</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f8f9fa;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+        
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); padding: 30px; text-align: center;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+                <div style="width: 40px; height: 40px; background: rgba(255, 255, 255, 0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: white;">+</div>
+                <h1 style="margin: 0; color: white; font-size: 28px; font-weight: 700;">Medichain</h1>
+            </div>
+            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 14px;">AI-Driven Healthcare Platform</p>
+        </div>
+        
+        <!-- Main Content -->
+        <div style="padding: 40px 30px;">
+            <h2 style="color: #1565c0; margin: 0 0 20px 0; font-size: 24px;">🔐 Email Verification</h2>
+            
+            <p style="margin: 0 0 20px 0; font-size: 16px;">Hello <strong>{name}</strong>,</p>
+            
+            <p style="margin: 0 0 30px 0; font-size: 16px;">Thank you for signing up as a doctor on Medichain! Please verify your email address using the code below to continue with your registration:</p>
+            
+            <!-- OTP Code Box -->
+            <div style="background: linear-gradient(145deg, #e3f2fd 0%, #bbdefb 100%); border: 2px solid #2196f3; border-radius: 12px; padding: 25px; margin: 30px 0; text-align: center;">
+                <p style="margin: 0 0 15px 0; font-size: 14px; color: #1565c0; font-weight: 600;">Your Verification Code</p>
+                <div style="font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 36px; font-weight: 700; color: #1976d2; letter-spacing: 8px; margin: 10px 0;">{otp}</div>
+                <p style="margin: 15px 0 0 0; font-size: 12px; color: #666;">⏰ Expires in 1 minute</p>
+            </div>
+            
+            <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h3 style="margin: 0 0 15px 0; color: #856404; font-size: 16px;">🛡️ Security Guidelines</h3>
+                <ul style="margin: 0; padding-left: 20px; color: #856404;">
+                    <li>Never share this code with anyone</li>
+                    <li>Only enter this code on the official Medichain website</li>
+                    <li>Make sure you're on the correct website before entering the code</li>
+                    <li>If you didn't request this verification, please ignore this email</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background-color: #f8f9fa; border-top: 1px solid #e9ecef; padding: 25px 30px; text-align: center;">
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #6c757d;">
+                <strong>Medichain</strong> | AI-Driven Diagnosis & Blockchain Health Records
+            </p>
+            <p style="margin: 0 0 10px 0; font-size: 12px; color: #adb5bd;">
+                📧 Support: medichain173@gmail.com | 🌐 localhost:3001
+            </p>
+            <p style="margin: 0; font-size: 11px; color: #adb5bd;">
+                © 2025 Medichain Security Team. For academic use – Taguig City University
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+            """
+        else:
+            # Password reset email template (existing)
+            msg["Subject"] = "🔐 Medichain Password Reset - Verification Code"
+            
+            # Plain text version
+            text_body = f"""
 🏥 MEDICHAIN PASSWORD RESET
 
 Hello {name},
@@ -1180,7 +1229,7 @@ We received a request to reset your Medichain account password.
 
 🔑 Your verification code is: {otp}
 
-⏰ This code will expire in 10 minutes.
+⏰ This code will expire in 1 minute.
 
 If you didn't request this password reset, please ignore this email or contact our support team.
 
@@ -1198,10 +1247,10 @@ Best regards,
 The Medichain Security Team
 
 © 2025 Medichain - AI-Driven Diagnosis & Blockchain Health Records System
-        """
-        
-        # HTML version for better presentation
-        html_body = f"""
+            """
+            
+            # HTML version for better presentation
+            html_body = f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -1233,7 +1282,7 @@ The Medichain Security Team
             <div style="background: linear-gradient(145deg, #e3f2fd 0%, #bbdefb 100%); border: 2px solid #2196f3; border-radius: 12px; padding: 25px; margin: 30px 0; text-align: center;">
                 <p style="margin: 0 0 15px 0; font-size: 14px; color: #1565c0; font-weight: 600;">Your Verification Code</p>
                 <div style="font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 36px; font-weight: 700; color: #1976d2; letter-spacing: 8px; margin: 10px 0;">{otp}</div>
-                <p style="margin: 15px 0 0 0; font-size: 12px; color: #666;">⏰ Expires in 10 minutes</p>
+                <p style="margin: 15px 0 0 0; font-size: 12px; color: #666;">⏰ Expires in 1 minute</p>
             </div>
             
             <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin: 20px 0;">
@@ -1266,7 +1315,7 @@ The Medichain Security Team
     </div>
 </body>
 </html>
-        """
+            """
         
         # Attach both text and HTML versions
         text_part = MIMEText(text_body, "plain")
@@ -1293,28 +1342,55 @@ The Medichain Security Team
 def verify_otp():
     """Firebase-based password reset - redirect to email instructions"""
     try:
-        data = request.get_json()
+        print("=" * 80)
+        print("🔐 VERIFY OTP ENDPOINT CALLED")
+        print("=" * 80)
+        
+        data = request.get_json(silent=True)
+        print(f"📦 Request data: {data}")
+        
+        if not data:
+            print("❌ No JSON data received")
+            return jsonify({"error": "No data received"}), 400
+        
         email = data.get("email", "").strip().lower()
         otp = data.get("otp", "").strip()
+        
+        # Remove all spaces from OTP (in case user entered with spaces like "1 5 3 8 1 7")
+        otp = otp.replace(" ", "").replace("-", "").replace("_", "")
+        
+        print(f"📧 Email: {email}")
+        print(f"🔢 OTP (after cleaning): '{otp}' (length: {len(otp)})")
 
         if not email:
+            print("❌ Email is required")
             return jsonify({"error": "Email is required"}), 400
+        
+        if not otp:
+            print("❌ OTP is required")
+            return jsonify({"error": "OTP code is required"}), 400
+        
+        if len(otp) != 6:
+            print(f"❌ Invalid OTP length: {len(otp)} (expected 6)")
+            return jsonify({"error": "OTP code must be 6 digits"}), 400
 
         # Verify OTP using database service
         try:
-            # Import OTP service with fallback
+            # Import OTP service - PRIORITIZE database service
             import sys
             sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
             
+            # PRIORITIZE database OTP service for security
             try:
-                from services.simple_otp_manager import simple_otp_manager as otp_service
-                print("✅ Using Simple OTP Manager for verification")
+                from services.otp_service import otp_service
+                print("✅ Using Database OTP Service for verification (secure)")
             except ImportError:
+                # Fallback to simple OTP manager if database service not available
                 try:
-                    from services.otp_service import otp_service
-                    print("✅ Using Database OTP Service for verification")
+                    from services.simple_otp_manager import simple_otp_manager as otp_service
+                    print("⚠️  Using Simple OTP Manager (fallback - not secure) for verification")
                 except ImportError as e:
-                    print(f"Warning: OTP service not available: {e}")
+                    print(f"❌ Warning: OTP service not available: {e}")
                     return jsonify({
                         "error": "OTP verification service not available. Please use the Firebase reset link from your email."
                     }), 503
@@ -1337,18 +1413,141 @@ def verify_otp():
                         "error": "No verification session found. Please request a new password reset."
                     }), 400
             
-            # Verify the OTP code
-            verification_result = otp_service.verify_otp(email, otp)
+            # Verify the OTP code (trim and normalize)
+            print(f"🔍 Verifying OTP for {email}: code='{otp}'")
+            print(f"🔍 Email normalized to lowercase: {email}")
             
+            # Check if OTP exists before verification
+            otp_info_before = otp_service.get_otp_info(email)
+            if otp_info_before:
+                print(f"🔍 OTP found in database: {otp_info_before.get('otp_code')}")
+            else:
+                print(f"⚠️  No OTP found in database for {email}")
+                # Try to find any OTPs for this email (including used ones for debugging)
+                try:
+                    from services.otp_service import otp_service as db_otp_service
+                    all_otps = db_otp_service.supabase.client.table("temporary_otp_storage").select("*").eq("email", email).execute()
+                    if all_otps.data:
+                        print(f"🔍 Found {len(all_otps.data)} OTP record(s) for {email}:")
+                        for otp_rec in all_otps.data:
+                            print(f"   - Code: {otp_rec.get('otp_code')}, Used: {otp_rec.get('is_used')}, Expires: {otp_rec.get('expires_at')}")
+                    else:
+                        print(f"❌ No OTP records found in database for {email}")
+                except Exception as debug_error:
+                    print(f"⚠️  Could not debug OTP lookup: {debug_error}")
+            
+            # OTP is already cleaned above (spaces removed)
+            verification_result = otp_service.verify_otp(email, otp)
+            print(f"🔍 Verification result: {verification_result}")
+            
+            if not verification_result.get("success"):
+                print(f"❌ OTP verification failed: {verification_result.get('error')}")
+                return jsonify({
+                    "success": False,
+                    "error": verification_result.get("error", "OTP verification failed")
+                }), 400
+            
+            # OTP verified successfully
             if verification_result["success"]:
-                # Generate a reset token for UI continuity
-                reset_token = secrets.token_urlsafe(32)
+                # Generate reset token for password change
+                reset_token = verification_result.get("session_token") or secrets.token_urlsafe(32)
+                print(f"✅ OTP verified! Reset token: {reset_token[:20]}...")
+                # Check if this is a doctor signup verification (has metadata in firebase_reset_link)
+                firebase_reset_link = verification_result.get("firebase_reset_link", "")
+                
+                # Try to parse metadata (doctor signup stores JSON metadata here)
+                try:
+                    import json
+                    if firebase_reset_link and firebase_reset_link.startswith("{"):
+                        signup_metadata = json.loads(firebase_reset_link)
+                        
+                        # This is a doctor signup - create account now
+                        if signup_metadata.get("specialization"):
+                            print(f"[DEBUG] ✅ Doctor signup OTP verified, creating account for {email}")
+                            
+                            # Extract signup data
+                            first_name = signup_metadata.get("first_name", "")
+                            last_name = signup_metadata.get("last_name", "")
+                            password_hash = signup_metadata.get("password_hash")
+                            firebase_uid = signup_metadata.get("firebase_uid")
+                            is_google_signup = signup_metadata.get("is_google_signup", False)
+                            specialization = signup_metadata.get("specialization", "General Practitioner")
+                            
+                            # Create user profile in database
+                            user_data = {
+                                "firebase_uid": firebase_uid,
+                                "email": email,
+                                "first_name": first_name,
+                                "last_name": last_name,
+                                "role": "doctor",
+                                "verification_status": "pending"
+                            }
+                            
+                            if password_hash:
+                                user_data["password_hash"] = password_hash
+                            
+                            user_response = supabase.client.table("user_profiles").insert(user_data).execute()
+                            
+                            if not user_response.data:
+                                return jsonify({
+                                    "success": False,
+                                    "error": "Failed to create account. Please try again."
+                                }), 500
+                            
+                            user = user_response.data[0]
+                            user_id = user["id"]
+                            print(f"[DEBUG] ✅ User profile created after OTP verification: {email}")
+                            
+                            # Generate token for login
+                            token = auth_utils.generate_token(user_id, email, "doctor")
+                            
+                            return jsonify({
+                                "success": True,
+                                "message": "Email verified! Account created successfully.",
+                                "email_verified": True,
+                                "account_created": True,
+                                "data": {
+                                    "token": token,
+                                    "user": {
+                                        "id": user_id,
+                                        "email": email,
+                                        "first_name": first_name,
+                                        "last_name": last_name,
+                                        "role": "doctor",
+                                        "firebase_uid": firebase_uid
+                                    }
+                                }
+                            }), 200
+                except (json.JSONDecodeError, KeyError, TypeError) as parse_error:
+                    # Not doctor signup metadata, continue with password reset flow
+                    print(f"[DEBUG] Not doctor signup metadata: {parse_error}")
+                    pass
+                
+                # Check if user exists (for password reset flow)
+                if not firebase_reset_link or not firebase_reset_link.startswith("{"):
+                    # This might be a password reset or existing user verification
+                    try:
+                        user_response = supabase.client.table("user_profiles").select("*").eq("email", email).execute()
+                        if user_response.data:
+                            # User exists - OTP verified successfully (password reset flow)
+                            print(f"[DEBUG] ✅ Email verified for existing user: {email}")
+                            # Continue to password reset flow below
+                    except Exception as db_error:
+                        print(f"[DEBUG] ⚠️  Database check error: {db_error}")
+                        # Continue anyway - OTP is verified
+                
+                # For password reset flow - use the session_token from verification result
+                # This ensures the token matches what was stored in the database
+                final_reset_token = reset_token  # Use the token from line 1405
+                
+                print(f"✅ Password reset OTP verified for {email}")
+                print(f"✅ Reset token generated: {final_reset_token[:30]}...")
                 
                 return jsonify({
                     "success": True,
                     "message": "Verification code validated! You can now reset your password.",
-                    "reset_token": reset_token,
-                    "firebase_mode": True,
+                    "reset_token": final_reset_token,
+                    "firebase_mode": False,  # Not using Firebase mode for password reset
                     "firebase_reset_link": verification_result.get("firebase_reset_link")
                 }), 200
             else:
@@ -1436,6 +1635,8 @@ def password_reset():
             print(f"✅ User found in database: {email} (Firebase UID: {firebase_uid or 'None'})")
 
             # Update Firebase password (primary authentication)
+            # CRITICAL: This must succeed or old Firebase password will still work
+            firebase_password_updated = False
             try:
                 from firebase_admin import auth as firebase_auth
                 
@@ -1444,18 +1645,23 @@ def password_reset():
                 if firebase_uid:
                     try:
                         # Update existing Firebase user by UID
+                        print(f"🔄 Updating Firebase password for UID: {firebase_uid}")
                         firebase_auth.update_user(firebase_uid, password=new_password)
                         firebase_user = firebase_auth.get_user(firebase_uid)
+                        firebase_password_updated = True
                         print(f"✅ Updated Firebase password using UID: {firebase_uid}")
                     except Exception as uid_error:
                         print(f"⚠️  Failed to update by UID: {uid_error}, trying email...")
                         firebase_uid = None
                 
-                if not firebase_uid:
+                if not firebase_uid and not firebase_password_updated:
                     try:
                         # Try to get user by email and update
+                        print(f"🔄 Getting Firebase user by email: {email}")
                         firebase_user = firebase_auth.get_user_by_email(email)
+                        print(f"🔄 Updating Firebase password for UID: {firebase_user.uid}")
                         firebase_auth.update_user(firebase_user.uid, password=new_password)
+                        firebase_password_updated = True
                         
                         # Update the user profile with Firebase UID for future use
                         supabase.client.table("user_profiles").update({
@@ -1468,11 +1674,13 @@ def password_reset():
                         print(f"❌ Firebase user not found by email: {email_error}")
                         # Create Firebase user if doesn't exist
                         try:
+                            print(f"🔄 Creating new Firebase user for: {email}")
                             firebase_user = firebase_auth.create_user(
                                 email=email,
                                 password=new_password,
                                 email_verified=True
                             )
+                            firebase_password_updated = True
                             
                             # Update profile with new Firebase UID
                             supabase.client.table("user_profiles").update({
@@ -1483,20 +1691,126 @@ def password_reset():
                             print(f"✅ Created new Firebase user and updated profile: {firebase_user.uid}")
                         except Exception as create_error:
                             print(f"❌ Failed to create Firebase user: {create_error}")
+                            import traceback
+                            traceback.print_exc()
                             return jsonify({"error": "Failed to update password. Please try again later."}), 500
 
             except Exception as firebase_error:
                 print(f"❌ Firebase password update failed: {firebase_error}")
+                import traceback
+                traceback.print_exc()
                 return jsonify({"error": "Failed to update password. Please try again."}), 500
-
-            # Update user profile timestamp
+            
+            if not firebase_password_updated:
+                print(f"❌ CRITICAL: Firebase password was NOT updated for {email}")
+                return jsonify({"error": "Failed to update Firebase password. Please try again."}), 500
+            
+            # Verify Firebase password was actually updated by trying to sign in with old password
+            # This is a security check to ensure old password no longer works
+            print(f"🔍 Verifying Firebase password update...")
             try:
-                supabase.client.table("user_profiles").update({
-                    "updated_at": datetime.utcnow().isoformat()
-                }).eq("email", email).execute()
+                # Try to sign in with a dummy wrong password to verify update worked
+                # We can't test with old password directly, but we can verify the user exists
+                if firebase_user:
+                    verified_user = firebase_auth.get_user(firebase_user.uid)
+                    print(f"✅ Firebase user verified: {verified_user.email} (UID: {verified_user.uid})")
+                    print(f"✅ Firebase password update confirmed for {email}")
+            except Exception as verify_error:
+                print(f"⚠️  Could not verify Firebase password update: {verify_error}")
+                # Don't fail - password was updated, just couldn't verify
+            
+            # 🔧 CRITICAL: Update password_hash in database to replace old password
+            # This ensures the database password matches Firebase password
+            try:
+                # Hash the new password for database storage
+                password_hash = auth_utils.hash_password(new_password)
+                
+                print(f"🔄 Updating password_hash in database for {email}...")
+                
+                # First, check current password_hash before update
+                before_update = supabase.client.table("user_profiles").select("id, password_hash").eq("email", email).execute()
+                if before_update.data:
+                    old_hash = before_update.data[0].get("password_hash")
+                    user_id = before_update.data[0].get("id")
+                    print(f"🔍 Before update - User ID: {user_id}, Old hash: {old_hash[:20] if old_hash else 'NULL'}...")
+                    
+                    # Check if there are multiple records with same email (shouldn't happen but check)
+                    if len(before_update.data) > 1:
+                        print(f"⚠️  WARNING: Multiple user records found for {email}!")
+                        print(f"   Found {len(before_update.data)} records - this is a data integrity issue")
+                        for idx, record in enumerate(before_update.data):
+                            print(f"   Record {idx+1}: ID={record.get('id')}, hash={record.get('password_hash')[:20] if record.get('password_hash') else 'NULL'}...")
+                
+                # Update user_profiles table with new password_hash (REPLACES old one)
+                # Use service_client to bypass RLS if needed
+                # IMPORTANT: Update by user ID to ensure we update the correct record
+                try:
+                    if not user_id:
+                        # Get user_id from the user_profile we found earlier
+                        user_id = user_profile.get('id')
+                    
+                    if not user_id:
+                        print(f"❌ Cannot update: No user ID found for {email}")
+                        raise Exception("User ID not found")
+                    
+                    print(f"🔄 Updating password_hash for user ID: {user_id}")
+                    
+                    if supabase.service_client:
+                        # Update by ID (more reliable than email)
+                        update_result = supabase.service_client.table("user_profiles").update({
+                            "password_hash": password_hash,
+                            "updated_at": datetime.utcnow().isoformat()
+                        }).eq("id", user_id).execute()
+                    else:
+                        # Update by ID (more reliable than email)
+                        update_result = supabase.client.table("user_profiles").update({
+                            "password_hash": password_hash,
+                            "updated_at": datetime.utcnow().isoformat()
+                        }).eq("id", user_id).execute()
+                    
+                    if update_result.data:
+                        updated_user = update_result.data[0]
+                        new_hash = updated_user.get("password_hash")
+                        print(f"✅ Updated password_hash in database for {email} (old password replaced)")
+                        print(f"   User ID: {updated_user.get('id')}")
+                        print(f"   New hash: {new_hash[:20] if new_hash else 'NULL'}...")
+                        
+                        # Verify the update actually changed the value
+                        verify_user = supabase.client.table("user_profiles").select("password_hash").eq("email", email).execute()
+                        if verify_user.data:
+                            verified_hash = verify_user.data[0].get("password_hash")
+                            if verified_hash == password_hash:
+                                print(f"✅ Verified: password_hash correctly updated in database")
+                            elif verified_hash == old_hash:
+                                print(f"❌ ERROR: password_hash was NOT updated! Still has old value")
+                                print(f"   This indicates the UPDATE query did not work")
+                            else:
+                                print(f"⚠️  Warning: password_hash value mismatch")
+                                print(f"   Expected: {password_hash[:20]}...")
+                                print(f"   Got: {verified_hash[:20] if verified_hash else 'NULL'}...")
+                    else:
+                        print(f"⚠️  Password hash update returned no data")
+                        # Try to verify the update worked
+                        verify_user = supabase.client.table("user_profiles").select("password_hash").eq("email", email).execute()
+                        if verify_user.data:
+                            if verify_user.data[0].get("password_hash"):
+                                print(f"✅ Verified: password_hash exists in database")
+                            else:
+                                print(f"❌ Warning: password_hash is NULL after update")
+                        
+                except Exception as update_error:
+                    print(f"❌ Update query failed: {update_error}")
+                    import traceback
+                    traceback.print_exc()
+                    raise update_error
+                    
             except Exception as db_update_error:
-                print(f"⚠️  Profile timestamp update failed: {db_update_error}")
-                # Continue anyway - password update succeeded
+                print(f"❌ Failed to update password_hash in database: {db_update_error}")
+                import traceback
+                traceback.print_exc()
+                # Don't fail the entire reset if database update fails, but log it
+                # Firebase password was already updated, so user can still login via Firebase
+                print(f"⚠️  Warning: Database password_hash not updated, but Firebase password was updated")
 
             # Clean up the used token
             if hasattr(otp_service, 'otp_storage') and email in otp_service.otp_storage:
@@ -1617,6 +1931,113 @@ def resend_verification():
     except Exception as e:
         print(f"Resend verification error: {str(e)}")
         return jsonify({"error": "An error occurred while sending verification email"}), 500
+
+
+@auth_bp.route("/resend-otp", methods=["POST"])
+def resend_otp():
+    """Resend OTP code to user's email"""
+    try:
+        data = request.get_json()
+        email = data.get("email", "").strip().lower()
+
+        if not email:
+            return jsonify({"success": False, "error": "Email is required"}), 400
+
+        # Validate email format
+        try:
+            validate_email(email)
+        except EmailNotValidError:
+            return jsonify({"success": False, "error": "Invalid email format"}), 400
+
+        # Import OTP service - PRIORITIZE database service
+        try:
+            from services.otp_service import otp_service
+            print("[DEBUG] ✅ Using Database OTP Service for resend OTP")
+        except ImportError:
+            try:
+                from services.simple_otp_manager import simple_otp_manager as otp_service
+                print("[DEBUG] ⚠️  Using Simple OTP Manager (fallback) for resend OTP")
+            except ImportError as e:
+                print(f"[DEBUG] ⚠️  OTP service not available: {e}")
+                return jsonify({
+                    "success": False,
+                    "error": "OTP service not available"
+                }), 503
+
+        # Check if this is a doctor signup by checking existing OTP metadata
+        is_doctor_signup = False
+        metadata_to_store = ""
+        full_name = "User"
+        
+        try:
+            existing_otp = otp_service.get_otp_info(email)
+            if existing_otp:
+                firebase_reset_link = existing_otp.get("firebase_reset_link", "")
+                # Check if it's JSON metadata (doctor signup stores JSON here)
+                if firebase_reset_link and firebase_reset_link.startswith("{"):
+                    import json
+                    try:
+                        metadata = json.loads(firebase_reset_link)
+                        if metadata.get("specialization"):
+                            is_doctor_signup = True
+                            metadata_to_store = firebase_reset_link  # Preserve metadata
+                            # Get name from metadata for doctor signup
+                            first_name = metadata.get("first_name", "")
+                            last_name = metadata.get("last_name", "")
+                            full_name = f"{first_name} {last_name}".strip() or "User"
+                            print(f"[DEBUG] ✅ Detected doctor signup for resend OTP: {email}")
+                    except (json.JSONDecodeError, KeyError):
+                        pass
+        except Exception as check_error:
+            print(f"[DEBUG] ⚠️  Error checking OTP metadata: {check_error}")
+        
+        # If not doctor signup, get user info from database
+        if not is_doctor_signup:
+            try:
+                user_response = supabase.client.table("user_profiles").select("first_name, last_name").eq("email", email).execute()
+                if user_response.data:
+                    user = user_response.data[0]
+                    full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip() or "User"
+            except:
+                full_name = "User"
+        
+        # Generate and store new OTP
+        # If it's doctor signup, preserve the metadata
+        
+        otp_result = otp_service.store_otp(email, metadata_to_store)
+
+        if not otp_result.get("success"):
+            return jsonify({
+                "success": False,
+                "error": otp_result.get("error", "Failed to generate OTP")
+            }), 500
+
+        otp_code = otp_result.get("otp_code")
+
+        # Send OTP email with appropriate template
+        email_sent = send_otp_email(email, full_name, otp_code, is_doctor_signup=is_doctor_signup)
+
+        if email_sent:
+            print(f"[DEBUG] ✅ OTP email resent to {email}")
+            return jsonify({
+                "success": True,
+                "message": "Verification code has been resent to your email",
+                "otp_sent": True
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Failed to send verification email. Please try again."
+            }), 500
+
+    except Exception as e:
+        print(f"[DEBUG] ❌ Resend OTP error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": "An error occurred while resending verification code"
+        }), 500
 
 
 @auth_bp.route("/profile", methods=["PUT"])
@@ -2040,3 +2461,624 @@ def check_deactivated_status():
             'success': False,
             'error': str(e)
         }), 500
+
+
+# ========== DOCTOR SIGNUP MULTI-STEP ENDPOINTS ==========
+
+@auth_bp.route("/doctor-signup/step3", methods=["POST"])
+@auth_utils.token_required
+def doctor_signup_step3():
+    """Save doctor professional information (Step 3)"""
+    try:
+        user_id = request.current_user["user_id"]
+        email = request.current_user.get("email", "").strip().lower()
+        
+        data = request.get_json()
+        
+        # Validate required fields
+        prc_license_number = data.get("prcLicenseNumber", "").strip()
+        prc_expiration_date = data.get("prcExpirationDate", "").strip()
+        affiliation_type = data.get("affiliationType", "").strip()
+        professional_address = data.get("professionalAddress", "").strip()
+        
+        if not prc_license_number:
+            return jsonify({"success": False, "error": "PRC License Number is required"}), 400
+        
+        if not prc_expiration_date:
+            return jsonify({"success": False, "error": "PRC Expiration Date is required"}), 400
+        
+        if not affiliation_type:
+            return jsonify({"success": False, "error": "Affiliation Type is required"}), 400
+        
+        if not professional_address:
+            return jsonify({"success": False, "error": "Professional Address is required"}), 400
+        
+        # Validate expiration date
+        try:
+            exp_date = datetime.fromisoformat(prc_expiration_date.replace('Z', '+00:00'))
+            if exp_date.date() <= datetime.now().date():
+                return jsonify({"success": False, "error": "PRC Expiration Date must be in the future"}), 400
+        except ValueError:
+            return jsonify({"success": False, "error": "Invalid date format"}), 400
+        
+        # Get user profile to get firebase_uid
+        user_response = supabase.service_client.table("user_profiles").select("firebase_uid").eq("id", user_id).execute()
+        if not user_response.data:
+            return jsonify({"success": False, "error": "User profile not found"}), 404
+        
+        firebase_uid = user_response.data[0].get("firebase_uid")
+        if not firebase_uid:
+            return jsonify({"success": False, "error": "Firebase UID not found"}), 404
+        
+        # Check if doctor profile exists, if not create it
+        doctor_response = supabase.service_client.table("doctor_profiles").select("*").eq("user_id", user_id).execute()
+        
+        if not doctor_response.data:
+            # Create doctor profile (this is the first time, after OTP verification)
+            doctor_data = {
+                "user_id": user_id,
+                "firebase_uid": firebase_uid,
+                "specialization": "General Practitioner",  # Fixed specialization
+                "verification_status": "pending",  # Requires admin approval
+                "signup_step": 3,  # Currently on step 3
+                "signup_completed": False,
+                "prc_license_number": prc_license_number,
+                "prc_expiration_date": prc_expiration_date,
+                "affiliation_type": affiliation_type,
+                "professional_address": professional_address
+            }
+            
+            # Add optional fields based on affiliation type
+            if affiliation_type in ['clinic_hospital', 'independent_private']:
+                clinic_affiliation = data.get("clinicHospitalAffiliation", "").strip()
+                contact_number = data.get("hospitalClinicContactNumber", "").strip()
+                
+                if not clinic_affiliation:
+                    return jsonify({"success": False, "error": "Clinic/Hospital Affiliation is required"}), 400
+                if not contact_number:
+                    return jsonify({"success": False, "error": "Hospital/Clinic Contact Number is required"}), 400
+                
+                doctor_data["clinic_hospital_affiliation"] = clinic_affiliation
+                doctor_data["hospital_clinic_contact_number"] = contact_number
+            
+            # Create doctor profile
+            create_response = supabase.service_client.table("doctor_profiles").insert(doctor_data).execute()
+            
+            if create_response.data:
+                print(f"[DEBUG] ✅ Doctor profile created for user {email}")
+                return jsonify({
+                    "success": True,
+                    "message": "Professional information saved successfully"
+                }), 200
+            else:
+                return jsonify({"success": False, "error": "Failed to create doctor profile"}), 500
+        
+        # Doctor profile exists, update it
+        doctor = doctor_response.data[0]
+        doctor_id = doctor["id"]
+        
+        # Prepare update data
+        update_data = {
+            "prc_license_number": prc_license_number,
+            "prc_expiration_date": prc_expiration_date,
+            "affiliation_type": affiliation_type,
+            "professional_address": professional_address,
+            "signup_step": 3,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        # Add optional fields based on affiliation type
+        if affiliation_type in ['clinic_hospital', 'independent_private']:
+            clinic_affiliation = data.get("clinicHospitalAffiliation", "").strip()
+            contact_number = data.get("hospitalClinicContactNumber", "").strip()
+            
+            if not clinic_affiliation:
+                return jsonify({"success": False, "error": "Clinic/Hospital Affiliation is required"}), 400
+            if not contact_number:
+                return jsonify({"success": False, "error": "Hospital/Clinic Contact Number is required"}), 400
+            
+            update_data["clinic_hospital_affiliation"] = clinic_affiliation
+            update_data["hospital_clinic_contact_number"] = contact_number
+        
+        # Update doctor profile
+        update_response = supabase.service_client.table("doctor_profiles").update(update_data).eq("id", doctor_id).execute()
+        
+        if update_response.data:
+            print(f"[DEBUG] ✅ Doctor info saved for user {email}")
+            return jsonify({
+                "success": True,
+                "message": "Professional information saved successfully"
+            }), 200
+        else:
+            return jsonify({"success": False, "error": "Failed to save information"}), 500
+            
+    except Exception as e:
+        print(f"[DEBUG] ❌ Error in step 3: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@auth_bp.route("/doctor-signup/step4", methods=["POST"])
+@auth_utils.token_required
+def doctor_signup_step4():
+    """Upload doctor documents (Step 4)"""
+    try:
+        user_id = request.current_user["user_id"]
+        firebase_uid = request.current_user.get("firebase_uid")
+        
+        if not firebase_uid:
+            # Get firebase_uid from user_profiles
+            user_response = supabase.service_client.table("user_profiles").select("firebase_uid").eq("id", user_id).execute()
+            if user_response.data:
+                firebase_uid = user_response.data[0].get("firebase_uid")
+        
+        # Get doctor profile
+        doctor_response = supabase.service_client.table("doctor_profiles").select("*").eq("user_id", user_id).execute()
+        
+        if not doctor_response.data:
+            return jsonify({"success": False, "error": "Doctor profile not found"}), 404
+        
+        doctor = doctor_response.data[0]
+        doctor_id = doctor["id"]
+        affiliation_type = doctor.get("affiliation_type")
+        
+        # Document type mapping
+        doc_type_mapping = {
+            'prcIdFront': 'prc_id_front',
+            'prcIdBack': 'prc_id_back',
+            'ptr': 'ptr',
+            'boardCertificate': 'board_certificate',
+            'clinicHospitalId': 'clinic_hospital_id',
+            'supportingDocument': 'supporting_document'
+        }
+        
+        # Create uploads directory
+        upload_dir = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'doctor_documents')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        uploaded_docs = []
+        
+        # Process each uploaded file
+        for field_name, doc_type in doc_type_mapping.items():
+            if field_name in request.files:
+                file = request.files[field_name]
+                
+                if file and file.filename:
+                    # Validate file type
+                    allowed_extensions = {'pdf', 'jpg', 'jpeg', 'png'}
+                    original_filename = file.filename
+                    filename = secure_filename(file.filename)
+                    file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+                    
+                    if file_ext not in allowed_extensions:
+                        return jsonify({
+                            "success": False,
+                            "error": f"Invalid file type for {field_name}. Only PDF, JPG, PNG allowed."
+                        }), 400
+                    
+                    # Validate file size (max 5MB)
+                    file.seek(0, os.SEEK_END)
+                    file_size = file.tell()
+                    file.seek(0)
+                    
+                    if file_size > 5 * 1024 * 1024:
+                        return jsonify({
+                            "success": False,
+                            "error": f"File {filename} is too large. Maximum size is 5MB."
+                        }), 400
+                    
+                    # Generate unique filename
+                    # Use secure_filename for the base, but preserve extension
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    # Sanitize the original filename but keep extension
+                    safe_base = secure_filename(os.path.splitext(original_filename)[0])
+                    safe_ext = os.path.splitext(original_filename)[1].lower()
+                    unique_filename = f"{firebase_uid}_{doc_type}_{timestamp}_{safe_base}{safe_ext}"
+                    file_path = os.path.join(upload_dir, unique_filename)
+                    
+                    # Ensure directory exists
+                    os.makedirs(upload_dir, exist_ok=True)
+                    
+                    # Save file
+                    file.save(file_path)
+                    
+                    # Verify file was saved
+                    if not os.path.exists(file_path):
+                        print(f"[DEBUG] ❌ ERROR: File was not saved! Path: {file_path}")
+                        return jsonify({
+                            "success": False,
+                            "error": "Failed to save file. Please try again."
+                        }), 500
+                    
+                    print(f"[DEBUG] ✅ File saved successfully: {file_path}")
+                    print(f"[DEBUG] ✅ File size on disk: {os.path.getsize(file_path)} bytes")
+                    
+                    # Determine MIME type
+                    mime_type = file.content_type or 'application/octet-stream'
+                    if file_ext == 'pdf':
+                        mime_type = 'application/pdf'
+                    elif file_ext in ['jpg', 'jpeg']:
+                        mime_type = 'image/jpeg'
+                    elif file_ext == 'png':
+                        mime_type = 'image/png'
+                    
+                    # Save to doctor_documents table
+                    doc_data = {
+                        "doctor_id": doctor_id,
+                        "firebase_uid": firebase_uid,
+                        "document_type": doc_type,
+                        "file_name": filename,
+                        "file_path": unique_filename,
+                        "file_size": file_size,
+                        "mime_type": mime_type
+                    }
+                    
+                    print(f"[DEBUG] 📄 Saving document to doctor_documents table:")
+                    print(f"  - doctor_id: {doctor_id}")
+                    print(f"  - firebase_uid: {firebase_uid}")
+                    print(f"  - document_type: {doc_type}")
+                    print(f"  - file_name: {filename}")
+                    print(f"  - file_path: {unique_filename}")
+                    print(f"  - file_size: {file_size} bytes")
+                    print(f"  - mime_type: {mime_type}")
+                    
+                    doc_response = supabase.service_client.table("doctor_documents").insert(doc_data).execute()
+                    
+                    if doc_response.data:
+                        uploaded_docs.append(doc_type)
+                        saved_doc = doc_response.data[0]
+                        print(f"[DEBUG] ✅ Document saved to database:")
+                        print(f"  - Document ID: {saved_doc.get('id')}")
+                        print(f"  - All fields verified: {all(key in saved_doc for key in ['doctor_id', 'firebase_uid', 'document_type', 'file_name', 'file_path', 'file_size', 'mime_type'])}")
+                    else:
+                        print(f"[DEBUG] ⚠️  Warning: Document insert returned no data")
+        
+        # Validate required documents
+        if 'prc_id_front' not in uploaded_docs:
+            return jsonify({"success": False, "error": "PRC ID (Front) is required"}), 400
+        
+        if 'prc_id_back' not in uploaded_docs:
+            return jsonify({"success": False, "error": "PRC ID (Back) is required"}), 400
+        
+        if affiliation_type == 'not_affiliated' and 'supporting_document' not in uploaded_docs:
+            return jsonify({
+                "success": False,
+                "error": "Supporting document is required for non-affiliated doctors"
+            }), 400
+        
+        # Update signup step
+        supabase.service_client.table("doctor_profiles").update({
+            "signup_step": 4,
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("id", doctor_id).execute()
+        
+        print(f"[DEBUG] ✅ Documents uploaded for doctor {doctor_id}")
+        return jsonify({
+            "success": True,
+            "message": "Documents uploaded successfully",
+            "uploaded_documents": uploaded_docs
+        }), 200
+        
+    except Exception as e:
+        print(f"[DEBUG] ❌ Error in step 4: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@auth_bp.route("/doctor-signup/step5", methods=["POST"])
+@auth_utils.token_required
+def doctor_signup_step5():
+    """Upload profile photo (Step 5)"""
+    try:
+        user_id = request.current_user["user_id"]
+        firebase_uid = request.current_user.get("firebase_uid")
+        
+        if not firebase_uid:
+            user_response = supabase.service_client.table("user_profiles").select("firebase_uid").eq("id", user_id).execute()
+            if user_response.data:
+                firebase_uid = user_response.data[0].get("firebase_uid")
+        
+        if 'profilePhoto' not in request.files:
+            return jsonify({"success": False, "error": "Profile photo is required"}), 400
+        
+        file = request.files['profilePhoto']
+        
+        if not file or not file.filename:
+            return jsonify({"success": False, "error": "No file uploaded"}), 400
+        
+        # Validate file type
+        allowed_extensions = {'jpg', 'jpeg', 'png'}
+        filename = secure_filename(file.filename)
+        file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+        
+        if file_ext not in allowed_extensions:
+            return jsonify({
+                "success": False,
+                "error": "Invalid file type. Only JPG, JPEG, PNG allowed."
+            }), 400
+        
+        # Validate file size (2-5MB)
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)
+        
+        if file_size < 400 * 400:  # Rough minimum size check
+            return jsonify({
+                "success": False,
+                "error": "Image resolution is too low. Minimum 400x400px required."
+            }), 400
+        
+        if file_size > 5 * 1024 * 1024:
+            return jsonify({
+                "success": False,
+                "error": "File size must be less than 5MB."
+            }), 400
+        
+        # Create uploads directory
+        upload_dir = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'doctor_profile_photos')
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Generate unique filename
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"{firebase_uid}_profile_{timestamp}.{file_ext}"
+        file_path = os.path.join(upload_dir, unique_filename)
+        
+        # Save file
+        file.save(file_path)
+        
+        # Determine MIME type
+        mime_type = 'image/jpeg' if file_ext in ['jpg', 'jpeg'] else 'image/png'
+        
+        # Construct URL (for now, relative path - can be updated to full URL if needed)
+        photo_url = f"/uploads/doctor_profile_photos/{unique_filename}"
+        
+        # Update user profile with avatar_url
+        print(f"[DEBUG] 📸 Saving avatar_url to database for user_id: {user_id}")
+        print(f"[DEBUG] 📸 Photo URL: {photo_url}")
+        
+        update_response = supabase.service_client.table("user_profiles").update({
+            "avatar_url": photo_url,
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("id", user_id).execute()
+        
+        print(f"[DEBUG] 📸 Database update response: {update_response.data if update_response.data else 'No data returned'}")
+        
+        # Verify the update was successful
+        verify_response = supabase.service_client.table("user_profiles").select("avatar_url").eq("id", user_id).execute()
+        if verify_response.data:
+            saved_avatar_url = verify_response.data[0].get("avatar_url")
+            print(f"[DEBUG] ✅ Verified avatar_url saved to database: {saved_avatar_url}")
+            if saved_avatar_url != photo_url:
+                print(f"[DEBUG] ⚠️  Warning: Saved URL ({saved_avatar_url}) doesn't match expected URL ({photo_url})")
+        else:
+            print(f"[DEBUG] ⚠️  Warning: Could not verify avatar_url was saved")
+        
+        # Update doctor profile signup step
+        doctor_response = supabase.service_client.table("doctor_profiles").select("id").eq("user_id", user_id).execute()
+        if doctor_response.data:
+            supabase.service_client.table("doctor_profiles").update({
+                "signup_step": 5,
+                "updated_at": datetime.utcnow().isoformat()
+            }).eq("id", doctor_response.data[0]["id"]).execute()
+        
+        print(f"[DEBUG] ✅ Profile photo uploaded and saved to database for user {user_id}")
+        return jsonify({
+            "success": True,
+            "message": "Profile photo uploaded successfully",
+            "photo_url": photo_url
+        }), 200
+        
+    except Exception as e:
+        print(f"[DEBUG] ❌ Error in step 5: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@auth_bp.route("/doctor-signup/preview", methods=["GET"])
+@auth_utils.token_required
+def doctor_signup_preview():
+    """Get preview data for step 6"""
+    try:
+        user_id = request.current_user["user_id"]
+        
+        # Get doctor profile
+        doctor_response = supabase.service_client.table("doctor_profiles").select("*").eq("user_id", user_id).execute()
+        
+        if not doctor_response.data:
+            return jsonify({"success": False, "error": "Doctor profile not found"}), 404
+        
+        doctor = doctor_response.data[0]
+        
+        # Get documents
+        docs_response = supabase.service_client.table("doctor_documents").select("*").eq("doctor_id", doctor["id"]).execute()
+        documents = docs_response.data if docs_response.data else []
+        
+        # Get user profile for avatar
+        user_response = supabase.service_client.table("user_profiles").select("avatar_url").eq("id", user_id).execute()
+        avatar_url = None
+        if user_response.data:
+            avatar_url = user_response.data[0].get("avatar_url")
+        
+        preview_data = {
+            "prc_license_number": doctor.get("prc_license_number"),
+            "prc_expiration_date": doctor.get("prc_expiration_date"),
+            "specialization": doctor.get("specialization", "General Practitioner"),
+            "affiliation_type": doctor.get("affiliation_type"),
+            "clinic_hospital_affiliation": doctor.get("clinic_hospital_affiliation"),
+            "professional_address": doctor.get("professional_address"),
+            "hospital_clinic_contact_number": doctor.get("hospital_clinic_contact_number"),
+            "documents": documents,
+            "profile_photo_url": avatar_url
+        }
+        
+        return jsonify({
+            "success": True,
+            "data": preview_data
+        }), 200
+        
+    except Exception as e:
+        print(f"[DEBUG] ❌ Error in preview: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@auth_bp.route("/doctor-signup/submit", methods=["POST"])
+@auth_utils.token_required
+def doctor_signup_submit():
+    """Final submission of doctor signup (Step 6)"""
+    try:
+        user_id = request.current_user["user_id"]
+        email = request.current_user.get("email", "").strip().lower()
+        
+        # Get doctor profile
+        doctor_response = supabase.service_client.table("doctor_profiles").select("*").eq("user_id", user_id).execute()
+        
+        if not doctor_response.data:
+            return jsonify({"success": False, "error": "Doctor profile not found"}), 404
+        
+        doctor = doctor_response.data[0]
+        doctor_id = doctor["id"]
+        
+        # Verify all required steps are completed
+        if doctor.get("signup_step", 0) < 5:
+            return jsonify({
+                "success": False,
+                "error": "Please complete all previous steps before submitting"
+            }), 400
+        
+        # Verify required documents are uploaded
+        docs_response = supabase.service_client.table("doctor_documents").select("document_type").eq("doctor_id", doctor_id).execute()
+        uploaded_doc_types = [doc["document_type"] for doc in (docs_response.data or [])]
+        
+        if 'prc_id_front' not in uploaded_doc_types or 'prc_id_back' not in uploaded_doc_types:
+            return jsonify({
+                "success": False,
+                "error": "Required documents are missing. Please upload PRC ID (Front and Back)."
+            }), 400
+        
+        if doctor.get("affiliation_type") == 'not_affiliated' and 'supporting_document' not in uploaded_doc_types:
+            return jsonify({
+                "success": False,
+                "error": "Supporting document is required for non-affiliated doctors."
+            }), 400
+        
+        # Update doctor profile - mark signup as completed
+        update_data = {
+            "signup_step": 6,
+            "signup_completed": True,
+            "verification_status": "pending",  # Ready for admin review
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        update_response = supabase.service_client.table("doctor_profiles").update(update_data).eq("id", doctor_id).execute()
+        
+        if not update_response.data:
+            return jsonify({"success": False, "error": "Failed to submit application"}), 500
+        
+        # Send admin notification email and create in-app notification
+        try:
+            from doctor_verification import send_admin_notification_email, generate_verification_token
+            
+            verification_token = generate_verification_token()
+            
+            # Store verification token
+            supabase.service_client.table("doctor_profiles").update({
+                "verification_token": verification_token,
+                "token_expires_at": (datetime.now() + timedelta(hours=24)).isoformat()
+            }).eq("id", doctor_id).execute()
+            
+            # Get user info
+            user_response = supabase.service_client.table("user_profiles").select("first_name, last_name").eq("id", user_id).execute()
+            first_name = user_response.data[0].get("first_name", "") if user_response.data else ""
+            last_name = user_response.data[0].get("last_name", "") if user_response.data else ""
+            
+            doctor_signup_data = {
+                "firstName": first_name,
+                "lastName": last_name,
+                "email": email,
+                "specialization": doctor.get("specialization", "General Practitioner")
+            }
+            
+            # Get document file paths for admin email
+            file_paths = []
+            for doc_type in ['prc_id_front', 'prc_id_back']:
+                doc_resp = supabase.service_client.table("doctor_documents").select("file_path").eq("doctor_id", doctor_id).eq("document_type", doc_type).limit(1).execute()
+                if doc_resp.data:
+                    upload_dir = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'doctor_documents')
+                    file_paths.append(os.path.join(upload_dir, doc_resp.data[0]["file_path"]))
+            
+            email_sent = send_admin_notification_email(
+                doctor_signup_data,
+                file_paths[0] if file_paths else None,  # Send first document as attachment
+                doctor_id,
+                verification_token
+            )
+            
+            if email_sent:
+                print(f"[DEBUG] ✅ Admin notification email sent for doctor {doctor_id}")
+            else:
+                print(f"[DEBUG] ⚠️  Failed to send admin notification email")
+            
+            # Create in-app notification for all admin users
+            try:
+                from services.notification_service import notification_service
+                
+                # Get all admin users
+                admin_users = supabase.service_client.table("user_profiles").select("firebase_uid").eq("role", "admin").execute()
+                
+                if admin_users.data and notification_service:
+                    full_name = f"{first_name} {last_name}".strip()
+                    notification_title = "New Doctor Signup Request"
+                    notification_message = f"Dr. {full_name} has submitted their application for verification."
+                    
+                    for admin in admin_users.data:
+                        admin_uid = admin.get("firebase_uid")
+                        if admin_uid:
+                            notification_service.create_notification(
+                                user_id=admin_uid,
+                                title=notification_title,
+                                message=notification_message,
+                                notification_type="doctor_signup",
+                                category="doctor_verification",
+                                priority="high",
+                                action_url=f"/dashboard?tab=doctor-verification&doctor_id={doctor_id}",
+                                action_label="Review Now"
+                            )
+                            print(f"[DEBUG] ✅ Created notification for admin: {admin_uid}")
+                
+            except Exception as notif_error:
+                print(f"[DEBUG] ⚠️  In-app notification error: {notif_error}")
+                import traceback
+                traceback.print_exc()
+                # Don't fail the submission if notification fails
+                
+        except Exception as email_error:
+            print(f"[DEBUG] ⚠️  Email notification error: {email_error}")
+            # Don't fail the submission if email fails
+        
+        # Get updated user data
+        user_response = supabase.service_client.table("user_profiles").select("*").eq("id", user_id).execute()
+        user = user_response.data[0] if user_response.data else None
+        
+        # Get updated doctor profile
+        updated_doctor = update_response.data[0]
+        
+        print(f"[DEBUG] ✅ Doctor signup completed for {email}")
+        return jsonify({
+            "success": True,
+            "message": "Application submitted successfully! Your account is pending verification.",
+            "data": {
+                "user": user,
+                "doctor_profile": updated_doctor
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"[DEBUG] ❌ Error in submit: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500

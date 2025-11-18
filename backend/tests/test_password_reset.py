@@ -116,11 +116,19 @@ class TestPasswordResetSystem:
             with patch.object(firebase_auth_service, '_send_reset_link_email') as mock_send:
                 mock_send.return_value = True
                 
-                result = firebase_auth_service.send_password_reset_email(self.test_email)
-                
-                assert result["success"] == True
-                assert "message" in result
-                assert "verification_code" in result
+                # Mock OTP service to return success
+                with patch('services.otp_service.otp_service.store_otp') as mock_otp_store:
+                    mock_otp_store.return_value = {
+                        "success": True,
+                        "otp_code": "123456",
+                        "session_token": "test-session-token"
+                    }
+                    
+                    result = firebase_auth_service.send_password_reset_email(self.test_email)
+                    
+                    assert result["success"] == True
+                    assert "message" in result
+                    assert "verification_code" in result
 
     def test_auth_routes_import(self):
         """Test that auth routes can be imported successfully"""
@@ -201,12 +209,15 @@ class TestPasswordResetAPI:
 
     def test_password_reset_request_missing_email(self):
         """Test password reset without email"""
+        # Send request with empty JSON object
+        # Flask's test client with json={} should parse it as {}
         response = self.client.post('/api/auth/password-reset-request',
                                    json={},
                                    headers={"Content-Type": "application/json"})
         
         assert response.status_code == 400
         data = json.loads(response.data)
+        # The endpoint should return "Email is required" when email field is missing
         assert "Email is required" in data["error"]
 
 
