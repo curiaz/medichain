@@ -18,7 +18,7 @@
    ```powershell
    python app.py
    ```
-   Backend will be available at: http://localhost:5000
+   Backend will be available at: https://medichain.clinic
 
 ## Frontend Setup
 

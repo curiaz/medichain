@@ -8,7 +8,7 @@ def test_symptoms_endpoint():
     """Test the symptoms endpoint"""
     try:
         print("Testing /api/symptoms endpoint...")
-        response = requests.get("http://localhost:5000/api/symptoms", timeout=5)
+        response = requests.get("https://medichain.clinic/api/symptoms", timeout=5)
         
         print(f"Status Code: {response.status_code}")
         print(f"Response Headers: {dict(response.headers)}")
@@ -31,7 +31,7 @@ def test_symptoms_endpoint():
             print(f"Response Text: {response.text}")
             
     except requests.exceptions.ConnectionError:
-        print("❌ ERROR: Cannot connect to server at http://localhost:5000")
+        print("❌ ERROR: Cannot connect to server at https://medichain.clinic")
         print("   Make sure the backend server is running!")
     except requests.exceptions.Timeout:
         print("❌ ERROR: Request timed out")

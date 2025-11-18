@@ -13,14 +13,14 @@
 ✅ **Backend started successfully**  
 ✅ **AI system trained and ready**  
 ✅ **All API endpoints available**  
-✅ **Flask server running on http://localhost:5000**
+✅ **Flask server running on https://medichain.clinic**
 
 ### Backend Startup Output:
 ```
 ✅ AI system ready!
 ✅ AI system initialized successfully!
 🌐 Starting Flask server...
-📡 API available at: http://localhost:5000
+📡 API available at: https://medichain.clinic
 🩺 Diagnosis endpoint: POST /api/diagnose
 📋 Explanations endpoint: POST /api/symptom-explanations
 ❤️  Health check: GET /health
@@ -109,10 +109,10 @@
 2. ✅ **Test API Endpoints**
    ```bash
    # Health check
-   curl http://localhost:5000/health
+   curl https://medichain.clinic/health
    
    # AI Diagnosis
-   curl -X POST http://localhost:5000/api/diagnose \
+   curl -X POST https://medichain.clinic/api/diagnose \
      -H "Content-Type: application/json" \
      -d '{"symptoms": ["fever", "cough"]}'
    ```

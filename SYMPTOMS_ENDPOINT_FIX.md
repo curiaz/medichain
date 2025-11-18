@@ -27,7 +27,7 @@ python app.py
 
 After restarting, test the endpoint:
 ```bash
-curl http://localhost:5000/api/symptoms
+curl https://medichain.clinic/api/symptoms
 ```
 
 Or use the test script:
@@ -64,12 +64,12 @@ You should see:
 
 1. **Check if server is running:**
    ```bash
-   curl http://localhost:5000/health
+   curl https://medichain.clinic/health
    ```
 
 2. **Test symptoms endpoint:**
    ```bash
-   curl http://localhost:5000/api/symptoms
+   curl https://medichain.clinic/api/symptoms
    ```
 
 3. **Check browser console:**
@@ -85,7 +85,7 @@ If still getting errors after restart:
 1. **Check server logs** for any initialization errors
 2. **Verify AI engine is initialized:**
    ```bash
-   curl http://localhost:5000/api/ai/health
+   curl https://medichain.clinic/api/ai/health
    ```
    Should return `"status": "healthy"`
 

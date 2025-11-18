@@ -10,8 +10,8 @@ print("\n" + "="*70)
 print("  TESTING APPOINTMENT CREATION VIA BACKEND API")
 print("="*70 + "\n")
 
-# Backend must be running on localhost:5000
-backend_url = "http://localhost:5000"
+# Backend must be running on https://medichain.clinic
+backend_url = "https://medichain.clinic"
 
 # Check if backend is running
 try:

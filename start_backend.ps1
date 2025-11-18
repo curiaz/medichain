@@ -91,7 +91,7 @@ try {
 # Step 6: Start the Flask server
 Write-Host ""
 Write-Host "[6] Starting Flask development server..." -ForegroundColor Green
-Write-Host "Server will be available at: http://localhost:5000" -ForegroundColor Cyan
+Write-Host "Server will be available at: https://medichain.clinic" -ForegroundColor Cyan
 Write-Host "API endpoints:" -ForegroundColor Cyan
 Write-Host "   GET    /api/profile/patient" -ForegroundColor White
 Write-Host "   PUT    /api/profile/patient" -ForegroundColor White

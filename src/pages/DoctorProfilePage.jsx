@@ -166,7 +166,7 @@ const DoctorProfilePage = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/profile/doctor/update', {
+      const response = await fetch('https://medichainn.onrender.com/api/profile/doctor/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -182,7 +182,7 @@ const DoctorProfilePage = () => {
         setEditing(false);
         
         // Fetch updated profile data from backend
-        const profileResponse = await fetch('http://localhost:5000/api/profile/doctor/details', {
+        const profileResponse = await fetch('https://medichainn.onrender.com/api/profile/doctor/details', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -226,7 +226,7 @@ const DoctorProfilePage = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/profile/doctor/update', {
+      const response = await fetch('https://medichainn.onrender.com/api/profile/doctor/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -241,7 +241,7 @@ const DoctorProfilePage = () => {
         setSuccess('Professional information updated successfully!');
         
         // Fetch updated profile data
-        const profileResponse = await fetch('http://localhost:5000/api/profile/doctor/details', {
+        const profileResponse = await fetch('https://medichainn.onrender.com/api/profile/doctor/details', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -290,7 +290,7 @@ const DoctorProfilePage = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/profile/doctor/privacy', {
+      const response = await fetch('https://medichainn.onrender.com/api/profile/doctor/privacy', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -331,7 +331,7 @@ const DoctorProfilePage = () => {
       uploadFormData.append('file', file);
       uploadFormData.append('type', type);
 
-      const response = await fetch('http://localhost:5000/api/profile/doctor/documents/upload', {
+      const response = await fetch('https://medichainn.onrender.com/api/profile/doctor/documents/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -362,7 +362,7 @@ const DoctorProfilePage = () => {
       const token = localStorage.getItem('medichain_token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:5000/api/profile/doctor/documents', {
+      const response = await fetch('https://medichainn.onrender.com/api/profile/doctor/documents', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -417,7 +417,7 @@ const DoctorProfilePage = () => {
       const token = localStorage.getItem('medichain_token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:5000/api/profile/doctor/activity', {
+      const response = await fetch('https://medichainn.onrender.com/api/profile/doctor/activity', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -450,7 +450,7 @@ const DoctorProfilePage = () => {
       setPasswordError('');
 
       const token = localStorage.getItem('medichain_token');
-      const response = await fetch('http://localhost:5000/api/auth/verify-password', {
+      const response = await fetch('https://medichainn.onrender.com/api/auth/verify-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -483,7 +483,7 @@ const DoctorProfilePage = () => {
       setPasswordVerifying(true);
 
       const token = localStorage.getItem('medichain_token');
-      const response = await fetch('http://localhost:5000/api/profile/delete-account', {
+      const response = await fetch('https://medichainn.onrender.com/api/profile/delete-account', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

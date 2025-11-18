@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
-import { API_CONFIG } from '../config/api';
 import '../assets/styles/JitsiVideoConference.css';
 
 /**
@@ -64,7 +63,7 @@ const JitsiVideoConference = () => {
         }
 
         // Fetch appointments to find the one matching this room
-        const response = await axios.get(`${API_CONFIG.API_URL}/appointments`, {
+        const response = await axios.get('https://medichainn.onrender.com/api/appointments', {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -660,7 +659,7 @@ const JitsiVideoConference = () => {
         return;
       }
 
-      const API_BASE_URL = API_CONFIG.BASE_URL;
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichainn.onrender.com';
       
       // Update appointment status to completed
       const response = await axios.put(

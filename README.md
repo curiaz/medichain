@@ -110,7 +110,7 @@ MediChain/
 
 3. **Access the application**
    - Frontend: http://localhost:3000
-   - Backend API: http://localhost:5000
+   - Backend API: https://medichain.clinic
 
 ## 🧪 Testing
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { API_CONFIG } from '../config/api';
 import './NotificationTable.css';
 
 // Icons
@@ -53,7 +52,7 @@ const NotificationTable = ({ userId = 'default_user' }) => {
     total_pages: 0
   });
 
-  const API_BASE_URL = API_CONFIG.BASE_URL;
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichainn.onrender.com';
 
   // Fetch notifications
   const fetchNotifications = useCallback(async (page = 1) => {

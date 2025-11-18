@@ -22,7 +22,7 @@ echo.
 echo ========================================
 echo Server starting in new window!
 echo Check the new window for server logs
-echo Server URL: http://localhost:5000
+echo Server URL: https://medichain.clinic
 echo ========================================
 pause
 

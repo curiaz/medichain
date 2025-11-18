@@ -28,7 +28,7 @@ cd d:\Repositories\medichain\backend
 python app.py
 ```
 
-Server will start on: `http://localhost:5000`
+Server will start on: `https://medichain.clinic`
 
 ## 🧪 Testing
 
@@ -59,7 +59,7 @@ python backend/test_api_endpoint.py
 ## 💉 Example API Call
 
 ```bash
-POST http://localhost:5000/api/diagnose
+POST https://medichain.clinic/api/diagnose
 Content-Type: application/json
 
 {

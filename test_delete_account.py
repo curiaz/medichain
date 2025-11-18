@@ -7,7 +7,7 @@ import requests
 import json
 
 # Configuration
-BASE_URL = "http://localhost:5000"
+BASE_URL = "https://medichain.clinic"
 API_ENDPOINT = f"{BASE_URL}/api/profile/delete-account"
 
 def test_delete_account_without_auth():

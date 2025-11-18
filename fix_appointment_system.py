@@ -164,9 +164,9 @@ try:
     print(f"✅ Total appointments: {len(appointments.data) if appointments.data else 0}")
     print(f"\n✅ Appointment system is ready!")
     print(f"\n📋 You can now:")
-    print(f"   - Access API at: http://localhost:5000/api/appointments")
+    print(f"   - Access API at: https://medichain.clinic/api/appointments")
     print(f"   - Book appointments through the frontend")
-    print(f"   - View approved doctors at: http://localhost:5000/api/appointments/doctors/approved")
+    print(f"   - View approved doctors at: https://medichain.clinic/api/appointments/doctors/approved")
     
 except Exception as e:
     print(f"Error in summary: {e}")

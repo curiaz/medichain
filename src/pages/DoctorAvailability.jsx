@@ -4,7 +4,6 @@ import Header from "./Header";
 import { Clock, Plus, Trash2, Save, AlertCircle } from "lucide-react";
 import axios from "axios";
 import { auth } from "../config/firebase";
-import { API_CONFIG } from "../config/api";
 import "../assets/styles/ModernDashboard.css";
 import "../assets/styles/DoctorAvailability.css";
 
@@ -35,7 +34,7 @@ const DoctorAvailability = ({ embedded = false }) => {
       const token = await currentUser.getIdToken();
 
       const response = await axios.get(
-        `${API_CONFIG.API_URL}/appointments/availability`,
+        "https://medichainn.onrender.com/api/appointments/availability",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -140,7 +139,7 @@ const DoctorAvailability = ({ embedded = false }) => {
       console.log("Saving availability:", availabilityData);
 
       const response = await axios.put(
-        `${API_CONFIG.API_URL}/appointments/availability`,
+        "https://medichainn.onrender.com/api/appointments/availability",
         { 
           availability: availabilityData,
           is_accepting_appointments: isAcceptingAppointments
@@ -193,7 +192,7 @@ const DoctorAvailability = ({ embedded = false }) => {
 
       console.log(`🔄 Toggling accepting appointments to: ${newValue}`);
       const response = await axios.put(
-        `${API_CONFIG.API_URL}/appointments/availability`,
+        "https://medichainn.onrender.com/api/appointments/availability",
         { 
           availability: availability,
           is_accepting_appointments: newValue

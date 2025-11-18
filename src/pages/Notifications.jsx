@@ -5,7 +5,6 @@ import { Bell, Check, X, AlertCircle, Info, Heart, Calendar, FileText } from "lu
 import { useAuth } from "../context/AuthContext"
 import { auth } from "../config/firebase"
 import axios from "axios"
-import { API_CONFIG } from "../config/api"
 import "../assets/styles/ModernDashboard.css"
 
 const Notifications = () => {
@@ -84,7 +83,7 @@ const Notifications = () => {
         return;
       }
       
-      const API_BASE_URL = API_CONFIG.BASE_URL;
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichainn.onrender.com';
       const response = await axios.get(`${API_BASE_URL}/api/notifications/stats`, {
         headers: { 
           Authorization: `Bearer ${token}`,
@@ -153,7 +152,7 @@ const Notifications = () => {
       }
       
       console.log('✅ Notifications: Token obtained from', tokenSource);
-      console.log('🔔 Notifications: Making API request to', `${API_CONFIG.API_URL}/notifications`);
+      console.log('🔔 Notifications: Making API request to https://medichainn.onrender.com/api/notifications');
       
       // Get Firebase UID from user object - check multiple possible fields
       const userUid = user?.uid || user?.firebase_uid || user?.profile?.firebase_uid || user?.id;
@@ -161,7 +160,7 @@ const Notifications = () => {
       console.log('🔔 Notifications: User object structure:', { uid: user?.uid, firebase_uid: user?.firebase_uid, profile: user?.profile, id: user?.id });
       
       // Make API request
-      const API_BASE_URL = API_CONFIG.BASE_URL;
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichainn.onrender.com';
       const response = await axios.get(`${API_BASE_URL}/api/notifications`, {
         headers: { 
           Authorization: `Bearer ${token}`,
@@ -249,7 +248,7 @@ const Notifications = () => {
         return;
       }
       
-      const API_BASE_URL = API_CONFIG.BASE_URL;
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichainn.onrender.com';
       const response = await axios.put(`${API_BASE_URL}/api/notifications/${notificationId}`, {
         is_read: true
       }, {
@@ -302,7 +301,7 @@ const Notifications = () => {
         return;
       }
       
-      const API_BASE_URL = API_CONFIG.BASE_URL;
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichainn.onrender.com';
       const response = await axios.post(`${API_BASE_URL}/api/notifications/read-all`, {}, {
         headers: { 
           Authorization: `Bearer ${token}`,
@@ -347,7 +346,7 @@ const Notifications = () => {
         return;
       }
       
-      const API_BASE_URL = API_CONFIG.BASE_URL;
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichainn.onrender.com';
       const response = await axios.delete(`${API_BASE_URL}/api/notifications/${notificationId}`, {
         headers: { 
           Authorization: `Bearer ${token}`,

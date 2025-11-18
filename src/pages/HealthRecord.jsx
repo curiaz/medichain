@@ -4,7 +4,6 @@ import { FileText, Calendar, Pill, Activity, Download, Stethoscope, File, Brain,
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { auth } from '../config/firebase';
-import { API_CONFIG } from '../config/api';
 import '../assets/styles/ModernDashboard.css';
 import '../assets/styles/HealthRecord.css';
 
@@ -45,7 +44,7 @@ const HealthRecord = () => {
 
           if (token) {
             // Fetch user profile from backend
-            const response = await axios.get(`${API_CONFIG.API_URL}/profile`, {
+            const response = await axios.get('https://medichainn.onrender.com/api/profile', {
               headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -135,7 +134,7 @@ const HealthRecord = () => {
       // Fetch appointments with symptoms and documents
       let appointmentsResponse;
       try {
-        appointmentsResponse = await axios.get('http://localhost:5000/api/appointments', {
+        appointmentsResponse = await axios.get('https://medichainn.onrender.com/api/appointments', {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 10000 // 10 second timeout
         });
@@ -163,7 +162,7 @@ const HealthRecord = () => {
         const medicalReportsMap = new Map();
         if (appointmentIds.length > 0) {
           try {
-            const reportsResponse = await axios.get(`${API_CONFIG.API_URL}/medical-reports/patient`, {
+            const reportsResponse = await axios.get('https://medichainn.onrender.com/api/medical-reports/patient', {
               headers: { Authorization: `Bearer ${token}` }
             });
             
@@ -331,7 +330,7 @@ const HealthRecord = () => {
 
           if (token) {
             const appointmentResponse = await axios.get(
-              `${API_CONFIG.API_URL}/appointments/${record.appointment_id}`,
+              `https://medichainn.onrender.com/api/appointments/${record.appointment_id}`,
               { headers: { Authorization: `Bearer ${token}` } }
             );
             

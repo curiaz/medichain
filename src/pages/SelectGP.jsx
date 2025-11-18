@@ -4,7 +4,6 @@ import Header from "./Header";
 import { Search, Stethoscope, Mail, ArrowLeft } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-import { API_CONFIG } from "../config/api";
 import "../assets/styles/ModernDashboard.css";
 import "../assets/styles/SelectGP.css";
 
@@ -82,11 +81,10 @@ const SelectGP = () => {
       }
       
       console.log("✅ SelectGP: Token found, making API call...");
-      const apiUrl = `${API_CONFIG.API_URL}/appointments/doctors/approved`;
-      console.log("🔍 SelectGP: API URL:", apiUrl);
+      console.log("🔍 SelectGP: API URL:", "https://medichainn.onrender.com/api/appointments/doctors/approved");
 
       const response = await axios.get(
-        apiUrl,
+        "https://medichainn.onrender.com/api/appointments/doctors/approved",
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -127,7 +125,7 @@ const SelectGP = () => {
         navigate("/login");
       } else if (err.code === 'ERR_NETWORK' || err.message.includes('Network Error')) {
         console.error("❌ SelectGP: Network error - backend may not be running");
-        setError("Cannot connect to server. Please check your connection and try again.");
+        setError("Cannot connect to server. Please ensure the backend is running on port 5000.");
       } else {
         console.error("❌ SelectGP: Other error:", err);
         setError(err.response?.data?.error || err.response?.data?.message || "Failed to load doctors. Please try again later.");

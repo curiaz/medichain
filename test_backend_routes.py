@@ -4,7 +4,7 @@ Test if backend auth routes are actually working
 import requests
 import json
 
-API_URL = "http://localhost:5000"
+API_URL = "https://medichain.clinic"
 
 print("\n" + "="*60)
 print("🔍 Testing Backend Auth Routes")

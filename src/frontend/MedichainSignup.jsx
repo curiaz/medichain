@@ -13,7 +13,7 @@ const MedichainSignup = () => {
   const navigate = useNavigate()
   const { signup, signInWithGoogle } = useAuth() // Fix: Use signup instead of register
   const [searchParams] = useSearchParams()
-  const API_URL = 'http://localhost:5000/api'
+  const API_URL = 'https://medichainn.onrender.com/api'
   
   const [formData, setFormData] = useState({
     firstName: "",

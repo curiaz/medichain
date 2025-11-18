@@ -283,7 +283,7 @@ describe('Reactivation Flow', () => {
       json: async () => ({ success: true, token: 'new-token' })
     });
 
-    const response = await fetch('http://localhost:5000/api/auth/reactivate-disabled-account', {
+    const response = await fetch('https://medichainn.onrender.com/api/auth/reactivate-disabled-account', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: 'doctor@test.com', password: 'password' })
@@ -292,7 +292,7 @@ describe('Reactivation Flow', () => {
     const result = await response.json();
     
     expect(fetch).toHaveBeenCalledWith(
-      'http://localhost:5000/api/auth/reactivate-disabled-account',
+      'https://medichainn.onrender.com/api/auth/reactivate-disabled-account',
       expect.objectContaining({
         method: 'POST'
       })

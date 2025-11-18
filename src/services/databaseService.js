@@ -3,7 +3,6 @@
 
 import { supabase, TABLES } from '../config/supabase';
 import { auth } from '../config/firebase';
-import { API_CONFIG } from '../config/api';
 
 export class DatabaseService {
   
@@ -33,7 +32,7 @@ export class DatabaseService {
         
         if (token) {
           // Use backend endpoint which uses service_client to bypass RLS
-          const response = await fetch(`${API_CONFIG.API_URL}/appointments/pending-reviews-count`, {
+          const response = await fetch('https://medichainn.onrender.com/api/appointments/pending-reviews-count', {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -126,7 +125,7 @@ export class DatabaseService {
         
         if (token) {
           // Use backend endpoint which uses service_client to bypass RLS
-          const response = await fetch(`${API_CONFIG.API_URL}/appointments/ai-diagnosis-reviewed-count`, {
+          const response = await fetch('https://medichainn.onrender.com/api/appointments/ai-diagnosis-reviewed-count', {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${token}`,

@@ -7,7 +7,6 @@ import DatabaseService from "../services/databaseService"
 import VerificationStatus from "../components/VerificationStatus"
 import axios from "axios"
 import { auth } from "../config/firebase"
-import { API_CONFIG } from "../config/api"
 import "../assets/styles/ModernDashboard.css"
 import "../assets/styles/DoctorDashboard.css"
 
@@ -132,7 +131,7 @@ const DoctorDashboard = () => {
       }
 
       // Fetch recent medical reports (ordered by updated_at, so updates appear first)
-      const response = await axios.get(`${API_CONFIG.API_URL}/medical-reports/doctor`, {
+      const response = await axios.get('https://medichainn.onrender.com/api/medical-reports/doctor', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -153,7 +152,7 @@ const DoctorDashboard = () => {
               // Try to get patient name from appointment first
               if (report.appointment_id) {
                 try {
-                  const appointmentResponse = await axios.get(`${API_CONFIG.API_URL}/appointments/${report.appointment_id}`, {
+                  const appointmentResponse = await axios.get(`https://medichainn.onrender.com/api/appointments/${report.appointment_id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                   });
                   
@@ -183,7 +182,7 @@ const DoctorDashboard = () => {
                 try {
                   // Try to get patient profile via user_profiles endpoint (doctor can query other users)
                   // First, try fetching via appointments endpoint which includes patient info
-                  const allAppointmentsResponse = await axios.get(`${API_CONFIG.API_URL}/appointments`, {
+                  const allAppointmentsResponse = await axios.get('https://medichainn.onrender.com/api/appointments', {
                     headers: { Authorization: `Bearer ${token}` }
                   });
                   
@@ -204,7 +203,7 @@ const DoctorDashboard = () => {
                     // For now, try to get from appointment if available
                     if (report.appointment_id) {
                       try {
-                        const aptResponse = await axios.get(`${API_CONFIG.API_URL}/appointments/${report.appointment_id}`, {
+                        const aptResponse = await axios.get(`https://medichainn.onrender.com/api/appointments/${report.appointment_id}`, {
                           headers: { Authorization: `Bearer ${token}` }
                         });
                         if (aptResponse.data?.success && aptResponse.data.appointment?.patient) {

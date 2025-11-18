@@ -1,8 +1,7 @@
 import axios from 'axios';
-import { API_CONFIG } from '../config/api';
 
 // Patient Service - handles patient data operations
-const API_BASE_URL = API_CONFIG.BASE_URL;
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichainn.onrender.com';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

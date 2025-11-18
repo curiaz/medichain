@@ -30,7 +30,7 @@ python app.py
 **Wait for:**
 ```
 ✅ AI system ready!
-📡 API available at: http://localhost:5000
+📡 API available at: https://medichain.clinic
 ```
 
 ### **Step 2: Run Tests** (Terminal 2)
@@ -117,7 +117,7 @@ Both return same format:
 **Run diagnostics:**
 ```powershell
 # Test backend health
-curl http://localhost:5000/health
+curl https://medichain.clinic/health
 
 # Run automated tests
 python backend/test_authentication_fix.py

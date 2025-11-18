@@ -5,7 +5,6 @@ import { Calendar, ArrowLeft, Check, AlertCircle, ChevronLeft, ChevronRight } fr
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { auth } from "../config/firebase";
-import { API_CONFIG } from "../config/api";
 import "../assets/styles/ModernDashboard.css";
 import "../assets/styles/SelectDateTime.css";
 
@@ -158,7 +157,7 @@ const SelectDateTime = () => {
       console.log("✅ SelectDateTime: Full doctor object:", doctor);
 
       const response = await axios.get(
-        `${API_CONFIG.API_URL}/appointments/availability/${doctor.firebase_uid}`,
+        `https://medichainn.onrender.com/api/appointments/availability/${doctor.firebase_uid}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -272,7 +271,7 @@ const SelectDateTime = () => {
             
             // Retry with refreshed token
             const retryResponse = await axios.get(
-              `${API_CONFIG.API_URL}/appointments/availability/${doctor.firebase_uid}`,
+              `https://medichainn.onrender.com/api/appointments/availability/${doctor.firebase_uid}`,
               {
                 headers: {
                   Authorization: `Bearer ${refreshedToken}`,

@@ -128,7 +128,7 @@ const ProfilePage = () => {
       const token = localStorage.getItem('medichain_token');
       if (token) {
         try {
-          const response = await fetch('http://localhost:5000/api/profile/patient', {
+          const response = await fetch('https://medichainn.onrender.com/api/profile/patient', {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -206,7 +206,7 @@ const ProfilePage = () => {
 
       console.log('📤 Sending profile update request:', formData);
       
-      const response = await fetch('http://localhost:5000/api/profile/patient/update', {
+      const response = await fetch('https://medichainn.onrender.com/api/profile/patient/update', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -249,7 +249,7 @@ const ProfilePage = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/profile/patient/medical', {
+      const response = await fetch('https://medichainn.onrender.com/api/profile/patient/medical', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -294,7 +294,7 @@ const ProfilePage = () => {
       formData.append('document_type', 'health_document');
       formData.append('description', file.name);
 
-      const response = await fetch('http://localhost:5000/api/profile/patient/documents', {
+      const response = await fetch('https://medichainn.onrender.com/api/profile/patient/documents', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -332,7 +332,7 @@ const ProfilePage = () => {
 
       console.log('Saving privacy settings:', privacySettings);
 
-      const response = await fetch('http://localhost:5000/api/profile/patient/privacy', {
+      const response = await fetch('https://medichainn.onrender.com/api/profile/patient/privacy', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -499,7 +499,7 @@ const ProfilePage = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/auth/verify-password', {
+      const response = await fetch('https://medichainn.onrender.com/api/auth/verify-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -538,7 +538,7 @@ const ProfilePage = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/profile/delete-account', {
+      const response = await fetch('https://medichainn.onrender.com/api/profile/delete-account', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

@@ -5,17 +5,24 @@
 
 // API Base URL - handles different environments (development, production)
 const getBaseURL = () => {
-  // Use environment variable if set
+  // Use environment variable if set (highest priority)
   if (process.env.REACT_APP_API_URL) {
     return process.env.REACT_APP_API_URL;
   }
   
-  // In development, use local Flask server
-  if (process.env.NODE_ENV === 'development') {
+  // Detect if running on localhost (for local development)
+  const isLocalhost = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname === ''
+  );
+  
+  // If running on localhost, use local Flask server
+  if (isLocalhost || process.env.NODE_ENV === 'development') {
     return 'http://localhost:5000';
   }
   
-  // In production, use deployed backend
+  // In production (medichain.clinic or other domains), use deployed backend
   return 'https://medichainn.onrender.com';
 };
 

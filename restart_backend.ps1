@@ -49,5 +49,5 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\backend'
 
 Write-Host "`n✅ Server starting in new window!" -ForegroundColor Green
 Write-Host "   Check the new window for server logs" -ForegroundColor Cyan
-Write-Host "   Server should be available at: http://localhost:5000" -ForegroundColor Cyan
+Write-Host "   Server should be available at: https://medichain.clinic" -ForegroundColor Cyan
 

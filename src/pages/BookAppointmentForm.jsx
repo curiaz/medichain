@@ -5,7 +5,6 @@ import { Calendar, Clock, User, Stethoscope, ArrowLeft, Check, AlertCircle } fro
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { auth } from "../config/firebase";
-import { API_CONFIG } from "../config/api";
 import "../assets/styles/ModernDashboard.css";
 import "../assets/styles/BookAppointmentForm.css";
 
@@ -126,7 +125,7 @@ const BookAppointmentForm = () => {
       console.log("✅ BookAppointmentForm: Fetching availability for doctor:", doctor.firebase_uid);
 
       const response = await axios.get(
-        `${API_CONFIG.API_URL}/appointments/availability/${doctor.firebase_uid}`,
+        `https://medichainn.onrender.com/api/appointments/availability/${doctor.firebase_uid}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -209,7 +208,7 @@ const BookAppointmentForm = () => {
       }
 
       // Fetch user profile
-      const response = await axios.get('http://localhost:5000/api/profile/patient', {
+      const response = await axios.get('https://medichainn.onrender.com/api/profile/patient', {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -398,61 +397,17 @@ const BookAppointmentForm = () => {
         appointment_type: location.state?.appointmentType || "general-practitioner",
       });
 
-      // Prepare document data (convert File objects to base64)
-      const documentData = await Promise.all(
-        (location.state?.documents || []).map(async (doc) => {
-          try {
-            // If doc is a File object, convert to base64
-            if (doc instanceof File || (doc.file && doc.file instanceof File)) {
-              const file = doc.file || doc;
-              
-              // Check file size (limit to 5MB to avoid database issues)
-              const maxSize = 5 * 1024 * 1024; // 5MB
-              if (file.size > maxSize) {
-                throw new Error(`File ${file.name} is too large. Maximum size is 5MB.`);
-              }
-              
-              return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                  try {
-                    const base64String = reader.result;
-                    // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
-                    const base64Data = base64String.includes(',') 
-                      ? base64String.split(',')[1] 
-                      : base64String;
-                    
-                    resolve({
-                      name: file.name,
-                      size: file.size,
-                      type: file.type,
-                      data: base64Data, // Store base64 data
-                    });
-                  } catch (err) {
-                    reject(new Error(`Failed to process file ${file.name}: ${err.message}`));
-                  }
-                };
-                reader.onerror = () => reject(new Error(`Failed to read file ${file.name}`));
-                reader.readAsDataURL(file);
-              });
-            } else {
-              // If it's already metadata, just return it (might already have base64)
-              return {
-                name: doc.name || doc.filename,
-                size: doc.size,
-                type: doc.type,
-                data: doc.data || doc.base64, // Preserve existing base64 if present
-              };
-            }
-          } catch (err) {
-            console.error(`Error processing document: ${err.message}`);
-            throw new Error(`Failed to process document: ${err.message}`);
-          }
-        })
-      );
+      // Prepare document data (convert File objects to base64 or store metadata)
+      const documentData = (location.state?.documents || []).map(doc => ({
+        name: doc.name,
+        size: doc.size,
+        type: doc.type,
+        // Note: In production, files should be uploaded to storage first
+        // For now, we'll store metadata and handle file upload separately
+      }));
 
       const response = await axios.post(
-        `${API_CONFIG.API_URL}/appointments`,
+        "https://medichainn.onrender.com/api/appointments",
         {
           doctor_firebase_uid: doctor.firebase_uid,
           appointment_date: selectedDate,
