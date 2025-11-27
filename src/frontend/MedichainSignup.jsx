@@ -2,10 +2,11 @@ import { useState, useEffect } from "react"
 import "./MedichainLogin.css" // Reuse existing styles
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight, Upload, Stethoscope, Heart } from "lucide-react"
+import { Eye, EyeOff, Lock, Mail, User, Plus, ChevronRight, Upload, Stethoscope, Heart, Check, X } from "lucide-react"
 import LoadingSpinner from "../components/LoadingSpinner"
 import { showToast } from "../components/CustomToast"
 import medichainLogo from "../assets/medichain_logo.png"
+import { API_CONFIG } from "../config/api"
 // eslint-disable-next-line no-unused-vars
 import axios from "axios"
 
@@ -13,7 +14,7 @@ const MedichainSignup = () => {
   const navigate = useNavigate()
   const { signup, signInWithGoogle } = useAuth() // Fix: Use signup instead of register
   const [searchParams] = useSearchParams()
-  const API_URL = 'https://medichainn.onrender.com/api'
+  const API_URL = API_CONFIG.API_URL
   
   const [formData, setFormData] = useState({
     firstName: "",
@@ -34,6 +35,9 @@ const MedichainSignup = () => {
   const [isGoogleSignup, setIsGoogleSignup] = useState(false)
   const [googleIdToken, setGoogleIdToken] = useState(null)
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false)
+  const [passwordFocused, setPasswordFocused] = useState(false)
+  const [emailFocused, setEmailFocused] = useState(false)
+  const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false)
 
   // Set the userType based on URL parameter
   useEffect(() => {
@@ -95,6 +99,38 @@ const MedichainSignup = () => {
       }))
     }
   }
+
+  // Password strength validation
+  const checkPasswordStrength = () => {
+    const { password } = formData
+    if (!password) return null
+    
+    return {
+      minLength: password.length >= 6,
+      hasUppercase: /[A-Z]/.test(password),
+      hasLowercase: /[a-z]/.test(password),
+      hasDigit: /\d/.test(password)
+    }
+  }
+
+  // Email validation
+  const validateEmail = () => {
+    const { email } = formData
+    if (!email) return null
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email.trim())
+  }
+
+  // Confirm password match validation
+  const checkPasswordMatch = () => {
+    const { password, confirmPassword } = formData
+    if (!confirmPassword) return null
+    return password === confirmPassword
+  }
+
+  const passwordStrength = checkPasswordStrength()
+  const isEmailValid = validateEmail()
+  const passwordsMatch = checkPasswordMatch()
 
   const validateForm = () => {
     const { firstName, lastName, email, password, confirmPassword, userType, verificationFile } = formData
@@ -467,11 +503,27 @@ const MedichainSignup = () => {
                       aria-required="true"
                       value={formData.email}
                       onChange={handleInputChange}
+                      onFocus={() => setEmailFocused(true)}
+                      onBlur={() => setEmailFocused(false)}
                       placeholder="Enter your email"
                       disabled={isSubmitting}
                       required
                     />
+                    {emailFocused && formData.email && (
+                      <span className="validation-icon">
+                        {isEmailValid ? (
+                          <Check size={16} className="validation-check" />
+                        ) : (
+                          <X size={16} className="validation-error" />
+                        )}
+                      </span>
+                    )}
                   </div>
+                  {emailFocused && formData.email && isEmailValid === false && (
+                    <small className="validation-message error">
+                      Please enter a valid email address
+                    </small>
+                  )}
                 </div>
 
                 <div className="input-group">
@@ -551,6 +603,8 @@ const MedichainSignup = () => {
                       aria-required="true"
                       value={formData.password}
                       onChange={handleInputChange}
+                      onFocus={() => setPasswordFocused(true)}
+                      onBlur={() => setPasswordFocused(false)}
                       placeholder="Enter your password"
                       disabled={isSubmitting}
                       required
@@ -565,6 +619,50 @@ const MedichainSignup = () => {
                       {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                   </div>
+                  {passwordFocused && formData.password && passwordStrength && (
+                    <div className="password-strength-indicator">
+                      <div className="strength-requirement">
+                        {passwordStrength.minLength ? (
+                          <Check size={14} className="strength-check" />
+                        ) : (
+                          <X size={14} className="strength-error" />
+                        )}
+                        <span className={passwordStrength.minLength ? "strength-valid" : "strength-invalid"}>
+                          At least 6 characters
+                        </span>
+                      </div>
+                      <div className="strength-requirement">
+                        {passwordStrength.hasUppercase ? (
+                          <Check size={14} className="strength-check" />
+                        ) : (
+                          <X size={14} className="strength-error" />
+                        )}
+                        <span className={passwordStrength.hasUppercase ? "strength-valid" : "strength-invalid"}>
+                          One uppercase letter
+                        </span>
+                      </div>
+                      <div className="strength-requirement">
+                        {passwordStrength.hasLowercase ? (
+                          <Check size={14} className="strength-check" />
+                        ) : (
+                          <X size={14} className="strength-error" />
+                        )}
+                        <span className={passwordStrength.hasLowercase ? "strength-valid" : "strength-invalid"}>
+                          One lowercase letter
+                        </span>
+                      </div>
+                      <div className="strength-requirement">
+                        {passwordStrength.hasDigit ? (
+                          <Check size={14} className="strength-check" />
+                        ) : (
+                          <X size={14} className="strength-error" />
+                        )}
+                        <span className={passwordStrength.hasDigit ? "strength-valid" : "strength-invalid"}>
+                          One number
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="input-group">
@@ -579,10 +677,21 @@ const MedichainSignup = () => {
                       aria-required="true"
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
+                      onFocus={() => setConfirmPasswordFocused(true)}
+                      onBlur={() => setConfirmPasswordFocused(false)}
                       placeholder="Confirm your password"
                       disabled={isSubmitting}
                       required
                     />
+                    {confirmPasswordFocused && formData.confirmPassword && (
+                      <span className="validation-icon">
+                        {passwordsMatch ? (
+                          <Check size={16} className="validation-check" />
+                        ) : (
+                          <X size={16} className="validation-error" />
+                        )}
+                      </span>
+                    )}
                     <button
                       type="button"
                       className="password-toggle"
@@ -593,6 +702,16 @@ const MedichainSignup = () => {
                       {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                   </div>
+                  {confirmPasswordFocused && formData.confirmPassword && passwordsMatch === false && (
+                    <small className="validation-message error">
+                      Passwords do not match
+                    </small>
+                  )}
+                  {confirmPasswordFocused && formData.confirmPassword && passwordsMatch === true && (
+                    <small className="validation-message success">
+                      Passwords match
+                    </small>
+                  )}
                 </div>
                 
                 {isGoogleSignup && (

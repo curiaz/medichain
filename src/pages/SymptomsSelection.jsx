@@ -55,7 +55,7 @@ const SymptomsSelection = () => {
 
   useEffect(() => {
     if (!doctor) {
-      navigate("/select-gp");
+      navigate("/select-date-time");
     }
   }, [doctor, navigate]);
 
@@ -99,12 +99,15 @@ const SymptomsSelection = () => {
     const symptomDisplayNames = selectedSymptoms.map(key => getSymptomDisplay(key));
     
     // Store symptoms and navigate to document upload
+    // Preserve date/time from location.state
     navigate("/document-upload", {
       state: {
         doctor: doctor,
         symptoms: symptomDisplayNames, // Display names for UI
         symptomKeys: selectedSymptoms, // Original keys for backend processing
-        appointmentType: location.state?.appointmentType || "general-practitioner"
+        appointmentType: location.state?.appointmentType || "general-practitioner",
+        selectedDate: location.state?.selectedDate,
+        selectedTime: location.state?.selectedTime,
       }
     });
   };
@@ -128,7 +131,14 @@ const SymptomsSelection = () => {
           <div className="dashboard-title-section">
             <button
               className="back-button-header"
-              onClick={() => navigate("/select-gp")}
+              onClick={() => navigate("/select-date-time", {
+                state: {
+                  doctor: doctor,
+                  appointmentType: location.state?.appointmentType || "general-practitioner",
+                  selectedDate: location.state?.selectedDate,
+                  selectedTime: location.state?.selectedTime,
+                }
+              })}
               aria-label="Go back"
             >
               <ArrowLeft size={24} />
@@ -242,7 +252,14 @@ const SymptomsSelection = () => {
               <div className="symptoms-navigation">
                 <button
                   className="back-button-symptoms"
-                  onClick={() => navigate("/select-gp")}
+                  onClick={() => navigate("/select-date-time", {
+                    state: {
+                      doctor: doctor,
+                      appointmentType: location.state?.appointmentType || "general-practitioner",
+                      selectedDate: location.state?.selectedDate,
+                      selectedTime: location.state?.selectedTime,
+                    }
+                  })}
                 >
                   <ArrowLeft size={18} />
                   Back
@@ -312,7 +329,14 @@ const SymptomsSelection = () => {
                   </button>
                   <button
                     className="back-button-symptoms-desktop"
-                    onClick={() => navigate("/select-gp")}
+                    onClick={() => navigate("/select-date-time", {
+                      state: {
+                        doctor: doctor,
+                        appointmentType: location.state?.appointmentType || "general-practitioner",
+                        selectedDate: location.state?.selectedDate,
+                        selectedTime: location.state?.selectedTime,
+                      }
+                    })}
                   >
                     <ArrowLeft size={18} />
                     Back

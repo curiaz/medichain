@@ -59,29 +59,33 @@ const DocumentUpload = () => {
   };
 
   const handleNext = () => {
-    // Navigate to date/time selection with symptoms and documents
-    navigate("/select-date-time", {
+    // Navigate to payment page with all collected data
+    navigate("/payment", {
       state: {
         doctor: doctor,
         symptoms: symptoms,
         symptomKeys: location.state?.symptomKeys || [],
         documents: uploadedFiles,
         medicineAllergies: medicineAllergies.trim(),
-        appointmentType: location.state?.appointmentType || "general-practitioner"
+        appointmentType: location.state?.appointmentType || "general-practitioner",
+        selectedDate: location.state?.selectedDate,
+        selectedTime: location.state?.selectedTime,
       }
     });
   };
 
   const handleSkip = () => {
-    // Allow skipping document upload
-    navigate("/select-date-time", {
+    // Allow skipping document upload, navigate to payment
+    navigate("/payment", {
       state: {
         doctor: doctor,
         symptoms: symptoms,
         symptomKeys: location.state?.symptomKeys || [],
         documents: [],
         medicineAllergies: medicineAllergies.trim(),
-        appointmentType: location.state?.appointmentType || "general-practitioner"
+        appointmentType: location.state?.appointmentType || "general-practitioner",
+        selectedDate: location.state?.selectedDate,
+        selectedTime: location.state?.selectedTime,
       }
     });
   };
@@ -112,7 +116,9 @@ const DocumentUpload = () => {
                   symptoms, 
                   symptomKeys: location.state?.symptomKeys || [],
                   medicineAllergies: medicineAllergies.trim(),
-                  appointmentType: location.state?.appointmentType || "general-practitioner"
+                  appointmentType: location.state?.appointmentType || "general-practitioner",
+                  selectedDate: location.state?.selectedDate,
+                  selectedTime: location.state?.selectedTime,
                 } 
               })}
               aria-label="Go back"
@@ -232,7 +238,9 @@ const DocumentUpload = () => {
                   symptoms, 
                   symptomKeys: location.state?.symptomKeys || [],
                   medicineAllergies: medicineAllergies.trim(),
-                  appointmentType: location.state?.appointmentType || "general-practitioner"
+                  appointmentType: location.state?.appointmentType || "general-practitioner",
+                  selectedDate: location.state?.selectedDate,
+                  selectedTime: location.state?.selectedTime,
                 } 
               })}
             >

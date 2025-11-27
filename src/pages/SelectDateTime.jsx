@@ -565,16 +565,13 @@ const SelectDateTime = () => {
       console.warn("⚠️ SelectDateTime: Could not store in sessionStorage:", e);
     }
     
-    // Navigate to booking form with selected date and time, symptoms, and documents
-    navigate("/book-appointment-form", {
+    // Navigate to symptoms selection with selected date and time
+    navigate("/symptoms-selection", {
       state: {
         doctor: doctor,
         appointmentType: location.state?.appointmentType || "general-practitioner",
         selectedDate: selectedDate,
         selectedTime: selectedTime,
-        symptoms: location.state?.symptoms || [],
-        symptomKeys: location.state?.symptomKeys || [],
-        documents: location.state?.documents || [],
       },
       replace: false, // Don't replace history so user can go back
     });

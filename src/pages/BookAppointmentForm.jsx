@@ -309,6 +309,12 @@ const BookAppointmentForm = () => {
       return;
     }
 
+    // Check if payment is required and completed
+    if (!location.state?.payment || location.state.payment.status !== 'paid') {
+      setError("Payment is required before booking. Please complete payment first.");
+      return;
+    }
+
     try {
       setBooking(true);
       setError(null);
@@ -406,20 +412,31 @@ const BookAppointmentForm = () => {
         // For now, we'll store metadata and handle file upload separately
       }));
 
+      // Prepare appointment data with payment information
+      const appointmentData = {
+        doctor_firebase_uid: doctor.firebase_uid,
+        appointment_date: selectedDate,
+        appointment_time: selectedTime,
+        appointment_type: location.state?.appointmentType || "general-practitioner",
+        date_of_birth: dateOfBirth,
+        notes: notes,
+        follow_up_checkup: followUpCheckup,
+        symptoms: location.state?.symptomKeys || location.state?.symptoms || [],
+        documents: documentData,
+        medicine_allergies: location.state?.medicineAllergies || "",
+      };
+
+      // Add payment information if available
+      if (location.state?.payment) {
+        appointmentData.payment_status = 'paid';
+        appointmentData.payment_transaction_id = location.state.payment.transaction_id;
+        appointmentData.payment_method = location.state.payment.payment_method;
+        appointmentData.consultation_fee = location.state.payment.amount;
+      }
+
       const response = await axios.post(
         "https://medichainn.onrender.com/api/appointments",
-        {
-          doctor_firebase_uid: doctor.firebase_uid,
-          appointment_date: selectedDate,
-          appointment_time: selectedTime,
-          appointment_type: location.state?.appointmentType || "general-practitioner",
-          date_of_birth: dateOfBirth,
-          notes: notes,
-          follow_up_checkup: followUpCheckup,
-          symptoms: location.state?.symptomKeys || location.state?.symptoms || [],
-          documents: documentData,
-          medicine_allergies: location.state?.medicineAllergies || "",
-        },
+        appointmentData,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -600,6 +617,29 @@ const BookAppointmentForm = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Payment Confirmation */}
+                  {location.state?.payment && location.state.payment.status === 'paid' && (
+                    <div className="payment-confirmation" style={{
+                      background: '#e8f5e9',
+                      border: '1px solid #4caf50',
+                      borderRadius: '10px',
+                      padding: '15px 20px',
+                      marginTop: '20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px'
+                    }}>
+                      <Check size={24} color="#4caf50" />
+                      <div>
+                        <strong style={{ color: '#2e7d32' }}>Payment Confirmed</strong>
+                        <p style={{ margin: '5px 0 0 0', color: '#388e3c', fontSize: '0.9rem' }}>
+                          Amount: ₱{location.state.payment.amount?.toFixed(2) || '0.00'} | 
+                          Transaction ID: {location.state.payment.transaction_id || 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Allow changing date/time if needed */}
                   <div className="form-group" style={{ marginTop: '24px' }}>

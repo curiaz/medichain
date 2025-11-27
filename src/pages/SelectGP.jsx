@@ -174,14 +174,14 @@ const SelectGP = () => {
       console.warn("⚠️ SelectGP: Could not store doctor in sessionStorage:", e);
     }
     
-    // Navigate to symptoms selection page (new flow)
-    console.log("✅ SelectGP: Navigating to /symptoms-selection");
+    // Navigate to date/time selection page (new flow - date/time before symptoms)
+    console.log("✅ SelectGP: Navigating to /select-date-time");
     console.log("✅ SelectGP: Navigation state:", {
       doctor: doctor,
       appointmentType: location.state?.appointmentType || "general-practitioner",
     });
     
-    navigate("/symptoms-selection", {
+    navigate("/select-date-time", {
       state: {
         doctor: doctor,
         appointmentType: location.state?.appointmentType || "general-practitioner",

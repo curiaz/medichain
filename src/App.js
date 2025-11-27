@@ -21,6 +21,7 @@ import SymptomsSelection from './pages/SymptomsSelection'; // Symptoms selection
 import DocumentUpload from './pages/DocumentUpload'; // Document upload page
 import SelectDateTime from './pages/SelectDateTime'; // Select Date & Time page
 import BookAppointmentForm from './pages/BookAppointmentForm'; // Appointment booking form
+import Payment from './pages/Payment'; // Payment page
 import DoctorAvailability from './pages/DoctorAvailability'; // Doctor availability management
 import DoctorSchedule from './pages/DoctorSchedule'; // Doctor schedule management
 import DoctorAIDiagnosisReview from './pages/DoctorAIDiagnosisReview'; // Doctor AI diagnosis review page
@@ -169,6 +170,15 @@ function App() {
               element={
                 <ProtectedRoute>
                   <SelectDateTime />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/payment" 
+              element={
+                <ProtectedRoute>
+                  <Payment />
                 </ProtectedRoute>
               } 
             />

@@ -94,6 +94,65 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
+  // Helper function to detect clock skew errors
+  const isClockSkewError = (error) => {
+    if (!error) return false;
+    
+    // Check all possible error properties
+    const errorMessage = error.message || error.toString() || '';
+    const errorCode = error.code || '';
+    const errorString = JSON.stringify(error) || '';
+    const fullErrorText = `${errorMessage} ${errorCode} ${errorString}`;
+    
+    // Check for clock skew indicators in various formats
+    // Also check for timestamp patterns like "1764185009 < 1764185024" which indicate clock skew
+    const hasClockSkew = (
+      errorMessage.includes('Token used too early') ||
+      errorMessage.includes('Token used too late') ||
+      errorMessage.toLowerCase().includes('clock') ||
+      errorMessage.includes('Authentication failed') && errorMessage.includes('Token used too early') ||
+      errorString.includes('Token used too early') ||
+      errorString.includes('Token used too late') ||
+      fullErrorText.includes('Token used too early') ||
+      fullErrorText.includes('Token used too late') ||
+      // Check for timestamp comparison pattern (e.g., "1764185009 < 1764185024")
+      /\d+\s*[<>]\s*\d+/.test(fullErrorText) && (fullErrorText.includes('Token') || fullErrorText.includes('clock')) ||
+      errorCode.includes('auth/network-request-failed') // Sometimes clock skew manifests as network error
+    );
+    
+    if (hasClockSkew) {
+      console.log('[Auth] Clock skew error detected:', { errorMessage, errorCode, errorString: errorString.substring(0, 200) });
+    }
+    
+    return hasClockSkew;
+  };
+
+  // Helper function to retry operations with exponential backoff
+  const retryWithBackoff = async (operation, maxRetries = 3, baseDelay = 2000) => {
+    let lastError;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        
+        // Only retry on clock skew errors
+        if (isClockSkewError(error) && attempt < maxRetries - 1) {
+          const delay = baseDelay * (attempt + 1); // 2s, 4s, 6s
+          console.log(`[Auth] Clock skew detected (attempt ${attempt + 1}/${maxRetries}), retrying in ${delay/1000}s...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        // For non-clock-skew errors or final attempt, throw immediately
+        throw error;
+      }
+    }
+    
+    throw lastError;
+  };
+
   // Helper function to get user-friendly error messages
   const getFirebaseErrorMessage = (errorCode) => {
     const errorMessages = {
@@ -103,7 +162,7 @@ export const AuthProvider = ({ children }) => {
       'auth/wrong-password': 'Incorrect password. Please try again.',
       'auth/invalid-credential': 'Invalid email or password.',
       'auth/too-many-requests': 'Too many failed login attempts. Please try again later.',
-      'auth/network-request-failed': 'Network error. Please check your internet connection.',
+      'auth/network-request-failed': 'Network error. Please check your internet connection and try again.',
       'auth/email-already-in-use': 'An account with this email already exists.',
       'auth/weak-password': 'Password should be at least 6 characters long.',
       'auth/operation-not-allowed': 'This operation is not allowed. Please contact support.',
@@ -140,8 +199,18 @@ export const AuthProvider = ({ children }) => {
         console.log('[Auth] API URL:', API_URL);
         console.log('[Auth] Login endpoint:', `${API_URL}/auth/login`);
         
-        const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
-        const idToken = await userCredential.user.getIdToken();
+        // Use retry logic for clock skew errors
+        const userCredential = await retryWithBackoff(
+          () => signInWithEmailAndPassword(auth, email.trim(), password),
+          3,
+          2000
+        );
+        
+        const idToken = await retryWithBackoff(
+          () => userCredential.user.getIdToken(),
+          3,
+          2000
+        );
         
         console.log('[Auth] Firebase login successful, verifying with backend...');
         console.log('[Auth] Sending request to:', `${API_URL}/auth/login`);
@@ -392,30 +461,85 @@ export const AuthProvider = ({ children }) => {
 
       console.log('[Auth] Creating Firebase account...');
       
-      // Create user with Firebase
+      // Create user with Firebase (with retry logic for clock skew)
       let userCredential;
       try {
-        userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        userCredential = await retryWithBackoff(
+          () => createUserWithEmailAndPassword(auth, email.trim(), password),
+          3, // max retries
+          2000 // base delay in ms
+        );
       } catch (firebaseError) {
-        // Handle Firebase-specific signup errors
-        if (firebaseError.code?.startsWith('auth/')) {
-          const friendlyMessage = getFirebaseErrorMessage(firebaseError.code);
-          console.error('[Auth] Firebase signup error:', firebaseError.code, '-', friendlyMessage);
-          setError(friendlyMessage);
-          return {
-            success: false,
-            error: friendlyMessage,
-            errorCode: firebaseError.code
-          };
+        console.error('[Auth] Firebase signup error caught:', firebaseError);
+        console.error('[Auth] Error details:', {
+          code: firebaseError.code,
+          message: firebaseError.message,
+          toString: firebaseError.toString()
+        });
+        
+        // Check if it's a clock skew error that wasn't caught by retry
+        if (isClockSkewError(firebaseError)) {
+          console.log('[Auth] Clock skew error detected after retries, waiting 15 seconds and retrying once more...');
+          await new Promise(resolve => setTimeout(resolve, 15000));
+          try {
+            userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+            console.log('[Auth] Successfully created user after extended wait');
+          } catch (retryError) {
+            console.error('[Auth] Final retry failed:', retryError);
+            setError('Authentication timed out due to clock synchronization. Please sync your system clock and try again.');
+            return {
+              success: false,
+              error: 'Authentication timed out due to clock synchronization. Please sync your system clock and try again.',
+              errorCode: firebaseError.code || 'auth/clock-skew'
+            };
+          }
         } else {
-          throw firebaseError;
+          // Handle Firebase-specific signup errors
+          if (firebaseError.code?.startsWith('auth/')) {
+            const friendlyMessage = getFirebaseErrorMessage(firebaseError.code);
+            console.error('[Auth] Firebase signup error:', firebaseError.code, '-', friendlyMessage);
+            setError(friendlyMessage);
+            return {
+              success: false,
+              error: friendlyMessage,
+              errorCode: firebaseError.code
+            };
+          } else {
+            throw firebaseError;
+          }
         }
       }
       
       console.log('[Auth] Firebase account created, getting ID token...');
       
-      // Get ID token
-      const idToken = await userCredential.user.getIdToken();
+      // Get ID token (with retry logic for clock skew)
+      let idToken;
+      try {
+        idToken = await retryWithBackoff(
+          () => userCredential.user.getIdToken(),
+          3,
+          2000
+        );
+      } catch (tokenError) {
+        console.error('[Auth] Failed to get ID token:', tokenError);
+        // If clock skew persists, try waiting a bit longer and retry once more
+        if (isClockSkewError(tokenError)) {
+          console.log('[Auth] Waiting additional 5 seconds for token to become valid...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          try {
+            idToken = await userCredential.user.getIdToken();
+          } catch (finalError) {
+            setError('Authentication timed out. Please try again.');
+            return {
+              success: false,
+              error: 'Failed to get authentication token. Please try again.',
+              errorCode: 'auth/token-error'
+            };
+          }
+        } else {
+          throw tokenError;
+        }
+      }
       
       console.log('[Auth] Registering with backend...');
       
@@ -446,8 +570,49 @@ export const AuthProvider = ({ children }) => {
             user: userData
           };
         } else {
-          // Backend registration failed - clean up Firebase user
-          console.error('[Auth] Backend registration failed:', response.data.error);
+          // Backend registration failed - check if it's a clock skew error
+          const backendError = response.data.error || '';
+          console.error('[Auth] Backend registration failed:', backendError);
+          
+          // If backend reports clock skew, wait and retry
+          if (isClockSkewError({ message: backendError })) {
+            console.log('[Auth] Backend reported clock skew, waiting 15 seconds and retrying registration...');
+            await new Promise(resolve => setTimeout(resolve, 15000));
+            
+            // Get a fresh token
+            try {
+              idToken = await userCredential.user.getIdToken(true);
+              console.log('[Auth] Got fresh token, retrying backend registration...');
+              
+              // Retry backend registration
+              const retryResponse = await axios.post(`${API_URL}/auth/register`, {
+                id_token: idToken,
+                name: `${firstName.trim()} ${lastName.trim()}`,
+                role: userType,
+                password: password
+              });
+              
+              if (retryResponse.data.success) {
+                const userData = retryResponse.data.data.user;
+                const token = retryResponse.data.data.token;
+                
+                localStorage.setItem('medichain_token', token);
+                localStorage.setItem('medichain_user', JSON.stringify(userData));
+
+                setUser(userData);
+                setIsAuthenticated(true);
+
+                console.log('[Auth] ✅ Signup successful after retry!');
+                return {
+                  success: true,
+                  message: 'Account created successfully! Welcome to MediChain.',
+                  user: userData
+                };
+              }
+            } catch (retryError) {
+              console.error('[Auth] Retry registration failed:', retryError);
+            }
+          }
           
           // Try to delete the Firebase user we just created
           try {
@@ -457,7 +622,7 @@ export const AuthProvider = ({ children }) => {
             console.error('[Auth] Failed to cleanup Firebase user:', deleteError);
           }
           
-          const errorMsg = response.data.error || 'Failed to create account. Please try again.';
+          const errorMsg = backendError || 'Failed to create account. Please try again.';
           setError(errorMsg);
           return {
             success: false,
@@ -465,8 +630,48 @@ export const AuthProvider = ({ children }) => {
           };
         }
       } catch (backendError) {
-        // Backend request failed - clean up Firebase user
+        // Backend request failed - check if it's a clock skew error
+        const errorMessage = backendError.response?.data?.error || backendError.message || '';
         console.error('[Auth] Backend request failed:', backendError);
+        
+        // If it's a clock skew error from backend, wait and retry
+        if (isClockSkewError({ message: errorMessage })) {
+          console.log('[Auth] Backend request failed with clock skew, waiting 15 seconds and retrying...');
+          await new Promise(resolve => setTimeout(resolve, 15000));
+          
+          try {
+            // Get fresh token
+            idToken = await userCredential.user.getIdToken(true);
+            
+            // Retry backend registration
+            const retryResponse = await axios.post(`${API_URL}/auth/register`, {
+              id_token: idToken,
+              name: `${firstName.trim()} ${lastName.trim()}`,
+              role: userType,
+              password: password
+            });
+            
+            if (retryResponse.data.success) {
+              const userData = retryResponse.data.data.user;
+              const token = retryResponse.data.data.token;
+              
+              localStorage.setItem('medichain_token', token);
+              localStorage.setItem('medichain_user', JSON.stringify(userData));
+
+              setUser(userData);
+              setIsAuthenticated(true);
+
+              console.log('[Auth] ✅ Signup successful after backend retry!');
+              return {
+                success: true,
+                message: 'Account created successfully! Welcome to MediChain.',
+                user: userData
+              };
+            }
+          } catch (retryError) {
+            console.error('[Auth] Backend retry failed:', retryError);
+          }
+        }
         
         // Try to delete the Firebase user we just created
         try {
@@ -572,7 +777,11 @@ export const AuthProvider = ({ children }) => {
           unsubscribe(); // Unsubscribe immediately after first callback
           if (firebaseUser) {
             try {
-              const token = await firebaseUser.getIdToken(true); // Force refresh
+              const token = await retryWithBackoff(
+                () => firebaseUser.getIdToken(true), // Force refresh
+                3,
+                2000
+              );
               resolve(token);
             } catch (error) {
               console.error('[Auth] Error getting Firebase token:', error);
@@ -641,7 +850,11 @@ export const AuthProvider = ({ children }) => {
         // Get current user from Firebase
         userCredential = auth.currentUser;
         if (userCredential) {
-          currentIdToken = await userCredential.getIdToken(true); // Refresh token
+          currentIdToken = await retryWithBackoff(
+            () => userCredential.getIdToken(true), // Refresh token
+            3,
+            2000
+          );
           displayName = userCredential.displayName || '';
           email = userCredential.email || '';
           const nameParts = displayName.split(' ');
@@ -700,8 +913,12 @@ export const AuthProvider = ({ children }) => {
         
         console.log('[Auth] Google sign-in successful:', userCredential.email);
         
-        // Get ID token
-        currentIdToken = await userCredential.getIdToken();
+        // Get ID token (with retry logic for clock skew)
+        currentIdToken = await retryWithBackoff(
+          () => userCredential.getIdToken(),
+          3,
+          2000
+        );
         
         // Extract user information from Google
         displayName = userCredential.displayName || '';

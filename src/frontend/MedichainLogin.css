@@ -1192,6 +1192,120 @@
   line-height: 1.4;
 }
 
+/* Validation Indicators */
+.validation-icon {
+  position: absolute;
+  right: 50px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* When password toggle is present, move validation icon further left */
+.input-wrapper:has(.password-toggle) .validation-icon {
+  right: 50px;
+}
+
+/* When no password toggle, validation icon can be closer */
+.input-wrapper:not(:has(.password-toggle)) .validation-icon {
+  right: 16px;
+}
+
+.validation-check {
+  color: #10b981;
+  stroke-width: 3;
+}
+
+.validation-error {
+  color: #ef4444;
+  stroke-width: 3;
+}
+
+.validation-message {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  padding-left: 4px;
+  transition: all 0.2s ease;
+}
+
+.validation-message.error {
+  color: #ef4444;
+}
+
+.validation-message.success {
+  color: #10b981;
+}
+
+/* Password Strength Indicator */
+.password-strength-indicator {
+  margin-top: 8px;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.strength-requirement {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  transition: color 0.2s ease;
+}
+
+.strength-check {
+  color: #10b981;
+  stroke-width: 3;
+  flex-shrink: 0;
+}
+
+.strength-error {
+  color: #ef4444;
+  stroke-width: 3;
+  flex-shrink: 0;
+}
+
+.strength-valid {
+  color: #059669;
+  font-weight: 500;
+}
+
+.strength-invalid {
+  color: #6b7280;
+}
+
+/* Adjust input wrapper when validation icon is present */
+.input-wrapper:has(.validation-icon):not(:has(.password-toggle)) input {
+  padding-right: 50px;
+}
+
+.input-wrapper:has(.validation-icon):has(.password-toggle) input {
+  padding-right: 90px;
+}
+
+.input-wrapper:has(.validation-icon):has(.password-toggle) .password-toggle {
+  right: 16px;
+}
+
 /* Accessibility helpers */
 .sr-only {
   position: absolute;

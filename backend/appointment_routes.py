@@ -618,9 +618,97 @@ def get_appointments():
                     "details": str(appointment_query_error)
                 }), 500
             
-            # Enrich with doctor info for patients
+            # Enrich with doctor info and patient info for patients
             if response and response.data:
                 try:
+                    # Get current patient's profile info
+                    patient_profile_resp = (
+                        supabase.service_client
+                        .table("user_profiles")
+                        .select("firebase_uid, first_name, last_name, email, date_of_birth, allergies")
+                        .eq("firebase_uid", uid)
+                        .execute()
+                    )
+                    
+                    patient_info = None
+                    if patient_profile_resp.data and len(patient_profile_resp.data) > 0:
+                        p = patient_profile_resp.data[0]
+                        patient_info = {
+                            "first_name": (p.get("first_name") or "").strip(),
+                            "last_name": (p.get("last_name") or "").strip(),
+                            "email": (p.get("email") or "").strip(),
+                            "date_of_birth": p.get("date_of_birth"),
+                            "allergies": p.get("allergies")
+                        }
+                        patient_full = f"{patient_info['first_name']} {patient_info['last_name']}".strip()
+                        if patient_full or patient_info['email']:
+                            print(f"✅ Patient profile found: Name='{patient_full}' Email='{patient_info['email']}'")
+                        else:
+                            print(f"⚠️  Patient profile exists but is empty - will try Firebase Auth fallback")
+                            patient_info = None  # Trigger Firebase fallback
+                    
+                    # If patient profile is empty or missing, try Firebase Auth fallback
+                    if not patient_info or (not patient_info.get("first_name") and not patient_info.get("last_name") and not patient_info.get("email")):
+                        print(f"🔄 Attempting Firebase Auth fallback for patient UID: {uid}")
+                        try:
+                            from auth.firebase_auth import firebase_auth_service
+                            firebase_result = firebase_auth_service.get_user_by_uid(uid)
+                            
+                            if firebase_result.get("success") and firebase_result.get("user"):
+                                firebase_user = firebase_result["user"]
+                                firebase_email = (firebase_user.get("email") or "").strip()
+                                firebase_display_name = (firebase_user.get("display_name") or "").strip()
+                                
+                                # Extract name from Firebase
+                                if firebase_display_name:
+                                    name_parts = firebase_display_name.split(" ", 1)
+                                    first_name = name_parts[0].strip()
+                                    last_name = name_parts[1].strip() if len(name_parts) > 1 else ""
+                                elif firebase_email:
+                                    first_name = firebase_email.split("@")[0].strip()
+                                    last_name = ""
+                                else:
+                                    first_name = ""
+                                    last_name = ""
+                                
+                                patient_info = {
+                                    "first_name": first_name,
+                                    "last_name": last_name,
+                                    "email": firebase_email,
+                                    "date_of_birth": patient_info.get("date_of_birth") if patient_info else None,
+                                    "allergies": patient_info.get("allergies") if patient_info else None,
+                                    "from_firebase": True
+                                }
+                                
+                                full_name = f"{first_name} {last_name}".strip()
+                                print(f"✅ Fetched patient data from Firebase Auth: Name='{full_name}' Email='{firebase_email}'")
+                                
+                                # Update database profile for future requests
+                                try:
+                                    update_data = {
+                                        "first_name": first_name,
+                                        "last_name": last_name,
+                                        "email": firebase_email
+                                    }
+                                    if first_name or last_name or firebase_email:
+                                        supabase.service_client.table("user_profiles").update(update_data).eq("firebase_uid", uid).execute()
+                                        print(f"✅ Updated patient profile in database with Firebase Auth data for {uid}")
+                                except Exception as update_error:
+                                    print(f"⚠️  Could not update patient profile for {uid}: {update_error}")
+                        except Exception as firebase_fallback_error:
+                            print(f"❌ Error in Firebase Auth fallback for {uid}: {firebase_fallback_error}")
+                            import traceback
+                            traceback.print_exc()
+                            # Use empty patient info if Firebase fails
+                            patient_info = {
+                                "first_name": "",
+                                "last_name": "",
+                                "email": "",
+                                "date_of_birth": None,
+                                "allergies": None
+                            }
+                    
+                    # Get doctor info
                     doctor_uids = sorted({appt.get("doctor_firebase_uid") for appt in response.data if appt.get("doctor_firebase_uid")})
                     if doctor_uids:
                         profiles_resp = (
@@ -635,12 +723,63 @@ def get_appointments():
                             "last_name": p.get("last_name", ""),
                             "email": p.get("email", "")
                         } for p in (profiles_resp.data or [])}
+                        
+                        # Enrich each appointment with patient and doctor info
                         for appt in response.data:
+                            # Add patient info (current user)
+                            if patient_info:
+                                appt["patient"] = patient_info
+                            else:
+                                appt["patient"] = {
+                                    "first_name": "",
+                                    "last_name": "",
+                                    "email": "",
+                                    "date_of_birth": None,
+                                    "allergies": None
+                                }
+                            
+                            # Add doctor info
                             dfuid = appt.get("doctor_firebase_uid")
                             if dfuid and dfuid in uid_to_doctor:
                                 appt["doctor"] = uid_to_doctor[dfuid]
+                            else:
+                                appt["doctor"] = {
+                                    "first_name": "",
+                                    "last_name": "",
+                                    "email": ""
+                                }
+                    else:
+                        # No doctors found, but still add patient info
+                        for appt in response.data:
+                            if patient_info:
+                                appt["patient"] = patient_info
+                            else:
+                                appt["patient"] = {
+                                    "first_name": "",
+                                    "last_name": "",
+                                    "email": "",
+                                    "date_of_birth": None,
+                                    "allergies": None
+                                }
+                            appt["doctor"] = {
+                                "first_name": "",
+                                "last_name": "",
+                                "email": ""
+                            }
                 except Exception as _e:
-                    print(f"⚠️  Error enriching doctor info: {_e}")
+                    print(f"⚠️  Error enriching patient/doctor info: {_e}")
+                    import traceback
+                    traceback.print_exc()
+                    # Still add empty patient objects to prevent frontend errors
+                    for appt in response.data:
+                        if "patient" not in appt:
+                            appt["patient"] = {
+                                "first_name": "",
+                                "last_name": "",
+                                "email": "",
+                                "date_of_birth": None,
+                                "allergies": None
+                            }
                     pass
         elif user_role == "doctor":
             # Doctors see their appointments - use service_client to bypass RLS
@@ -946,8 +1085,8 @@ def get_appointments():
                     pfuid = appt.get('patient_firebase_uid')
                     print(f"⚠️  WARNING: Sending appointment {appt.get('id')} with EMPTY patient data! UID: {pfuid}")
                     print(f"   Patient object: {patient}")
-                    # Last attempt: Try to get patient info one more time if we have UID
-                    if pfuid and user_role == "doctor":
+                    # Last attempt: Try to get patient info one more time if we have UID (for both patients and doctors)
+                    if pfuid:
                         try:
                             from auth.firebase_auth import firebase_auth_service
                             firebase_result = firebase_auth_service.get_user_by_uid(pfuid)
@@ -966,8 +1105,23 @@ def get_appointments():
                                 
                                 appt["patient"]["email"] = firebase_email
                                 print(f"✅ Last-minute Firebase fetch succeeded for appointment {appt.get('id')}")
+                                
+                                # Update database profile for future requests
+                                try:
+                                    update_data = {
+                                        "first_name": appt["patient"]["first_name"],
+                                        "last_name": appt["patient"]["last_name"],
+                                        "email": firebase_email
+                                    }
+                                    if appt["patient"]["first_name"] or appt["patient"]["last_name"] or firebase_email:
+                                        supabase.service_client.table("user_profiles").update(update_data).eq("firebase_uid", pfuid).execute()
+                                        print(f"✅ Updated patient profile in database with Firebase Auth data for {pfuid}")
+                                except Exception as update_error:
+                                    print(f"⚠️  Could not update patient profile for {pfuid}: {update_error}")
                         except Exception as last_attempt_error:
                             print(f"⚠️  Last-minute Firebase fetch failed: {last_attempt_error}")
+                            import traceback
+                            traceback.print_exc()
             except Exception as enrich_error:
                 print(f"❌ Error enriching appointment {appt.get('id')}: {enrich_error}")
                 import traceback
@@ -1039,6 +1193,68 @@ def get_appointments():
             "error": str(e),
             "message": "An error occurred while fetching appointments. Check server logs for details."
         }), 500
+
+
+@appointments_bp.route("/payment", methods=["POST"])
+@auth_required
+def process_payment():
+    """Process payment for appointment booking"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user["uid"]
+        data = request.get_json()
+
+        # Validate required fields
+        required_fields = ["amount", "payment_method"]
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"success": False, "error": f"Missing required field: {field}"}), 400
+
+        # Get user role
+        user_response = supabase.service_client.table("user_profiles").select("role").eq("firebase_uid", uid).execute()
+        if not user_response.data:
+            return jsonify({"success": False, "error": "User profile not found"}), 404
+
+        user_role = user_response.data[0]["role"]
+        if user_role != "patient":
+            return jsonify({"success": False, "error": "Only patients can make payments"}), 403
+
+        # Validate payment amount
+        amount = float(data.get("amount", 0))
+        if amount <= 0:
+            return jsonify({"success": False, "error": "Invalid payment amount"}), 400
+
+        # In production, integrate with payment gateway (Stripe, PayPal, etc.)
+        # For now, simulate payment processing
+        import uuid
+        transaction_id = f"TXN_{uuid.uuid4().hex[:12].upper()}"
+        
+        # Simulate payment processing delay
+        import time
+        time.sleep(0.5)  # Simulate API call
+
+        # In production, you would:
+        # 1. Create payment intent with Stripe/PayPal
+        # 2. Process the payment
+        # 3. Store transaction details
+        # 4. Return transaction ID
+
+        print(f"✅ Payment processed: Transaction ID {transaction_id}, Amount: {amount}")
+
+        return jsonify({
+            "success": True,
+            "transaction_id": transaction_id,
+            "amount": amount,
+            "payment_method": data.get("payment_method"),
+            "status": "paid",
+            "message": "Payment processed successfully"
+        }), 200
+
+    except Exception as e:
+        print(f"❌ Error processing payment: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": f"Payment processing failed: {str(e)}"}), 500
 
 
 @appointments_bp.route("", methods=["POST"])
@@ -1305,8 +1521,30 @@ def create_appointment():
             "symptoms": data.get("symptoms", []),  # Store symptoms array
             "documents": data.get("documents", []),  # Store documents metadata
             "medicine_allergies": medicine_allergies_value,  # Store medicine allergies
-            "ai_diagnosis_processed": False  # Will be processed after booking
+            "ai_diagnosis_processed": False,  # Will be processed after booking
         }
+        
+        # Add payment information if provided
+        if data.get("payment_status") == "paid":
+            appointment_data["payment_status"] = "paid"
+            consultation_fee = data.get("consultation_fee", 0)
+            if consultation_fee:
+                appointment_data["consultation_fee"] = consultation_fee
+            # Add payment fields if they exist in the request (columns may not exist in all databases)
+            payment_transaction_id = data.get("payment_transaction_id")
+            payment_method = data.get("payment_method")
+            if payment_transaction_id:
+                try:
+                    appointment_data["payment_transaction_id"] = payment_transaction_id
+                except:
+                    print("⚠️  payment_transaction_id column may not exist in appointments table")
+            if payment_method:
+                try:
+                    appointment_data["payment_method"] = payment_method
+                except:
+                    print("⚠️  payment_method column may not exist in appointments table")
+        else:
+            appointment_data["payment_status"] = "pending"
         
         print(f"📝 Appointment data to insert - medicine_allergies: '{appointment_data.get('medicine_allergies')}'")
 
@@ -2843,4 +3081,237 @@ def get_doctor_availability_by_uid(doctor_firebase_uid):
 
     except Exception as e:
         print(f"Error fetching doctor availability: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@appointments_bp.route("/<appointment_id>/rating", methods=["POST"])
+@auth_required
+def submit_rating(appointment_id):
+    """Submit a rating for a completed appointment (patients only)"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user["uid"]
+        data = request.get_json()
+
+        # Get user role
+        user_response = supabase.service_client.table("user_profiles").select("role").eq("firebase_uid", uid).execute()
+        if not user_response.data:
+            return jsonify({"success": False, "error": "User profile not found"}), 404
+
+        user_role = user_response.data[0]["role"]
+        if user_role != "patient":
+            return jsonify({"success": False, "error": "Only patients can rate appointments"}), 403
+
+        # Validate required fields
+        if "rating" not in data:
+            return jsonify({"success": False, "error": "Rating is required"}), 400
+
+        rating = int(data.get("rating", 0))
+        if rating < 1 or rating > 5:
+            return jsonify({"success": False, "error": "Rating must be between 1 and 5"}), 400
+
+        # Verify appointment exists and belongs to this patient
+        appointment_response = supabase.service_client.table("appointments").select("*").eq("id", appointment_id).execute()
+        if not appointment_response.data:
+            return jsonify({"success": False, "error": "Appointment not found"}), 404
+
+        appointment = appointment_response.data[0]
+        if appointment.get("patient_firebase_uid") != uid:
+            return jsonify({"success": False, "error": "You can only rate your own appointments"}), 403
+
+        # Verify appointment is completed
+        if appointment.get("status") != "completed":
+            return jsonify({"success": False, "error": "You can only rate completed appointments"}), 400
+
+        # Check if rating already exists
+        existing_rating = supabase.service_client.table("appointment_ratings").select("*").eq("appointment_id", appointment_id).execute()
+        
+        rating_data = {
+            "appointment_id": appointment_id,
+            "patient_firebase_uid": uid,
+            "doctor_firebase_uid": appointment.get("doctor_firebase_uid"),
+            "rating": rating,
+            "comment": data.get("comment", "").strip() or None,
+        }
+
+        if existing_rating.data:
+            # Update existing rating
+            rating_response = supabase.service_client.table("appointment_ratings").update(rating_data).eq("appointment_id", appointment_id).execute()
+            message = "Rating updated successfully"
+        else:
+            # Create new rating
+            rating_response = supabase.service_client.table("appointment_ratings").insert(rating_data).execute()
+            message = "Rating submitted successfully"
+
+        if not rating_response.data:
+            return jsonify({"success": False, "error": "Failed to save rating"}), 500
+
+        # Update doctor's average rating
+        try:
+            doctor_uid = appointment.get("doctor_firebase_uid")
+            ratings_response = supabase.service_client.table("appointment_ratings").select("rating").eq("doctor_firebase_uid", doctor_uid).execute()
+            
+            if ratings_response.data:
+                ratings = [r["rating"] for r in ratings_response.data]
+                avg_rating = sum(ratings) / len(ratings)
+                total_reviews = len(ratings)
+                
+                supabase.service_client.table("doctor_profiles").update({
+                    "rating": round(avg_rating, 2),
+                    "total_reviews": total_reviews
+                }).eq("firebase_uid", doctor_uid).execute()
+        except Exception as update_error:
+            print(f"⚠️  Error updating doctor rating: {update_error}")
+
+        return jsonify({
+            "success": True,
+            "rating": rating_response.data[0],
+            "message": message
+        }), 200
+
+    except Exception as e:
+        print(f"Error submitting rating: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@appointments_bp.route("/<appointment_id>/rating", methods=["GET"])
+@auth_required
+def get_rating(appointment_id):
+    """Get rating for an appointment"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user["uid"]
+
+        # Get user role
+        user_response = supabase.service_client.table("user_profiles").select("role").eq("firebase_uid", uid).execute()
+        if not user_response.data:
+            return jsonify({"success": False, "error": "User profile not found"}), 404
+
+        user_role = user_response.data[0]["role"]
+
+        # Verify appointment exists
+        appointment_response = supabase.service_client.table("appointments").select("*").eq("id", appointment_id).execute()
+        if not appointment_response.data:
+            return jsonify({"success": False, "error": "Appointment not found"}), 404
+
+        appointment = appointment_response.data[0]
+
+        # Verify user has access (patient or doctor of this appointment)
+        if user_role == "patient" and appointment.get("patient_firebase_uid") != uid:
+            return jsonify({"success": False, "error": "Access denied"}), 403
+        if user_role == "doctor" and appointment.get("doctor_firebase_uid") != uid:
+            return jsonify({"success": False, "error": "Access denied"}), 403
+
+        # Get rating
+        rating_response = supabase.service_client.table("appointment_ratings").select("*").eq("appointment_id", appointment_id).execute()
+
+        if rating_response.data:
+            return jsonify({
+                "success": True,
+                "rating": rating_response.data[0]
+            }), 200
+        else:
+            return jsonify({
+                "success": True,
+                "rating": None
+            }), 200
+
+    except Exception as e:
+        print(f"Error getting rating: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@appointments_bp.route("/<appointment_id>/rating", methods=["PUT"])
+@auth_required
+def update_rating(appointment_id):
+    """Update an existing rating (patients only)"""
+    try:
+        firebase_user = request.firebase_user
+        uid = firebase_user["uid"]
+        data = request.get_json()
+
+        # Get user role
+        user_response = supabase.service_client.table("user_profiles").select("role").eq("firebase_uid", uid).execute()
+        if not user_response.data:
+            return jsonify({"success": False, "error": "User profile not found"}), 404
+
+        user_role = user_response.data[0]["role"]
+        if user_role != "patient":
+            return jsonify({"success": False, "error": "Only patients can update ratings"}), 403
+
+        # Verify rating exists and belongs to this patient
+        rating_response = supabase.service_client.table("appointment_ratings").select("*").eq("appointment_id", appointment_id).eq("patient_firebase_uid", uid).execute()
+        if not rating_response.data:
+            return jsonify({"success": False, "error": "Rating not found"}), 404
+
+        # Validate rating
+        if "rating" in data:
+            rating = int(data.get("rating", 0))
+            if rating < 1 or rating > 5:
+                return jsonify({"success": False, "error": "Rating must be between 1 and 5"}), 400
+
+        # Update rating
+        update_data = {}
+        if "rating" in data:
+            update_data["rating"] = int(data["rating"])
+        if "comment" in data:
+            update_data["comment"] = data.get("comment", "").strip() or None
+
+        updated_rating = supabase.service_client.table("appointment_ratings").update(update_data).eq("appointment_id", appointment_id).eq("patient_firebase_uid", uid).execute()
+
+        if not updated_rating.data:
+            return jsonify({"success": False, "error": "Failed to update rating"}), 500
+
+        # Update doctor's average rating
+        try:
+            appointment_response = supabase.service_client.table("appointments").select("doctor_firebase_uid").eq("id", appointment_id).execute()
+            if appointment_response.data:
+                doctor_uid = appointment_response.data[0].get("doctor_firebase_uid")
+                ratings_response = supabase.service_client.table("appointment_ratings").select("rating").eq("doctor_firebase_uid", doctor_uid).execute()
+                
+                if ratings_response.data:
+                    ratings = [r["rating"] for r in ratings_response.data]
+                    avg_rating = sum(ratings) / len(ratings)
+                    total_reviews = len(ratings)
+                    
+                    supabase.service_client.table("doctor_profiles").update({
+                        "rating": round(avg_rating, 2),
+                        "total_reviews": total_reviews
+                    }).eq("firebase_uid", doctor_uid).execute()
+        except Exception as update_error:
+            print(f"⚠️  Error updating doctor rating: {update_error}")
+
+        return jsonify({
+            "success": True,
+            "rating": updated_rating.data[0],
+            "message": "Rating updated successfully"
+        }), 200
+
+    except Exception as e:
+        print(f"Error updating rating: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@appointments_bp.route("/doctors/<doctor_uid>/ratings", methods=["GET"])
+def get_doctor_ratings(doctor_uid):
+    """Get all ratings for a doctor (public endpoint)"""
+    try:
+        # Verify doctor exists
+        doctor_response = supabase.service_client.table("doctor_profiles").select("firebase_uid").eq("firebase_uid", doctor_uid).execute()
+        if not doctor_response.data:
+            return jsonify({"success": False, "error": "Doctor not found"}), 404
+
+        # Get all ratings for this doctor
+        ratings_response = supabase.service_client.table("appointment_ratings").select("*").eq("doctor_firebase_uid", doctor_uid).order("created_at", desc=True).execute()
+
+        return jsonify({
+            "success": True,
+            "ratings": ratings_response.data if ratings_response.data else [],
+            "total": len(ratings_response.data) if ratings_response.data else 0
+        }), 200
+
+    except Exception as e:
+        print(f"Error getting doctor ratings: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
