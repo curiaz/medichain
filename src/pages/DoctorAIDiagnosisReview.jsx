@@ -7,6 +7,7 @@ import axios from 'axios';
 import { auth } from '../config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { API_CONFIG } from '../config/api';
+import SignaturePadModal from '../components/SignaturePadModal';
 import '../assets/styles/ModernDashboard.css';
 import '../assets/styles/DoctorAIDiagnosisReview.css';
 
@@ -26,6 +27,9 @@ const DoctorAIDiagnosisReview = () => {
     diagnosis: false,
     prescription: false
   });
+  const [showESignatureModal, setShowESignatureModal] = useState(false);
+  const [pendingSave, setPendingSave] = useState(false);
+  const [hasESignature, setHasESignature] = useState(null); // null = not checked, true = has signature, false = no signature
   
   // Patient search state
   const [showPatientSearch, setShowPatientSearch] = useState(!appointmentId);
@@ -456,7 +460,94 @@ const DoctorAIDiagnosisReview = () => {
     }
   };
 
-  const handleSave = async () => {
+  // Check if doctor has e-signature
+  const checkESignature = async () => {
+    try {
+      let token = null;
+      if (getFirebaseToken) {
+        token = await getFirebaseToken();
+      } else if (auth.currentUser) {
+        token = await auth.currentUser.getIdToken(true);
+      } else {
+        token = localStorage.getItem('medichain_token');
+      }
+
+      if (!token) {
+        return false;
+      }
+
+      const response = await axios.get(`${API_CONFIG.API_URL}/auth/doctor/e-signature`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data?.success && response.data.e_signature?.signature_data) {
+        setHasESignature(true);
+        return true;
+      } else {
+        setHasESignature(false);
+        return false;
+      }
+    } catch (err) {
+      console.warn('Error checking e-signature:', err);
+      setHasESignature(false);
+      return false;
+    }
+  };
+
+  // Save e-signature
+  const handleESignatureSave = async (signatureDataURL) => {
+    try {
+      let token = null;
+      if (getFirebaseToken) {
+        token = await getFirebaseToken();
+      } else if (auth.currentUser) {
+        token = await auth.currentUser.getIdToken(true);
+      } else {
+        token = localStorage.getItem('medichain_token');
+      }
+
+      if (!token) {
+        alert('Authentication required to save e-signature');
+        return;
+      }
+
+      // Extract base64 data from data URL
+      const base64Data = signatureDataURL.split(',')[1];
+
+      // Save e-signature
+      const response = await axios.post(
+        `${API_CONFIG.API_URL}/auth/doctor/e-signature/save`,
+        {
+          eSignature: signatureDataURL,
+          eSignature_base64: base64Data
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data?.success) {
+        setShowESignatureModal(false);
+        setHasESignature(true);
+        // Now proceed with saving the medical report
+        if (pendingSave) {
+          setPendingSave(false);
+          await saveMedicalReport();
+        }
+      } else {
+        alert(response.data?.error || 'Failed to save e-signature');
+      }
+    } catch (error) {
+      console.error('Error saving e-signature:', error);
+      alert(error.response?.data?.error || 'Failed to save e-signature. Please try again.');
+    }
+  };
+
+  // Save medical report (extracted from handleSave)
+  const saveMedicalReport = async () => {
     try {
       setSaving(true);
       
@@ -509,6 +600,28 @@ const DoctorAIDiagnosisReview = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSave = async () => {
+    // Check if doctor has e-signature first
+    if (hasESignature === null) {
+      // First time checking, verify signature exists
+      const hasSignature = await checkESignature();
+      if (!hasSignature) {
+        // No signature, show modal
+        setPendingSave(true);
+        setShowESignatureModal(true);
+        return;
+      }
+    } else if (hasESignature === false) {
+      // We know there's no signature, show modal
+      setPendingSave(true);
+      setShowESignatureModal(true);
+      return;
+    }
+
+    // Has signature, proceed with save
+    await saveMedicalReport();
   };
 
   // Helper function to get file URL
@@ -1419,6 +1532,16 @@ const DoctorAIDiagnosisReview = () => {
           onClose={() => setViewingFile(null)}
         />
       )}
+
+      {/* E-Signature Modal */}
+      <SignaturePadModal
+        isOpen={showESignatureModal}
+        onClose={() => {
+          setShowESignatureModal(false);
+          setPendingSave(false);
+        }}
+        onSave={handleESignatureSave}
+      />
     </div>
   );
 };
