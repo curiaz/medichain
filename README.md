@@ -133,16 +133,26 @@ npm run test:ci
 
 The project uses GitHub Actions for automated testing and deployment:
 
-### Workflows
+### Continuous Integration (CI)
 - **Backend Tests**: Python testing with pytest
 - **Frontend Tests**: JavaScript testing with Jest
-- **Linting**: Code quality checks
-- **Security Scan**: Vulnerability scanning
+- **Linting**: Code quality checks (Flake8, Black, ESLint)
+- **Security Scan**: Vulnerability scanning with Trivy
 - **Build**: Production build verification
 
+### Continuous Deployment (CD)
+- **Production Deployment**: Automatically deploys to Firebase Hosting and Render after successful CI on `master` branch
+- **Staging Deployment**: Automatically deploys to Firebase Hosting (preview) and Render staging after successful CI on `develop` branch
+- **Manual Deployment**: Supports manual triggers via GitHub Actions UI
+
 ### Triggers
-- Push to `main` or `develop` branches
-- Pull requests to `main` or `develop` branches
+- **CI**: Runs on every push and pull request
+- **CD Production**: Runs after successful CI on `master` branch
+- **CD Staging**: Runs after successful CI on `develop` branch
+
+### Documentation
+- **CD Quick Start**: See `CD_QUICK_START.md` for quick setup
+- **CD Full Guide**: See `CD_DEPLOYMENT_GUIDE.md` for detailed documentation
 
 ## 📁 Project Structure
 

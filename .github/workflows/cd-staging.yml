@@ -1,0 +1,125 @@
+name: CD - Staging Deployment
+
+on:
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    types:
+      - completed
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests and deploy directly'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  check-ci-status:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - name: Check CI status
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] || [ "${{ github.event.workflow_run.conclusion }}" == "success" ]; then
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-frontend-staging:
+    needs: check-ci-status
+    if: needs.check-ci-status.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        env:
+          CI: false
+          REACT_APP_API_URL: ${{ secrets.REACT_APP_STAGING_API_URL || secrets.REACT_APP_API_URL || 'https://medichainn.onrender.com' }}
+          NODE_ENV: production
+        run: npm run build
+
+      - name: Deploy to Firebase Hosting (Preview Channel)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MEDICHAIN_8773B }}
+          projectId: medichain-8773b
+          # Deploy to preview channel instead of live
+          only: hosting
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🧪 Staging Frontend Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: Staging" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Preview URL**: Check Firebase console for preview link" >> $GITHUB_STEP_SUMMARY
+
+  deploy-backend-staging:
+    needs: check-ci-status
+    if: needs.check-ci-status.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging-backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Render (Staging)
+        env:
+          RENDER_SERVICE_ID_STAGING: ${{ secrets.RENDER_SERVICE_ID_STAGING }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          echo "## 🔄 Staging Backend Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "Backend staging deployment to Render is configured via Render's auto-deploy feature." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note**: Ensure Render staging service has auto-deploy enabled for the develop branch." >> $GITHUB_STEP_SUMMARY
+          
+          # Optional: Trigger Render deployment via API if RENDER_API_KEY is set
+          if [ -n "$RENDER_API_KEY" ] && [ -n "$RENDER_SERVICE_ID_STAGING" ]; then
+            echo "Triggering Render staging deployment..." >> $GITHUB_STEP_SUMMARY
+            curl -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID_STAGING/deploys" \
+              -H "Authorization: Bearer $RENDER_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{"clearCache": "do_not_clear"}' || echo "Render API deployment triggered (or failed - check Render dashboard)"
+          else
+            echo "Render API credentials not configured. Using auto-deploy from Git connection." >> $GITHUB_STEP_SUMMARY
+          fi
+
+  deployment-notification:
+    needs: [deploy-frontend-staging, deploy-backend-staging]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deployment Status
+        run: |
+          echo "## 📊 Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | ${{ needs.deploy-frontend-staging.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend | ${{ needs.deploy-backend-staging.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+
