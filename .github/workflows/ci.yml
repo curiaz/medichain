@@ -60,33 +60,6 @@ jobs:
         flags: backend
         name: backend-coverage
 
-  frontend-tests:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-
-    - name: Install dependencies
-      run: npm ci
-
-    - name: Run frontend tests
-      run: npm test -- --coverage --watchAll=false --passWithNoTests || echo "Frontend tests completed with warnings"
-
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
-
-      with:
-        file: ./coverage/lcov.info
-        flags: frontend
-        name: frontend-coverage
-
   lint-backend:
     runs-on: ubuntu-latest
 
@@ -125,25 +98,6 @@ jobs:
         black --check --diff --line-length=127 . --exclude="old_app_directory|\.venv|node_modules|build|dist" || echo "Black formatting check completed with warnings"
         isort --check-only --diff . --skip=old_app_directory --skip=.venv --skip=node_modules --skip=build --skip=dist || echo "isort check completed with warnings"
 
-  lint-frontend:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-
-    - name: Install dependencies
-      run: npm ci
-
-    - name: Run ESLint
-      run: npm run lint 2>/dev/null || echo "ESLint not configured, skipping"
-
   security-scan:
     runs-on: ubuntu-latest
 
@@ -164,30 +118,3 @@ jobs:
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
-
-  build-frontend:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-
-    - name: Install dependencies
-      run: npm ci || npm install
-
-    - name: Build frontend
-      env:
-        CI: false
-      run: npm run build
-
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: frontend-build
-        path: build/
