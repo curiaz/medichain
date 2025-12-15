@@ -6,7 +6,6 @@ on:
       - master
     paths-ignore:
       - '**.md'
-      - '.github/**'
   workflow_run:
     workflows: ["CI/CD Pipeline"]
     types:
