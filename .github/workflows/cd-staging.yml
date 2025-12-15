@@ -1,4 +1,4 @@
-name: CD - Staging Deployment
+name: CD - Staging
 
 on:
   workflow_run:
