@@ -826,6 +826,131 @@ def get_doctor_document(doctor_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@admin_bp.route('/payments', methods=['GET'])
+@firebase_role_required(["admin"])
+def get_payments():
+    """Get all payments (admin only)"""
+    try:
+        # Get all payments, ordered by created_at DESC
+        payments_response = supabase.service_client.table("payments").select(
+            "id, transaction_id, user_firebase_uid, amount, payment_method, status, gcash_reference_number, created_at, verified_at, appointment_id"
+        ).order("created_at", desc=True).execute()
+        
+        if payments_response.data:
+            # Get user names for each payment
+            payments = []
+            for payment in payments_response.data:
+                user_uid = payment.get("user_firebase_uid")
+                if user_uid:
+                    try:
+                        user_response = supabase.service_client.table("user_profiles").select(
+                            "first_name, last_name, email"
+                        ).eq("firebase_uid", user_uid).execute()
+                        if user_response.data:
+                            user_data = user_response.data[0]
+                            payment["user_name"] = f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip()
+                            payment["user_email"] = user_data.get("email", "")
+                    except Exception as e:
+                        print(f"Error fetching user for payment {payment.get('transaction_id')}: {e}")
+                        payment["user_name"] = "Unknown"
+                        payment["user_email"] = ""
+                payments.append(payment)
+            
+            return jsonify({
+                "success": True,
+                "payments": payments,
+                "count": len(payments)
+            }), 200
+        else:
+            return jsonify({
+                "success": True,
+                "payments": [],
+                "count": 0
+            }), 200
+            
+    except Exception as e:
+        print(f"❌ Error fetching payments: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": f"Failed to fetch payments: {str(e)}"}), 500
+
+
+@admin_bp.route('/payments/<transaction_id>/gcash-reference', methods=['POST'])
+@firebase_role_required(["admin"])
+def add_gcash_reference(transaction_id):
+    """Add GCash reference number to a payment (admin only)"""
+    try:
+        data = request.get_json()
+        gcash_reference = data.get("gcash_reference_number", "").strip()
+        
+        if not gcash_reference:
+            return jsonify({"success": False, "error": "GCash reference number is required"}), 400
+        
+        # Get the payment
+        payment_response = supabase.service_client.table("payments").select("*").eq("transaction_id", transaction_id).execute()
+        
+        if not payment_response.data:
+            return jsonify({"success": False, "error": "Payment not found"}), 404
+        
+        payment = payment_response.data[0]
+        
+        # Check if reference already exists for another payment
+        existing_ref = supabase.service_client.table("payments").select("transaction_id").eq("gcash_reference_number", gcash_reference).execute()
+        if existing_ref.data and existing_ref.data[0].get("transaction_id") != transaction_id:
+            return jsonify({"success": False, "error": "This GCash reference number is already used for another payment"}), 400
+        
+        # Update payment with GCash reference and mark as paid
+        from datetime import datetime
+        update_data = {
+            "gcash_reference_number": gcash_reference,
+            "status": "paid",
+            "verified_at": datetime.utcnow().isoformat()
+        }
+        
+        supabase.service_client.table("payments").update(update_data).eq("transaction_id", transaction_id).execute()
+        
+        # Create payment success notification for the user
+        try:
+            user_uid = payment.get("user_firebase_uid")
+            amount = payment.get("amount", 0)
+            
+            from services.notification_service import notification_service
+            notification_service.create_notification(
+                user_id=user_uid,
+                title="Payment Verified",
+                message=f"Your GCash payment of ₱{amount:.2f} has been verified and confirmed",
+                notification_type="success",
+                category="payment",
+                priority="normal",
+                action_url="/profile",
+                action_label="View Payment History",
+                metadata={
+                    "transaction_id": transaction_id,
+                    "amount": float(amount),
+                    "payment_method": "gcash",
+                    "status": "paid",
+                    "gcash_reference": gcash_reference
+                }
+            )
+        except Exception as notif_error:
+            print(f"⚠️  Error creating notification: {notif_error}")
+        
+        print(f"✅ Admin added GCash reference {gcash_reference} to payment {transaction_id}")
+        
+        return jsonify({
+            "success": True,
+            "message": "GCash reference number added and payment verified",
+            "transaction_id": transaction_id,
+            "gcash_reference_number": gcash_reference
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error adding GCash reference: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": f"Failed to add GCash reference: {str(e)}"}), 500
+
+
 print("✅ Admin routes loaded!")
 print("📋 Available endpoints:")
 print("   - GET /api/admin/users - List all users")
@@ -840,5 +965,7 @@ print("   - GET /api/admin/doctors/pending - Get pending doctor verifications")
 print("   - POST /api/admin/doctors/<id>/approve - Approve doctor")
 print("   - POST /api/admin/doctors/<id>/decline - Decline doctor")
 print("   - GET /api/admin/doctors/<id>/document - Get verification document")
+print("   - GET /api/admin/payments - Get all payments")
+print("   - POST /api/admin/payments/<transaction_id>/gcash-reference - Add GCash reference number")
 print("🔐 All endpoints require admin role")
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   User, Heart, FileText, Lock, Shield, Edit3, Save, X, AlertCircle, 
-  CheckCircle, ArrowLeft, Upload, Trash2, Eye
+  CheckCircle, ArrowLeft, Upload, Trash2, Eye, CreditCard
 } from 'lucide-react';
 import './ProfilePage.css';
 
@@ -43,6 +43,10 @@ const ProfilePage = () => {
 
   // Documents State
   const [documents, setDocuments] = useState([]);
+  
+  // Payment History State
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
 
   // Privacy Settings State
   const [privacySettings, setPrivacySettings] = useState({
@@ -74,6 +78,14 @@ const ProfilePage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+  
+  // Fetch payment history when payment history tab is active
+  useEffect(() => {
+    if (activeTab === 'payments' && user) {
+      fetchPaymentHistory();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, user]);
 
   const loadProfile = async (skipRedirect = false) => {
     try {
@@ -187,6 +199,38 @@ const ProfilePage = () => {
         setError('Failed to load profile');
       }
       setLoading(false);
+    }
+  };
+
+  const fetchPaymentHistory = async () => {
+    try {
+      setPaymentHistoryLoading(true);
+      const token = localStorage.getItem('medichain_token');
+      if (!token) {
+        setError('Please log in again');
+        return;
+      }
+
+      const response = await fetch('https://medichainn.onrender.com/api/appointments/payments', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setPaymentHistory(result.payments || []);
+      } else {
+        setError(result.error || 'Failed to load payment history');
+        setPaymentHistory([]);
+      }
+    } catch (err) {
+      console.error('Error fetching payment history:', err);
+      setError('Failed to load payment history. Please try again.');
+      setPaymentHistory([]);
+    } finally {
+      setPaymentHistoryLoading(false);
     }
   };
 
@@ -742,6 +786,13 @@ const ProfilePage = () => {
             <Shield size={18} />
             Security
           </button>
+          <button
+            className={`profile-tab ${activeTab === 'payments' ? 'profile-tab-active' : ''}`}
+            onClick={() => setActiveTab('payments')}
+          >
+            <CreditCard size={18} />
+            Payment History
+          </button>
         </div>
 
         {/* Tab Content */}
@@ -1225,6 +1276,91 @@ const ProfilePage = () => {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Payment History Tab */}
+          {activeTab === 'payments' && (
+            <div className="profile-tab-section">
+              <h3 className="profile-tab-title">Payment History</h3>
+              
+              {paymentHistoryLoading ? (
+                <div className="profile-loading">
+                  <div className="profile-spinner"></div>
+                  <p>Loading payment history...</p>
+                </div>
+              ) : paymentHistory.length === 0 ? (
+                <div className="profile-empty-state">
+                  <CreditCard size={48} />
+                  <h4>No payments yet</h4>
+                  <p>Your payment history will appear here once you make a payment.</p>
+                </div>
+              ) : (
+                <div className="payment-history-list">
+                  {paymentHistory.map((payment) => {
+                    const paymentDate = payment.created_at 
+                      ? new Date(payment.created_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
+                      : 'N/A';
+                    
+                    const paymentMethod = payment.payment_method 
+                      ? payment.payment_method.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+                      : 'Unknown';
+                    
+                    const statusClass = `payment-status payment-status-${payment.status || 'pending'}`;
+                    const statusText = payment.status 
+                      ? payment.status.charAt(0).toUpperCase() + payment.status.slice(1)
+                      : 'Pending';
+                    
+                    return (
+                      <div key={payment.id || payment.transaction_id} className="payment-history-item">
+                        <div className="payment-history-header">
+                          <div className="payment-history-left">
+                            <div className="payment-transaction-id">
+                              Transaction: {payment.transaction_id || 'N/A'}
+                            </div>
+                            <div className="payment-date">{paymentDate}</div>
+                          </div>
+                          <div className={`payment-status-badge ${statusClass}`}>
+                            {statusText}
+                          </div>
+                        </div>
+                        <div className="payment-history-details">
+                          <div className="payment-detail-row">
+                            <span className="payment-detail-label">Amount:</span>
+                            <span className="payment-detail-value">
+                              ₱{parseFloat(payment.amount || 0).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="payment-detail-row">
+                            <span className="payment-detail-label">Payment Method:</span>
+                            <span className="payment-detail-value">{paymentMethod}</span>
+                          </div>
+                          {payment.verified_at && (
+                            <div className="payment-detail-row">
+                              <span className="payment-detail-label">Verified:</span>
+                              <span className="payment-detail-value">
+                                {new Date(payment.verified_at).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>

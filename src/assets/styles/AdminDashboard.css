@@ -307,3 +307,338 @@
   }
 }
 
+/* Payment Management Styles */
+.admin-payment-management {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.admin-payment-header {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.admin-payment-header h2 {
+  color: white;
+  font-size: 2rem;
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.admin-payment-header p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1rem;
+}
+
+.admin-payment-error {
+  background: rgba(244, 67, 54, 0.2);
+  border: 2px solid #f44336;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+
+.admin-payment-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+
+.admin-payment-filter-btn {
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.admin-payment-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: white;
+}
+
+.admin-payment-filter-btn.active {
+  background: white;
+  color: #1976d2;
+  border-color: white;
+}
+
+.admin-payment-table-container {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  overflow-x: auto;
+}
+
+.admin-payment-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1000px;
+}
+
+.admin-payment-table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.admin-payment-table th {
+  padding: 15px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.admin-payment-table tbody tr {
+  border-bottom: 1px solid #e0e0e0;
+  transition: background 0.2s ease;
+}
+
+.admin-payment-table tbody tr:hover {
+  background: #f5f5f5;
+}
+
+.admin-payment-table td {
+  padding: 15px;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.payment-transaction-id {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: #1976d2;
+  font-weight: 600;
+}
+
+.payment-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.payment-user-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.payment-user-email {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.payment-amount {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  color: #4caf50;
+  font-size: 1rem;
+}
+
+.payment-method-badge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.payment-method-gcash {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.payment-status-badge {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.payment-status-pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.payment-status-paid {
+  background: #d4edda;
+  color: #155724;
+}
+
+.payment-reference-verified {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4caf50;
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+.payment-reference-missing {
+  color: #f44336;
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+.payment-date-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.payment-reference-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 300px;
+}
+
+.payment-reference-input {
+  padding: 10px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+}
+
+.payment-reference-input:focus {
+  outline: none;
+  border-color: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.payment-reference-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.payment-reference-save-btn,
+.payment-reference-cancel-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.payment-reference-save-btn {
+  background: #4caf50;
+  color: white;
+}
+
+.payment-reference-save-btn:hover:not(:disabled) {
+  background: #45a049;
+  transform: translateY(-2px);
+}
+
+.payment-reference-save-btn:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+}
+
+.payment-reference-cancel-btn {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.payment-reference-cancel-btn:hover:not(:disabled) {
+  background: #d0d0d0;
+}
+
+.payment-add-reference-btn {
+  padding: 8px 16px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
+
+.payment-add-reference-btn:hover {
+  background: #1976d2;
+  transform: translateY(-2px);
+}
+
+.payment-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4caf50;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.admin-payment-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: white;
+}
+
+.admin-payment-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #666;
+  text-align: center;
+}
+
+.admin-payment-empty p {
+  margin-top: 15px;
+  font-size: 1.1rem;
+  color: #999;
+}
+
+@media (max-width: 768px) {
+  .admin-payment-table-container {
+    padding: 10px;
+  }
+  
+  .admin-payment-table {
+    min-width: 800px;
+  }
+  
+  .payment-reference-form {
+    min-width: 250px;
+  }
+}
+
