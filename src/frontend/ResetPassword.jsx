@@ -138,7 +138,6 @@ const ResetPassword = () => {
     if (newPassword !== confirmPassword) {
       showToast.error("Passwords do not match")
       return
-      /
     }
 
     if (newPassword.length < 60) {
