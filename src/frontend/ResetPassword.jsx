@@ -138,9 +138,10 @@ const ResetPassword = () => {
     if (newPassword !== confirmPassword) {
       showToast.error("Passwords do not match")
       return
+      /
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 60) {
       showToast.error("Password must be at least 6 characters long")
       return
     }
