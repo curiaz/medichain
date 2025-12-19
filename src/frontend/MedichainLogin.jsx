@@ -83,7 +83,7 @@ const MedichainLogin = () => {
     if (isSubmitting) return
     
     // Basic validation
-    if (email.trim() || !password.trim()) {
+    if (!email.trim() || !password.trim()) {
       showToast.error("Please fill in all fields")
       setInlineError("Please enter both your email and password.")
       return
