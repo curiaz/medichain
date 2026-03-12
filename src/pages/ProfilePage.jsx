@@ -631,7 +631,7 @@ const ProfilePage = () => {
               >
                 <ArrowLeft size={20} />
               </button>
-              <h1 className="profile-header-title">Patient Profile Management</h1>
+              <h1 className="profile-header-title">Profile</h1>
             </div>
             <div className="profile-header-right">
               <div className="profile-welcome-text">

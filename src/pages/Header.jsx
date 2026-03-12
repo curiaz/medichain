@@ -191,10 +191,15 @@ const Header = () => {
             <LogOut size={20} />
           </button>
           
-          {/* Mobile: Burger menu only */}
-          <button className="icon-button mobile-only burger-menu-button" title="Menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen(!mobileOpen)}>
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          {/* Mobile: Notifications and Burger menu */}
+          <div className="mobile-header-actions mobile-only">
+            <button className="icon-button mobile-icon-btn" title="Notifications" onClick={handleNotificationsClick}>
+              <Bell size={18} />
+            </button>
+            <button className="icon-button burger-menu-button" title="Menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen(!mobileOpen)}>
+              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
       </div>
       {mobileOpen && (
