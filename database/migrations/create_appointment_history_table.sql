@@ -44,3 +44,12 @@ COMMENT ON COLUMN appointment_history.deleted_reason IS 'Reason for deletion (e.
 
 
 
+
+
+
+
+
+
+
+
+

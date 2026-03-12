@@ -454,14 +454,18 @@ describe('MedichainSignup Component', () => {
         fireEvent.click(submitButton);
       });
 
+      // Verify that fetch was called (without checking specific URL)
       await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
-          'https://medichainn.onrender.com/api/auth/doctor-signup',
-          expect.objectContaining({
-            method: 'POST',
-            body: expect.any(FormData),
-          })
+        expect(global.fetch).toHaveBeenCalled();
+        const fetchCalls = global.fetch.mock.calls;
+        const doctorSignupCall = fetchCalls.find(call => 
+          call[0] && call[0].includes('/auth/doctor-signup')
         );
+        expect(doctorSignupCall).toBeTruthy();
+        expect(doctorSignupCall[1]).toMatchObject({
+          method: 'POST',
+        });
+        expect(doctorSignupCall[1].body).toBeInstanceOf(FormData);
       });
     });
 

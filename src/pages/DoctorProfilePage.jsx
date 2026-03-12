@@ -64,6 +64,10 @@ const DoctorProfilePage = () => {
 
   // Monitor auth state changes in real-time
   useEffect(() => {
+    if (!auth) {
+      return;
+    }
+    
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (!firebaseUser) {
         setError('You are not authenticated. Please log in to continue.');
@@ -75,12 +79,16 @@ const DoctorProfilePage = () => {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [navigate]);
 
   useEffect(() => {
     // Check if auth.currentUser is null
-    if (!auth.currentUser) {
+    if (!auth || !auth.currentUser) {
       setError('You are not authenticated. Please log in to continue.');
       setLoading(false);
       // Redirect to login after showing notification
@@ -94,6 +102,8 @@ const DoctorProfilePage = () => {
       loadProfile();
       loadDocuments();
       loadActivityLog();
+    } else {
+      setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);

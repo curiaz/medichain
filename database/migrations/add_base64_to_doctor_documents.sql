@@ -19,3 +19,12 @@ COMMENT ON COLUMN doctor_documents.data IS 'Full data URL (data:mime/type;base64
 
 
 
+
+
+
+
+
+
+
+
+
