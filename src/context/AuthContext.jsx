@@ -17,6 +17,15 @@ const AuthContext = createContext();
 // API base URL - uses environment-aware configuration
 const API_URL = API_CONFIG.API_URL;
 
+  // Generate a short, human-friendly role-prefixed ID.
+  // Examples: Doctors -> DR-ECSV1HW3, Patients -> PT-E4S1K9Z0
+  const generateMedicalId = (role = 'patient') => {
+    const prefix = role === 'doctor' ? 'DR' : 'PT';
+    // Create 8 uppercase alphanumeric chars
+    const rand = Math.random().toString(36).slice(2).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8).padEnd(8, '0');
+    return `${prefix}-${rand}`;
+  };
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

@@ -188,6 +188,33 @@ const ProfilePage = () => {
       }
       setLoading(false);
     }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+    }
+  }, [user, loadProfile]);
+
+  const createBasicFallback = (user) => {
+    console.log('🔧 Creating fallback for user:', user);
+    const firstName = user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'User';
+    const lastName = user.displayName?.split(' ')[1] || '';
+    const email = user.email || '';
+    
+    console.log('🔧 Generated data:', { firstName, lastName, email });
+    
+    return {
+      first_name: firstName,
+      last_name: lastName,
+      phone: '',
+      email: email,
+      medical_conditions: [],
+      allergies: [],
+      current_medications: [],
+      blood_type: '',
+      medical_notes: ''
+    };
   };
 
   const handleSavePersonalInfo = async () => {
@@ -647,7 +674,7 @@ const ProfilePage = () => {
               </div>
             </div>
             <div className="profile-card-actions">
-              {editing ? (
+              {editingPersonal ? (
                 <>
                   <button
                     onClick={handleSavePersonalInfo}
@@ -662,7 +689,7 @@ const ProfilePage = () => {
                     ) : (
                       <>
                         <Save size={18} />
-                        <span>Save Changes</span>
+                        <span>Save</span>
                       </>
                     )}
                   </button>
@@ -678,13 +705,12 @@ const ProfilePage = () => {
                   </button>
                 </>
               ) : (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="profile-btn profile-btn-primary"
-                >
-                  <Edit3 size={18} />
-                  <span>Edit Profile</span>
-                </button>
+                <div className="profile-card-mini-actions">
+                  <button onClick={() => setEditingPersonal(true)} className="profile-btn profile-btn-primary">
+                    <Edit3 size={16} />
+                    <span>Edit</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>

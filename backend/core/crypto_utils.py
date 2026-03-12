@@ -5,10 +5,12 @@ AES Encryption and SHA-256 Hashing Utilities for Medical Records
 import base64
 import hashlib
 import secrets
+import hmac
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
 class MedicalRecordCrypto:
@@ -43,6 +45,18 @@ class MedicalRecordCrypto:
         encrypted_data = iv + ciphertext
         return base64.b64encode(encrypted_data).decode("utf-8")
 
+    def encrypt_field_aead(self, plaintext: str) -> str:
+        """Encrypt using AES-GCM (AEAD) and return base64(nonce||ciphertext||tag)"""
+        if not plaintext:
+            return ""
+
+        # AESGCM uses a 12-byte nonce
+        nonce = secrets.token_bytes(12)
+        aesgcm = AESGCM(self.key)
+        ct = aesgcm.encrypt(nonce, plaintext.encode('utf-8'), None)
+
+        return base64.b64encode(nonce + ct).decode('utf-8')
+
     def decrypt_field(self, encrypted_data: str) -> str:
         """Decrypt a single field using AES-256-CBC"""
         if not encrypted_data:
@@ -68,6 +82,20 @@ class MedicalRecordCrypto:
             return plaintext.decode("utf-8")
         except Exception as e:
             raise ValueError(f"Decryption failed: {str(e)}")
+
+    def decrypt_field_aead(self, encrypted_data: str) -> str:
+        """Decrypt AES-GCM base64(nonce||ciphertext||tag)"""
+        if not encrypted_data:
+            return ""
+        try:
+            encrypted_bytes = base64.b64decode(encrypted_data.encode('utf-8'))
+            nonce = encrypted_bytes[:12]
+            ct = encrypted_bytes[12:]
+            aesgcm = AESGCM(self.key)
+            pt = aesgcm.decrypt(nonce, ct, None)
+            return pt.decode('utf-8')
+        except Exception as e:
+            raise ValueError(f"AEAD decryption failed: {e}")
 
     def compute_hash(self, data: str) -> str:
         """Compute SHA-256 hash of data for integrity verification"""

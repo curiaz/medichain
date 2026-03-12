@@ -3,6 +3,8 @@ Enhanced Authentication Routes with Firebase and Supabase Integration
 """
 
 import re
+import time
+import random
 
 from flask import Blueprint, jsonify, request
 
@@ -12,6 +14,7 @@ from auth.firebase_auth import (
     firebase_role_required,
 )
 from db.supabase_client import SupabaseClient
+from core.crypto_utils import MedicalRecordCrypto
 
 auth_firebase_bp = Blueprint("auth_firebase", __name__, url_prefix="/api/auth")
 # Initialize Supabase client with error handling
@@ -57,6 +60,13 @@ def verify_token():
                 if doc_response.data:
                     doctor_profile = doc_response.data[0]
 
+            # Attempt to decrypt patient_id_enc for response
+            try:
+                if user_profile.get('patient_id_enc'):
+                    user_profile['patient_id'] = crypto.decrypt_field_aead(user_profile['patient_id_enc'])
+            except Exception as e:
+                print(f"⚠️ Failed to decrypt patient_id in verify response: {e}")
+
             return (
                 jsonify(
                     {
@@ -95,6 +105,12 @@ def get_profile():
 
         if response.data:
             user_profile = response.data[0]
+            try:
+                if user_profile.get('patient_id_enc'):
+                    user_profile['patient_id'] = crypto.decrypt_field_aead(user_profile['patient_id_enc'])
+            except Exception as e:
+                print(f"⚠️ Failed to decrypt patient_id in get_profile response: {e}")
+
             return jsonify({"success": True, "profile": user_profile}), 200
         else:
             return jsonify({"success": False, "error": "Profile not found"}), 404
@@ -168,6 +184,14 @@ def create_profile():
             return jsonify({"error": "Profile already exists"}), 409
 
         # Create profile data
+        # Allow patient_id to be set during profile creation (e.g., provided by frontend or generated earlier)
+        requested_pid = data.get("patient_id") if isinstance(data, dict) else None
+        if requested_pid:
+            patient_id = _ensure_unique_patient_id(requested_pid)
+        else:
+            # No requested pid; don't auto-generate here (creation path may already have generated it earlier)
+            patient_id = None
+
         profile_data = {
             "firebase_uid": uid,
             "email": firebase_user["email"],
@@ -178,6 +202,19 @@ def create_profile():
             "gender": data.get("gender"),
             "date_of_birth": data.get("date_of_birth"),
         }
+
+        if patient_id:
+            # ensure role-specific prefix if missing
+            if not patient_id.startswith('DR-') and not patient_id.startswith('PT-'):
+                prefix = 'DR' if data.get('role') == 'doctor' else 'PT'
+                patient_id = f"{prefix}-{patient_id[:8]}"
+
+            # compute HMAC and AEAD-encrypted value for storage
+            try:
+                profile_data['patient_id_hmac'] = crypto.compute_hash(patient_id)
+                profile_data['patient_id_enc'] = crypto.encrypt_field_aead(patient_id)
+            except Exception as e:
+                print(f"❌ Crypto error while preparing patient_id in create_profile: {e}")
 
         # Insert user profile
         response = supabase.service_client.table("user_profiles").insert(profile_data).execute()
@@ -589,13 +626,38 @@ def register():
 
         print(f"≡ƒô¥ Name parts: First='{first_name}', Last='{last_name}'")
 
-        # Create user profile in Supabase
+        # Accept patient_id from frontend or generate server-side if missing
+        requested_pid = data.get("patient_id") if isinstance(data, dict) else None
+        if requested_pid:
+            patient_id = _ensure_unique_patient_id(requested_pid)
+        else:
+            # Generate a short id and apply role-specific prefix
+            gen = generate_medical_id()
+            prefix = 'DR' if role == 'doctor' else 'PT'
+            # Keep only the 8-char suffix from generated id
+            suffix = gen.split('-')[-1][:8]
+            patient_id = f"{prefix}-{suffix}"
+
+        # Prepare SHA-256 hash and AEAD-encrypted representation for patient_id
+        try:
+            patient_id_hmac = crypto.compute_hash(patient_id)
+            # Use AEAD (AES-GCM) for reversible authenticated encryption
+            patient_id_enc = crypto.encrypt_field_aead(patient_id)
+        except Exception as e:
+            # Log and continue without encrypted identifiers if crypto fails
+            print(f"❌ Crypto error while preparing patient_id: {e}")
+            patient_id_hmac = None
+            patient_id_enc = None
+
+        # Create user profile in Supabase (store HMAC for lookups and encrypted value for display)
         user_profile_data = {
             "firebase_uid": uid,
             "email": email,
             "first_name": first_name,
             "last_name": last_name,
             "role": role,
+            "patient_id_hmac": patient_id_hmac,
+            "patient_id_enc": patient_id_enc,
         }
 
         print(f"≡ƒÆ╛ Inserting user profile: {user_profile_data}")
