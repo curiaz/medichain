@@ -1,16 +1,22 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react"
 import Header from "./Header"
-import { Calendar, Clock, Video, User, ArrowUpDown } from "lucide-react"
+import { Calendar, Clock, Video, User, ArrowUpDown, Star } from "lucide-react"
 import axios from "axios"
 import { useNavigate } from "react-router-dom"
+import RatingModal from "../components/RatingModal"
+import { useAuth } from "../context/AuthContext"
 import "../assets/styles/ModernDashboard.css"
 
 const PatientAppointments = () => {
   const navigate = useNavigate()
+  const { getFirebaseToken } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [appointments, setAppointments] = useState([])
   const [sortOrder, setSortOrder] = useState('newest') // 'newest' or 'oldest'
+  const [ratings, setRatings] = useState({}) // Map of appointment_id -> rating
+  const [ratingModalOpen, setRatingModalOpen] = useState(false)
+  const [selectedAppointment, setSelectedAppointment] = useState(null)
 
   // Helper function to extract room name from Jitsi URL
   const extractRoomName = (url) => {
@@ -39,7 +45,7 @@ const PatientAppointments = () => {
     try {
       setLoading(true)
       setError(null)
-      const token = localStorage.getItem('medichain_token')
+      const token = await getFirebaseToken() || localStorage.getItem('medichain_token')
       if (!token) {
         navigate('/login')
         return
@@ -51,6 +57,27 @@ const PatientAppointments = () => {
         const appts = Array.isArray(resp.data.appointments) ? resp.data.appointments : []
         // Store appointments without sorting - we'll sort in useMemo based on sortOrder
         setAppointments(appts)
+        
+        // Fetch ratings for completed appointments
+        const completedAppts = appts.filter(apt => apt.status === 'completed')
+        const ratingsMap = {}
+        
+        for (const appt of completedAppts) {
+          try {
+            const ratingResp = await axios.get(
+              `https://medichainn.onrender.com/api/appointments/${appt.id}/rating`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            )
+            if (ratingResp.data?.success && ratingResp.data.rating) {
+              ratingsMap[appt.id] = ratingResp.data.rating
+            }
+          } catch (err) {
+            // Rating doesn't exist yet, that's okay
+            console.log(`No rating found for appointment ${appt.id}`)
+          }
+        }
+        
+        setRatings(ratingsMap)
       } else {
         setError(resp.data?.error || 'Failed to load appointments')
       }
@@ -59,7 +86,7 @@ const PatientAppointments = () => {
     } finally {
       setLoading(false)
     }
-  }, [navigate])
+  }, [navigate, getFirebaseToken])
 
   useEffect(() => { fetchAppointments() }, [fetchAppointments])
 
@@ -126,6 +153,50 @@ const PatientAppointments = () => {
   const handleSortChange = (order) => {
     console.log('🔍 Changing sort order from', sortOrder, 'to', order)
     setSortOrder(order)
+  }
+
+  const handleOpenRatingModal = (appointment) => {
+    setSelectedAppointment(appointment)
+    setRatingModalOpen(true)
+  }
+
+  const handleCloseRatingModal = () => {
+    setRatingModalOpen(false)
+    setSelectedAppointment(null)
+  }
+
+  const handleSubmitRating = async (ratingData) => {
+    try {
+      const token = await getFirebaseToken() || localStorage.getItem('medichain_token')
+      if (!token) {
+        throw new Error("Not authenticated")
+      }
+
+      const method = ratings[selectedAppointment.id] ? 'PUT' : 'POST'
+      const response = await axios({
+        method: method,
+        url: `https://medichainn.onrender.com/api/appointments/${selectedAppointment.id}/rating`,
+        data: ratingData,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (response.data.success) {
+        // Update local ratings state
+        setRatings(prev => ({
+          ...prev,
+          [selectedAppointment.id]: response.data.rating
+        }))
+        // Refresh appointments to get updated doctor ratings
+        fetchAppointments()
+      } else {
+        throw new Error(response.data.error || "Failed to submit rating")
+      }
+    } catch (err) {
+      throw new Error(err.response?.data?.error || err.message || "Failed to submit rating")
+    }
   }
 
   return (
@@ -300,6 +371,54 @@ const PatientAppointments = () => {
                                 </button>
                               </div>
                             )}
+                            {appt.status === 'completed' && (
+                              <div className="time-slot rating-section">
+                                {ratings[appt.id] ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                    <Star size={16} fill="#FFD700" color="#FFD700" />
+                                    <span style={{ fontWeight: '500' }}>
+                                      Rated {ratings[appt.id].rating}/5
+                                    </span>
+                                    <button
+                                      onClick={() => handleOpenRatingModal(appt)}
+                                      style={{
+                                        background: 'none',
+                                        border: '1px solid #2196F3',
+                                        color: '#2196F3',
+                                        padding: '4px 12px',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        fontSize: '0.85rem',
+                                        fontWeight: '500',
+                                        marginLeft: '8px'
+                                      }}
+                                    >
+                                      Edit Rating
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => handleOpenRatingModal(appt)}
+                                    style={{
+                                      background: 'linear-gradient(135deg, #2196F3, #00BCD4)',
+                                      border: 'none',
+                                      color: 'white',
+                                      padding: '8px 16px',
+                                      borderRadius: '8px',
+                                      cursor: 'pointer',
+                                      fontSize: '0.9rem',
+                                      fontWeight: '600',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '6px'
+                                    }}
+                                  >
+                                    <Star size={16} />
+                                    Rate Doctor
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       )
@@ -311,6 +430,20 @@ const PatientAppointments = () => {
           </div>
         </div>
       </main>
+
+      {/* Rating Modal */}
+      {selectedAppointment && (
+        <RatingModal
+          isOpen={ratingModalOpen}
+          onClose={handleCloseRatingModal}
+          appointmentId={selectedAppointment.id}
+          doctorName={selectedAppointment.doctor 
+            ? `${selectedAppointment.doctor.first_name || ''} ${selectedAppointment.doctor.last_name || ''}`.trim()
+            : selectedAppointment.doctor_name || 'Your doctor'}
+          onSubmit={handleSubmitRating}
+          existingRating={ratings[selectedAppointment.id] || null}
+        />
+      )}
     </div>
   )
 }

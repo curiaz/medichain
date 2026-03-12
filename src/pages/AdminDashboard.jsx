@@ -5,6 +5,7 @@ import AdminStats from '../components/AdminStats';
 import UserManagementTable from '../components/UserManagementTable';
 import DoctorVerificationTable from '../components/DoctorVerificationTable';
 import AuditLedger from '../components/AuditLedger';
+import PaymentManagement from '../components/PaymentManagement';
 import '../assets/styles/ModernDashboard.css';
 import '../assets/styles/AdminDashboard.css';
 
@@ -16,6 +17,7 @@ const AdminDashboard = () => {
     { id: 'overview', label: 'Overview' },
     { id: 'users', label: 'User Management' },
     { id: 'doctors', label: 'Doctor Verification' },
+    { id: 'payments', label: 'Payment Management' },
     { id: 'audit', label: 'Audit Ledger' }
   ];
 
@@ -77,6 +79,12 @@ const AdminDashboard = () => {
           {activeTab === 'doctors' && (
             <div className="admin-doctors">
               <DoctorVerificationTable />
+            </div>
+          )}
+
+          {activeTab === 'payments' && (
+            <div className="admin-payments">
+              <PaymentManagement />
             </div>
           )}
 

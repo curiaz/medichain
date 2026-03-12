@@ -174,6 +174,15 @@ function App() {
             />
             
             <Route 
+              path="/payment" 
+              element={
+                <ProtectedRoute>
+                  <Payment />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
               path="/book-appointment-form" 
               element={
                 <ProtectedRoute>

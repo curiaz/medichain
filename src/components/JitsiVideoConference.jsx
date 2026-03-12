@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { API_CONFIG } from '../config/api';
 import axios from 'axios';
 import '../assets/styles/JitsiVideoConference.css';
 
@@ -63,18 +64,26 @@ const JitsiVideoConference = () => {
         }
 
         // Fetch appointments to find the one matching this room
-        const response = await axios.get('https://medichainn.onrender.com/api/appointments', {
+        console.log('[JitsiVideoConference] Fetching appointments from:', `${API_CONFIG.API_URL}/appointments`);
+        const response = await axios.get(`${API_CONFIG.API_URL}/appointments`, {
           headers: { Authorization: `Bearer ${token}` }
         });
+
+        console.log('[JitsiVideoConference] Appointments response:', response.data);
 
         if (response.data?.success && response.data?.appointments) {
           // Find appointment with matching meeting_link or room name
           const appointment = response.data.appointments.find(appt => {
             const meetingLink = appt.meeting_link || appt.meeting_url || '';
-            return meetingLink.includes(roomName) || meetingLink.endsWith(roomName);
+            const matches = meetingLink.includes(roomName) || meetingLink.endsWith(roomName);
+            if (matches) {
+              console.log('[JitsiVideoConference] Found matching appointment:', appointment);
+            }
+            return matches;
           });
 
           if (appointment) {
+            console.log('[JitsiVideoConference] Appointment found:', appointment.id);
             setAppointmentInfo(appointment);
             
             // Check if current user is the doctor
@@ -204,28 +213,65 @@ const JitsiVideoConference = () => {
     // Load Jitsi Meet API
     const loadJitsiScript = () => {
       if (window.JitsiMeetExternalAPI) {
+        console.log('[JitsiVideoConference] Jitsi API already loaded, initializing...');
         initializeJitsi();
         return;
       }
 
+      console.log('[JitsiVideoConference] Loading Jitsi Meet API script...');
       const script = document.createElement('script');
       script.src = 'https://meet.jit.si/external_api.js';
       script.async = true;
-      script.onload = initializeJitsi;
-      script.onerror = () => {
-        setError("Failed to load Jitsi Meet API. Please check your internet connection.");
+      script.onload = () => {
+        console.log('[JitsiVideoConference] Jitsi API script loaded successfully');
+        if (window.JitsiMeetExternalAPI) {
+          initializeJitsi();
+        } else {
+          console.error('[JitsiVideoConference] Jitsi API not available after script load');
+          setError("Jitsi Meet API failed to initialize. Please refresh the page.");
+          setLoading(false);
+        }
+      };
+      script.onerror = (error) => {
+        console.error('[JitsiVideoConference] Failed to load Jitsi API script:', error);
+        setError("Failed to load Jitsi Meet API. Please check your internet connection and try again.");
         setLoading(false);
       };
       document.body.appendChild(script);
     };
 
     const initializeJitsi = () => {
-      if (!jitsiContainerRef.current || !roomName || !window.JitsiMeetExternalAPI) {
+      console.log('[JitsiVideoConference] Initializing Jitsi...', {
+        hasContainer: !!jitsiContainerRef.current,
+        roomName: roomName,
+        hasAPI: !!window.JitsiMeetExternalAPI
+      });
+      
+      if (!jitsiContainerRef.current) {
+        console.error('[JitsiVideoConference] Container ref not available');
+        setError("Video container not ready. Please refresh the page.");
+        setLoading(false);
+        return;
+      }
+      
+      if (!roomName) {
+        console.error('[JitsiVideoConference] Room name not provided');
+        setError("Room name is missing. Please check the meeting link.");
+        setLoading(false);
+        return;
+      }
+      
+      if (!window.JitsiMeetExternalAPI) {
+        console.error('[JitsiVideoConference] Jitsi API not available');
+        setError("Jitsi Meet API is not loaded. Please refresh the page.");
+        setLoading(false);
         return;
       }
 
       try {
         const domain = 'meet.jit.si';
+        console.log('[JitsiVideoConference] Creating Jitsi instance for room:', roomName);
+        console.log('[JitsiVideoConference] User role - isDoctor:', isDoctor, '- Lobby enabled:', !isDoctor);
         
         // Get user display name
         const displayName = user?.profile 
@@ -254,14 +300,15 @@ const JitsiVideoConference = () => {
             enableTcc: true,
             enableP2P: true,
             requireDisplayName: false,
-            // Enable lobby mode: patients wait until doctor (moderator) joins and approves them
-            // IMPORTANT: Explicitly disable members-only to allow lobby without membership restrictions
-            enableLobbyChat: true, // Allow chat in lobby
-            enableKnockingLobby: true, // Enable lobby so patients can knock and wait
+            // Configure lobby based on user role:
+            // - Doctors: Disable lobby so they join directly and become moderator automatically
+            // - Patients: Enable lobby so they wait for doctor (moderator) to approve them
+            enableLobbyChat: true, // Allow chat in lobby (for patients)
+            enableKnockingLobby: !isDoctor, // Disable lobby for doctors, enable for patients
             // Explicitly disable members-only mode (required for public meet.jit.si)
             // Without this, enabling lobby creates a members-only room which blocks participants
             membersOnly: false, // Disable members-only restriction
-            // Doctor (first to join) becomes moderator automatically
+            // Doctor joins directly and becomes moderator automatically (first to join)
             // Moderator can approve participants in lobby
             p2p: {
               enabled: true,
@@ -320,11 +367,19 @@ const JitsiVideoConference = () => {
         };
 
         apiRef.current = new window.JitsiMeetExternalAPI(domain, options);
+        console.log('[JitsiVideoConference] Jitsi API instance created:', !!apiRef.current);
 
         // Ensure API instance is valid before adding event listeners
         if (!apiRef.current) {
           throw new Error('Failed to create Jitsi API instance');
         }
+        
+        if (typeof apiRef.current.addEventListeners !== 'function') {
+          console.error('[JitsiVideoConference] API instance missing addEventListeners method');
+          throw new Error('Jitsi API instance is invalid - missing addEventListeners method');
+        }
+        
+        console.log('[JitsiVideoConference] Adding event listeners...');
 
         // Event handlers
         const eventHandlers = {
@@ -395,17 +450,43 @@ const JitsiVideoConference = () => {
           },
           errorOccurred: (error) => {
             console.error('Jitsi: Error occurred', error);
+            console.error('Jitsi: Error details:', JSON.stringify(error, null, 2));
             
             // Check for specific error types
             let errorMessage = "An error occurred in the video conference. Please try again.";
             let showError = true;
             let isMembersOnlyError = false;
             
-            if (error && error.error) {
-              const errorString = String(error.error);
+            if (error) {
+              // Properly extract error message from various possible formats
+              let errorString = '';
+              let errorType = '';
+              
+              try {
+                if (typeof error === 'string') {
+                  errorString = error;
+                } else if (error.error) {
+                  errorString = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+                } else if (error.message) {
+                  errorString = typeof error.message === 'string' ? error.message : JSON.stringify(error.message);
+                } else if (error.type) {
+                  errorString = typeof error.type === 'string' ? error.type : JSON.stringify(error.type);
+                } else {
+                  // Try to stringify the whole error object
+                  errorString = JSON.stringify(error);
+                }
+                
+                errorType = error.type || '';
+              } catch (e) {
+                console.error('Jitsi: Error parsing error object:', e);
+                errorString = 'Unknown error occurred';
+              }
+              
+              console.log('Jitsi: Error string:', errorString);
+              console.log('Jitsi: Error type:', errorType);
               
               // Handle membersOnly error specifically
-              if (errorString.includes('membersOnly') || errorString.includes('members-only')) {
+              if (errorString.includes('membersOnly') || errorString.includes('members-only') || errorType.includes('membersOnly')) {
                 // membersOnly error is expected when entering lobby - don't show as error
                 // This means the user is entering the lobby and should wait for approval
                 console.log('Jitsi: membersOnly error detected - user entering lobby, showing waiting UI');
@@ -420,10 +501,18 @@ const JitsiVideoConference = () => {
                   console.log('Jitsi: Patient in lobby - waiting for doctor to approve');
                 }
                 return; // Exit early - don't process further
-              } else if (errorString.includes('connection') || errorString.includes('CONNECTION')) {
+              } else if (errorString.includes('connection') || errorString.includes('CONNECTION') || errorType.includes('connection')) {
                 errorMessage = "Connection error. Please check your internet connection and try again.";
-              } else if (errorString.includes('permission') || errorString.includes('access')) {
+              } else if (errorString.includes('permission') || errorString.includes('access') || errorType.includes('permission')) {
                 errorMessage = "You don't have permission to join this meeting. Please contact the meeting organizer.";
+              } else if (errorString.includes('room') || errorString.includes('ROOM')) {
+                errorMessage = "Room not found or unavailable. Please check the meeting link.";
+              } else if (errorString.includes('timeout') || errorString.includes('TIMEOUT')) {
+                errorMessage = "Connection timeout. Please check your internet connection and try again.";
+              } else {
+                // Show more detailed error for debugging, but limit length
+                const cleanError = errorString.length > 150 ? errorString.substring(0, 150) + '...' : errorString;
+                errorMessage = `Video conference error: ${cleanError}`;
               }
             }
             
@@ -555,7 +644,9 @@ const JitsiVideoConference = () => {
         setLoading(false);
       } catch (error) {
         console.error('Error initializing Jitsi:', error);
-        setError("Failed to initialize video conference. Please try again.");
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        const errorMessage = error.message || error.toString() || "Failed to initialize video conference. Please try again.";
+        setError(`Failed to initialize video conference: ${errorMessage}`);
         setLoading(false);
       }
     };
@@ -581,7 +672,7 @@ const JitsiVideoConference = () => {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canJoin, roomName, user]);
+  }, [canJoin, roomName, user, isDoctor]);
 
   // Handle participant leaving
   const handleParticipantLeft = async (participant) => {
@@ -659,11 +750,9 @@ const JitsiVideoConference = () => {
         return;
       }
 
-      const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://medichainn.onrender.com';
-      
       // Update appointment status to completed
       const response = await axios.put(
-        `${API_BASE_URL}/api/appointments/${appointmentInfo.id}`,
+        `${API_CONFIG.API_URL}/appointments/${appointmentInfo.id}`,
         { status: 'completed' },
         {
           headers: { 

@@ -629,8 +629,28 @@ def doctor_signup():
                         }), 201
                     else:
                         print(f"[DEBUG] ⚠️  Failed to send OTP email to {email}")
+                        # Clean up Firebase user if email sending fails
+                        try:
+                            if not is_google_signup:
+                                auth.delete_user(uid)
+                        except:
+                            pass
+                        return jsonify({
+                            "success": False,
+                            "error": "Failed to send verification email. Please check your email configuration or try again later."
+                        }), 500
                 else:
                     print(f"[DEBUG] ⚠️  Failed to generate OTP: {otp_result.get('error')}")
+                    # Clean up Firebase user if OTP generation fails
+                    try:
+                        if not is_google_signup:
+                            auth.delete_user(uid)
+                    except:
+                        pass
+                    return jsonify({
+                        "success": False,
+                        "error": "Failed to generate verification code. Please try again."
+                    }), 500
             else:
                 print(f"[DEBUG] ⚠️  OTP service not available")
                 # Clean up Firebase user if OTP service not available

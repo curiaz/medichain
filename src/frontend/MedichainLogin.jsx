@@ -3,7 +3,7 @@ import "./MedichainLogin.css"
 import "../pages/ProfilePage.css" // For modal styling
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
-import { Eye, EyeOff, Lock, Mail, Plus, ChevronRight, AlertCircle } from "lucide-react"
+import { Eye, EyeOff, Lock, Mail, Plus, ChevronRight, AlertCircle, Check, X } from "lucide-react"
 import LoadingSpinner from "../components/LoadingSpinner"
 import RoleSelectionModal from "../components/RoleSelectionModal"
 import { showToast } from "../components/CustomToast"
@@ -28,6 +28,7 @@ const MedichainLogin = () => {
   const [isReactivating, setIsReactivating] = useState(false)
   const [inlineError, setInlineError] = useState("")
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false)
+  const [emailFocused, setEmailFocused] = useState(false)
 
   const handleSignUpClick = () => {
     setIsRoleModalOpen(true)
@@ -249,6 +250,15 @@ const MedichainLogin = () => {
     showToast.info("Reactivation cancelled. Your account remains deactivated.")
   }
 
+  // Email validation
+  const validateEmail = () => {
+    if (!email) return null
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email.trim())
+  }
+
+  const isEmailValid = validateEmail()
+
   const handleGoogleSignIn = async () => {
     if (isSubmitting || isGoogleSigningIn) return
     
@@ -373,10 +383,26 @@ const MedichainLogin = () => {
                       aria-invalid={inlineError ? true : false}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      onFocus={() => setEmailFocused(true)}
+                      onBlur={() => setEmailFocused(false)}
                       placeholder="Enter your email or username"
                       disabled={isSubmitting}
                     />
+                    {emailFocused && email && email.includes('@') && (
+                      <span className="validation-icon">
+                        {isEmailValid ? (
+                          <Check size={16} className="validation-check" />
+                        ) : (
+                          <X size={16} className="validation-error" />
+                        )}
+                      </span>
+                    )}
                   </div>
+                  {emailFocused && email && email.includes('@') && isEmailValid === false && (
+                    <small className="validation-message error">
+                      Please enter a valid email address
+                    </small>
+                  )}
                 </div>
 
                 <div className="input-group">
