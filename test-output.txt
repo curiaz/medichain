@@ -1,0 +1,151 @@
+﻿node.exe : npm warn Unknown cli config "--watchAll". This will stop working in the next major version 
+of npm.
+At C:\Program Files\nodejs\npm.ps1:29 char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...version of npm.:String) [], RemoteExcept 
+   ion
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm warn Unknown cli config "--testPathPattern". This will stop working in the next major version of 
+npm.
+npm warn Unknown cli config "--coverage". This will stop working in the next major version of npm.
+
+> medichain@0.1.0 test
+> react-scripts test
+
+  console.warn
+    ΓÜá∩╕Å React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+
+    [0m [90m 58 |[39m   describe([32m'Step 1: Email Input'[39m[33m,[39m () [33m=>[39m {
+     [90m 59 |[39m     it([32m'renders email input form correctly'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 60 |[39m       render(
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 61 |[39m         [33m<[39m[33mTestWrapper[39m[33m>[39m
+     [90m 62 |[39m           [33m<[39m[33mResetPassword[39m [33m/[39m[33m>[39m
+     [90m 63 |[39m         [33m<[39m[33m/[39m[33mTestWrapper[39m[33m>[39m[0m
+
+      at warnOnce (node_modules/react-router/lib/deprecations.ts:9:13)
+      at logDeprecation (node_modules/react-router/lib/deprecations.ts:14:3)
+      at Object.UNSAFE_logV6DeprecationWarnings (node_modules/react-router/lib/deprecations.ts:26:5)
+      at create (node_modules/react-router-dom/index.tsx:816:25)
+      at commitHookEffectListMount (node_modules/react-dom/cjs/react-dom.development.js:23189:26)
+      at commitPassiveMountOnFiber (node_modules/react-dom/cjs/react-dom.development.js:24970:11)
+      at commitPassiveMountEffects_complete (node_modules/react-dom/cjs/react-dom.development.js:24930:9)
+      at commitPassiveMountEffects_begin (node_modules/react-dom/cjs/react-dom.development.js:24917:7)
+      at commitPassiveMountEffects (node_modules/react-dom/cjs/react-dom.development.js:24905:3)
+      at flushPassiveEffectsImpl (node_modules/react-dom/cjs/react-dom.development.js:27078:3)
+      at flushPassiveEffects (node_modules/react-dom/cjs/react-dom.development.js:27023:14)
+      at callback (node_modules/react-dom/cjs/react-dom.development.js:26808:9)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at actImplementation (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:47:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:190:25)
+      at render (node_modules/@testing-library/react/dist/pure.js:292:10)
+      at Object.<anonymous> (src/frontend/ResetPassword.test.jsx:60:13)
+
+  console.warn
+    ΓÜá∩╕Å React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+
+    [0m [90m 58 |[39m   describe([32m'Step 1: Email Input'[39m[33m,[39m () [33m=>[39m {
+     [90m 59 |[39m     it([32m'renders email input form correctly'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 60 |[39m       render(
+     [90m    |[39m             [31m[1m^[22m[39m
+     [90m 61 |[39m         [33m<[39m[33mTestWrapper[39m[33m>[39m
+     [90m 62 |[39m           [33m<[39m[33mResetPassword[39m [33m/[39m[33m>[39m
+     [90m 63 |[39m         [33m<[39m[33m/[39m[33mTestWrapper[39m[33m>[39m[0m
+
+      at warnOnce (node_modules/react-router/lib/deprecations.ts:9:13)
+      at logDeprecation (node_modules/react-router/lib/deprecations.ts:14:3)
+      at Object.UNSAFE_logV6DeprecationWarnings (node_modules/react-router/lib/deprecations.ts:37:5)
+      at create (node_modules/react-router-dom/index.tsx:816:25)
+      at commitHookEffectListMount (node_modules/react-dom/cjs/react-dom.development.js:23189:26)
+      at commitPassiveMountOnFiber (node_modules/react-dom/cjs/react-dom.development.js:24970:11)
+      at commitPassiveMountEffects_complete (node_modules/react-dom/cjs/react-dom.development.js:24930:9)
+      at commitPassiveMountEffects_begin (node_modules/react-dom/cjs/react-dom.development.js:24917:7)
+      at commitPassiveMountEffects (node_modules/react-dom/cjs/react-dom.development.js:24905:3)
+      at flushPassiveEffectsImpl (node_modules/react-dom/cjs/react-dom.development.js:27078:3)
+      at flushPassiveEffects (node_modules/react-dom/cjs/react-dom.development.js:27023:14)
+      at callback (node_modules/react-dom/cjs/react-dom.development.js:26808:9)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at actImplementation (node_modules/react/cjs/react.development.js:2582:11)
+      at node_modules/@testing-library/react/dist/act-compat.js:47:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:190:25)
+      at render (node_modules/@testing-library/react/dist/pure.js:292:10)
+      at Object.<anonymous> (src/frontend/ResetPassword.test.jsx:60:13)
+
+  console.error
+    Password reset request error: { response: { data: { error: 'Email not found' } } }
+
+    [0m [90m 62 |[39m       }
+     [90m 63 |[39m     } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 64 |[39m       console[33m.[39merror([32m'Password reset request error:'[39m[33m,[39m error)
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 65 |[39m       [36mif[39m (error[33m.[39mresponse[33m?[39m[33m.[39mdata[33m?[39m[33m.[39merror) {
+     [90m 66 |[39m         showToast[33m.[39merror(error[33m.[39mresponse[33m.[39mdata[33m.[39merror)
+     [90m 67 |[39m       } [36melse[39m {[0m
+
+      at handleEmailSubmit (src/frontend/ResetPassword.jsx:64:15)
+
+  console.error
+    OTP verification error: { response: { data: { error: 'Invalid OTP code' } } }
+
+    [0m [90m 109 |[39m       }
+     [90m 110 |[39m     } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 111 |[39m       console[33m.[39merror([32m'OTP verification error:'[39m[33m,[39m error)
+     [90m     |[39m               [31m[1m^[22m[39m
+     [90m 112 |[39m       [36mif[39m (error[33m.[39mresponse[33m?[39m[33m.[39mdata[33m?[39m[33m.[39merror) {
+     [90m 113 |[39m         showToast[33m.[39merror(error[33m.[39mresponse[33m.[39mdata[33m.[39merror)
+     [90m 114 |[39m       } [36melse[39m {[0m
+
+      at handleOtpSubmit (src/frontend/ResetPassword.jsx:111:15)
+
+  console.error
+    Password reset error: { response: { data: { error: 'Reset token expired' } } }
+
+    [0m [90m 173 |[39m       }
+     [90m 174 |[39m     } [36mcatch[39m (error) {
+    [31m[1m>[22m[39m[90m 175 |[39m       console[33m.[39merror([32m'Password reset error:'[39m[33m,[39m error)
+     [90m     |[39m               [31m[1m^[22m[39m
+     [90m 176 |[39m       [36mif[39m (error[33m.[39mresponse[33m?[39m[33m.[39mdata[33m?[39m[33m.[39merror) {
+     [90m 177 |[39m         showToast[33m.[39merror(error[33m.[39mresponse[33m.[39mdata[33m.[39merror)
+     [90m 178 |[39m       } [36melse[39m {[0m
+
+      at handlePasswordSubmit (src/frontend/ResetPassword.jsx:175:15)
+
+PASS src/frontend/ResetPassword.test.jsx
+  ResetPassword Component - OTP Enhanced
+    Step 1: Email Input
+      ΓêÜ renders email input form correctly (292 ms)
+      ΓêÜ shows step indicator with correct active step (12 ms)
+      ΓêÜ validates email input before submission (39 ms)
+      ΓêÜ successfully sends OTP request (56 ms)
+      ΓêÜ handles API errors gracefully (57 ms)
+      ΓêÜ navigates back to login when back button is clicked (25 ms)
+    Step 2: OTP Verification
+      ΓêÜ renders OTP verification form correctly (89 ms)
+      ΓêÜ formats OTP input correctly (63 ms)
+      ΓêÜ validates OTP before submission (66 ms)
+      ΓêÜ successfully verifies OTP (76 ms)
+      ΓêÜ handles invalid OTP error (67 ms)
+      ΓêÜ allows resending OTP (61 ms)
+      ΓêÜ allows changing email (37 ms)
+    Step 3: New Password
+      ΓêÜ renders password form correctly (97 ms)
+      ΓêÜ validates password requirements (83 ms)
+      ΓêÜ validates password confirmation (81 ms)
+      ΓêÜ successfully resets password (2152 ms)
+      ΓêÜ handles password reset error (100 ms)
+    Loading States
+      ΓêÜ disables form during submission (30 ms)
+    Accessibility
+      ΓêÜ has proper form labels and structure (19 ms)
+      ΓêÜ maintains proper focus management (9 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       21 passed, 21 total
+Snapshots:   0 total
+Time:        5.352 s
+Ran all test suites related to changed files.
+
+

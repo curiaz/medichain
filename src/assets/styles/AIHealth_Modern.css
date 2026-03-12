@@ -1,0 +1,831 @@
+/* Modern AI Health Assistant - Matching LandingPage/MedichainLogin Design */
+
+/* Main Container */
+.ai-health-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 50%, #81d4fa 100%);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  scroll-behavior: smooth;
+}
+
+/* Background Animation */
+.ai-health-page .background-crosses {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ai-health-page .cross {
+  position: absolute;
+  color: rgba(2, 136, 209, 0.08);
+  font-size: 32px;
+  animation: pulse 5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { 
+    opacity: 0.05;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.15;
+    transform: scale(1.01);
+  }
+}
+
+/* Cross positions */
+.cross-1 { top: 15%; left: 8%; animation-delay: 0s; }
+.cross-2 { top: 25%; right: 12%; animation-delay: 2s; }
+.cross-3 { top: 75%; left: 10%; animation-delay: 4s; }
+.cross-4 { bottom: 25%; right: 8%; animation-delay: 1s; }
+
+/* Disclaimer Notice */
+.disclaimer-notice {
+  background: #fff3cd;
+  border: 2px solid #ffc107;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 0 0 20px 0;
+  width: 100%;
+  box-shadow: 0 4px 20px rgba(255, 193, 7, 0.15);
+  position: relative;
+  z-index: 10;
+  animation: slideInDown 0.6s ease-out;
+}
+
+.disclaimer-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: #856404;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.disclaimer-header svg {
+  width: 20px;
+  height: 20px;
+  color: #ffc107;
+}
+
+.disclaimer-content {
+  color: #856404;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.disclaimer-content p {
+  margin: 0 0 12px 0;
+}
+
+.disclaimer-content p:last-child {
+  margin-bottom: 0;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.ai-health-page .header {
+  background: white !important;
+  padding: 20px 0;
+  border-bottom: 1px solid #e0e0e0;
+  z-index: 10;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-health-page .header-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.ai-health-page .header-subtitle {
+  color: #718096;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.ai-health-page .back-button {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 10px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0288d1;
+  transition: all 0.3s ease;
+  z-index: 20;
+}
+
+.ai-health-page .back-button:hover {
+  background: rgba(2, 136, 209, 0.1);
+  color: #0277bd;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.ai-health-page .back-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ai-health-page .logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.ai-health-page .logo-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #0288d1, #0277bd);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white !important;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.medichain-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.ai-health-page .logo-container h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+/* Main Content */
+.ai-health-page .main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  z-index: 10;
+  position: relative;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Content Layout - Side by Side */
+.content-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  width: 100%;
+  align-items: start;
+  margin-top: 20px;
+}
+
+/* Form Container */
+.form-container {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  height: 600px;
+  min-height: 600px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+/* Results Side */
+.results-side {
+  width: 100%;
+  height: 600px;
+  min-height: 600px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.form-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.form-icon {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #0288d1, #0277bd);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: white;
+}
+
+.form-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 8px;
+}
+
+.form-header p {
+  color: #718096;
+  font-size: 16px;
+}
+
+/* Form Elements */
+.modern-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 14px;
+}
+
+.modern-input, .modern-select, .modern-textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  background: white;
+  color: #2d3748;
+}
+
+.modern-input:focus, .modern-select:focus, .modern-textarea:focus {
+  outline: none;
+  border-color: #0288d1;
+  box-shadow: 0 0 0 3px rgba(2, 136, 209, 0.1);
+}
+
+.modern-textarea {
+  min-height: 120px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Submit Button with LandingPage-style animations */
+.submit-button {
+  background: linear-gradient(135deg, #1976d2, #1565c0, #0d47a1);
+  color: white;
+  border: none;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 25px rgba(25, 118, 210, 0.3);
+  z-index: 1;
+}
+
+.submit-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.6s;
+  z-index: 2;
+}
+
+.submit-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1e88e5, #1976d2, #1565c0);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 15px 40px rgba(25, 118, 210, 0.5);
+}
+
+.submit-button:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.submit-button:active:not(:disabled) {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 10px 30px rgba(25, 118, 210, 0.4);
+}
+
+.submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Loading States */
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-spinner.large {
+  width: 40px;
+  height: 40px;
+  border-width: 3px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.simple-loading {
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  margin: 24px 0;
+}
+
+.loading-text {
+  color: #4a5568;
+  font-size: 18px;
+  margin: 16px 0;
+  font-weight: 500;
+}
+
+.loading-bar {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.loading-progress {
+  height: 100%;
+  background: linear-gradient(135deg, #0288d1, #0277bd);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Results Container with slide animation */
+.results-container {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  height: 600px;
+  min-height: 600px;
+  max-height: 600px;
+  overflow-y: auto;
+  margin: 0;
+  animation: slideInFromRight 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.results-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.results-icon {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: white;
+}
+
+.results-header h3 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 8px;
+}
+
+/* Medical Slideshow - Simplified */
+.medical-slideshow-container {
+  background: #f7fafc;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.slideshow-navigation {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.nav-dot {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #e2e8f0;
+  background: white;
+  color: #718096;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-dot.active {
+  background: #0288d1;
+  color: white;
+  border-color: #0288d1;
+}
+
+.slideshow-content {
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.slide-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 16px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.slide {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-active {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  animation: slideInContent 0.4s ease-out;
+}
+
+.slide-transitioning {
+  opacity: 0;
+  transform: translateX(-20px) scale(0.98);
+}
+
+.slide-content {
+  color: #4a5568;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.slide-content p {
+  margin-bottom: 12px;
+}
+
+.slide-content ul, .slide-content ol {
+  margin: 16px 0;
+  padding-left: 20px;
+}
+
+.slide-content li {
+  margin-bottom: 8px;
+}
+
+/* Symptoms Reported Slide Styling */
+.slide[data-slide-type="reported-symptoms"] .slide-content {
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  border: 2px solid #0ea5e9;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 8px;
+  position: relative;
+  font-weight: 500;
+}
+
+/* Icon removed from slide 1 as requested */
+
+.slide[data-slide-type="reported-symptoms"] .slide-title {
+  color: #0369a1;
+  text-shadow: 0 1px 3px rgba(3, 105, 161, 0.3);
+}
+
+/* Arrow Navigation Container */
+.arrow-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 24px;
+  margin-top: 16px;
+}
+
+.slide-indicator {
+  font-size: 14px;
+  color: #4a5568;
+  font-weight: 500;
+  min-width: 60px;
+  text-align: center;
+}
+
+/* Arrow Navigation Buttons with enhanced animations */
+.arrow-nav {
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid #e2e8f0;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  color: #4a5568;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.arrow-nav::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: radial-gradient(circle, rgba(25, 118, 210, 0.2) 0%, transparent 70%);
+  transition: all 0.3s ease;
+  transform: translate(-50%, -50%);
+}
+
+.arrow-nav:hover {
+  background: #1976d2;
+  color: white;
+  border-color: #1976d2;
+  transform: translateY(-2px) scale(1.15);
+  box-shadow: 0 8px 20px rgba(25, 118, 210, 0.4);
+}
+
+.arrow-nav:hover::before {
+  width: 100%;
+  height: 100%;
+}
+
+.arrow-nav:active {
+  transform: translateY(0) scale(1.05);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+}
+
+/* Keyframe Animations */
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+/* Error States */
+.error-container {
+  background: #fed7d7;
+  color: #c53030;
+  border: 1px solid #feb2b2;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* System Info - Simplified */
+.system-info {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 32px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.system-info-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #4a5568;
+}
+
+/* Tablet and smaller breakpoint */
+@media (max-width: 1024px) {
+  .content-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  
+  .results-side {
+    order: 2;
+  }
+  
+  .form-container {
+    order: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .form-container, .results-container, .simple-loading {
+    margin: 16px;
+    padding: 24px;
+  }
+  
+  .main-content {
+    padding: 20px 0;
+  }
+  
+  .system-info {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+  
+  .content-layout {
+    gap: 16px;
+    padding: 0 16px;
+  }
+}
+
+/* Ensure icons are properly sized */
+.ai-health-page svg {
+  width: 20px;
+  height: 20px;
+}
+
+.form-icon svg, .results-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.logo-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Keyframe Animations */
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}

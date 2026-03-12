@@ -1,0 +1,835 @@
+/* Blockchain Audit Ledger - Professional Chain Visualization */
+@import './variables.css';
+
+.audit-ledger-container {
+  padding: 2rem;
+  max-width: 1600px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 30%, #81d4fa 70%, #4dd0e1 100%);
+  min-height: 100vh;
+}
+
+.audit-ledger-header {
+  margin-bottom: 2rem;
+  text-align: left;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.audit-ledger-header h2 {
+  color: #1f2937;
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.audit-ledger-subtitle {
+  color: #4a5568;
+  font-size: 0.95rem;
+  font-weight: 400;
+  margin: 0;
+}
+
+.audit-ledger-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin: 2rem 0;
+}
+
+.audit-ledger-loading .spinner {
+  border: 3px solid #e2e8f0;
+  border-top: 3px solid #2196f3;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Filter Section */
+.audit-ledger-filters {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 1.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.filter-row:last-child {
+  margin-bottom: 0;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-group input,
+.filter-group select {
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  background: #ffffff;
+  color: #1f2937;
+  font-family: inherit;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+  outline: none;
+  border-color: #2196f3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.filter-group input::placeholder {
+  color: #9ca3af;
+}
+
+.btn-clear-filters {
+  padding: 0.625rem 1.5rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  align-self: flex-end;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-clear-filters:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+
+/* Error Message */
+.audit-ledger-error {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #ef4444;
+}
+
+.audit-ledger-error p {
+  margin: 0;
+}
+
+/* Blockchain Chain Visualization */
+.blockchain-chain {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.blockchain-block-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Chain Link Visualization */
+.chain-link {
+  width: 100%;
+  height: 24px;
+  position: relative;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0;
+}
+
+.chain-link-line {
+  width: 2px;
+  height: 100%;
+  background: #10b981;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.chain-link.broken .chain-link-line {
+  background: #ef4444;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.chain-link-hash {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  background: white;
+  border: 1px solid #e2e8f0;
+  z-index: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.hash-match {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.hash-mismatch {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Blockchain Block */
+.blockchain-block {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 2px solid #e2e8f0;
+  width: 100%;
+  transition: all 0.3s ease;
+  margin-bottom: 1rem;
+}
+
+.blockchain-block:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  border-color: #2196f3;
+}
+
+.blockchain-block.expanded {
+  border-color: #2196f3;
+  box-shadow: 0 4px 20px rgba(33, 150, 243, 0.2);
+}
+
+.block-header {
+  padding: 1.25rem 1.5rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 1rem;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.block-header:hover {
+  background: #f8fafc;
+}
+
+.block-number {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #2196f3;
+  background: #e0f2fe;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  white-space: nowrap;
+  text-align: center;
+  min-width: 100px;
+}
+
+.block-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.block-action {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.action-badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.badge-create {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badge-update {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-delete {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-view {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.badge-approve {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.badge-decline {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge-role {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+.badge-status {
+  background: #cffafe;
+  color: #0e7490;
+}
+
+.badge-default {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.block-description {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9375rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.block-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #6b7280;
+  font-size: 0.8125rem;
+  flex-wrap: wrap;
+}
+
+.block-admin {
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.block-separator {
+  color: #cbd5e0;
+}
+
+.block-entity {
+  text-transform: capitalize;
+  color: #6b7280;
+}
+
+.block-date {
+  color: #6b7280;
+}
+
+.block-hash-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.hash-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hash-preview {
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: #2196f3;
+  font-weight: 600;
+}
+
+.block-toggle {
+  font-size: 1.25rem;
+  color: #2196f3;
+  font-weight: 400;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.block-header:hover .block-toggle {
+  background: #e0f2fe;
+  border-color: #2196f3;
+}
+
+/* Block Details */
+.block-details {
+  padding: 1.5rem;
+  background: #f8fafc;
+  border-top: 2px solid #e2e8f0;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 3000px;
+  }
+}
+
+/* Blockchain Hash Section */
+.blockchain-hash-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 2px solid #2196f3;
+}
+
+.hash-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.hash-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hash-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4a5568;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hash-value-full {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8125rem;
+  color: #1f2937;
+  background: #f8fafc;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  word-break: break-all;
+  line-height: 1.6;
+}
+
+.hash-value-full .genesis {
+  color: #2196f3;
+  font-weight: 600;
+  font-style: italic;
+}
+
+.hash-link-info {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.link-verified {
+  color: #059669;
+  font-weight: 600;
+}
+
+.link-broken {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.hash-verified {
+  color: #059669;
+  font-weight: 600;
+}
+
+.hash-arrow {
+  font-size: 1.5rem;
+  color: #2196f3;
+  font-weight: 300;
+  padding: 0 0.5rem;
+}
+
+/* Block Info Grid */
+.block-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.info-item {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.info-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.info-value {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.info-sub {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  font-family: 'Courier New', monospace;
+}
+
+/* Changes Section */
+.block-changes {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+.changes-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #1f2937;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.changes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.change-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 6px;
+  border-left: 3px solid #2196f3;
+}
+
+.change-field {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.875rem;
+  text-transform: capitalize;
+}
+
+.change-comparison {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.change-before-value,
+.change-after-value {
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-family: 'Courier New', monospace;
+  line-height: 1.5;
+}
+
+.change-before-value {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.change-after-value {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.change-label {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 0.25rem;
+  font-family: inherit;
+}
+
+.change-arrow {
+  font-size: 1.25rem;
+  color: #2196f3;
+  font-weight: 300;
+}
+
+.change-single {
+  padding: 0.5rem;
+  background: #f3f4f6;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  font-family: 'Courier New', monospace;
+  color: #4a5568;
+}
+
+/* Data Section */
+.block-data {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.data-section {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.data-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #1f2937;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.75rem;
+}
+
+.data-json {
+  background: #1f2937;
+  color: #68d391;
+  padding: 1rem;
+  border-radius: 8px;
+  font-family: 'Courier New', 'Monaco', monospace;
+  font-size: 0.75rem;
+  overflow-x: auto;
+  max-height: 300px;
+  overflow-y: auto;
+  line-height: 1.6;
+  border: 1px solid #374151;
+  margin: 0;
+}
+
+/* Empty State */
+.audit-ledger-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin: 2rem 0;
+  border: 1px solid #e2e8f0;
+}
+
+.audit-ledger-empty p:first-child {
+  font-size: 1.125rem;
+  color: #1f2937;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.audit-ledger-empty p:last-child {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 400;
+  margin: 0;
+}
+
+/* Pagination */
+.audit-ledger-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+}
+
+.btn-pagination {
+  padding: 0.625rem 1.25rem;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.btn-pagination:hover:not(:disabled) {
+  background: #1976d2;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2);
+}
+
+.btn-pagination:disabled {
+  background: #cbd5e0;
+  color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.pagination-info {
+  color: #4a5568;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .audit-ledger-container {
+    padding: 1rem;
+  }
+
+  .audit-ledger-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .audit-ledger-filters {
+    padding: 1rem;
+  }
+
+  .filter-row {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .btn-clear-filters {
+    align-self: stretch;
+    margin-top: 0.5rem;
+  }
+
+  .block-header {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .block-number {
+    min-width: auto;
+    width: 100%;
+  }
+
+  .block-hash-preview {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .hash-row {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .hash-arrow {
+    transform: rotate(90deg);
+    text-align: center;
+  }
+
+  .change-comparison {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .change-arrow {
+    transform: rotate(90deg);
+    text-align: center;
+  }
+
+  .block-data {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Scrollbar Styling */
+.data-json::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.data-json::-webkit-scrollbar-track {
+  background: #1f2937;
+  border-radius: 4px;
+}
+
+.data-json::-webkit-scrollbar-thumb {
+  background: #4a5568;
+  border-radius: 4px;
+}
+
+.data-json::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}

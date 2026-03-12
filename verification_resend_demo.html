@@ -1,0 +1,351 @@
+<!-- Verification Resend Button Demo -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Verification Resend Feature - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .demo-container {
+            max-width: 1200px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .states-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+        }
+        
+        .state-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .state-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .state-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        /* Verification Status Component Styles */
+        .verification-status {
+            padding: 18px 20px;
+            border: 1px solid transparent;
+            border-radius: 14px;
+            background: linear-gradient(180deg, #fff9eb, #fff7e6);
+            border-color: #f59e0b33;
+            box-shadow: 0 6px 18px rgba(245, 158, 11, 0.12);
+        }
+        
+        .verification-status-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        
+        .verification-icon {
+            flex-shrink: 0;
+            padding: 10px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.55);
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11.5px;
+            font-weight: 700;
+            background: #ffedd5;
+            color: #9a3412;
+            margin-bottom: 6px;
+        }
+        
+        .verification-title {
+            margin: 4px 0;
+            font-size: 16px;
+            font-weight: 700;
+        }
+        
+        .verification-message {
+            margin: 0;
+            font-size: 13.5px;
+            line-height: 1.55;
+            color: #334155;
+        }
+        
+        .verification-details {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px dashed rgba(0, 0, 0, 0.08);
+        }
+        
+        .verification-detail-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 6px 0;
+            font-size: 13px;
+            color: #475569;
+        }
+        
+        .verification-message-alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .verification-message-alert.success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #86efac;
+        }
+        
+        .verification-actions {
+            margin-top: 14px;
+        }
+        
+        .resend-verification-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #0288d1, #0277bd);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(2, 136, 209, 0.3);
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        
+        .resend-verification-btn:hover:not(.disabled) {
+            background: linear-gradient(135deg, #0277bd, #01579b);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(2, 136, 209, 0.4);
+        }
+        
+        .resend-verification-btn.disabled {
+            background: linear-gradient(135deg, #94a3b8, #64748b);
+            cursor: not-allowed;
+            box-shadow: 0 2px 6px rgba(100, 116, 139, 0.2);
+        }
+        
+        .cooldown-note {
+            font-size: 12px;
+            color: #64748b;
+            text-align: center;
+            margin: 4px 0 0 0;
+            font-style: italic;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .spinning {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>🏥 Doctor Verification Resend Feature</h1>
+        
+        <div class="states-grid">
+            <!-- State 1: Initial - Can Resend -->
+            <div class="state-card">
+                <div class="state-title">1️⃣ Initial State - Ready to Resend</div>
+                <div class="verification-status">
+                    <div class="verification-status-header">
+                        <div class="verification-icon">🕐</div>
+                        <div>
+                            <div class="status-badge">
+                                🕐 <span>Pending</span>
+                            </div>
+                            <h3 class="verification-title">Verification Pending</h3>
+                            <p class="verification-message">Your credentials are under review. You'll receive an email once verification is complete.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="verification-details">
+                        <div class="verification-detail-item">
+                            ✉️ <span>We will notify you by email when the review is complete</span>
+                        </div>
+                        <div class="verification-detail-item">
+                            🕐 <span>Typical review time: within 24 hours</span>
+                        </div>
+                        
+                        <div class="verification-actions">
+                            <button class="resend-verification-btn">
+                                🔄 Request Verification Review
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- State 2: Loading -->
+            <div class="state-card">
+                <div class="state-title">2️⃣ Sending Request...</div>
+                <div class="verification-status">
+                    <div class="verification-status-header">
+                        <div class="verification-icon">🕐</div>
+                        <div>
+                            <div class="status-badge">
+                                🕐 <span>Pending</span>
+                            </div>
+                            <h3 class="verification-title">Verification Pending</h3>
+                            <p class="verification-message">Your credentials are under review. You'll receive an email once verification is complete.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="verification-details">
+                        <div class="verification-detail-item">
+                            ✉️ <span>We will notify you by email when the review is complete</span>
+                        </div>
+                        <div class="verification-detail-item">
+                            🕐 <span>Typical review time: within 24 hours</span>
+                        </div>
+                        
+                        <div class="verification-actions">
+                            <button class="resend-verification-btn disabled">
+                                <span class="spinning">🔄</span> Sending...
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- State 3: Success - Cooldown Active -->
+            <div class="state-card">
+                <div class="state-title">3️⃣ Success - Cooldown Active</div>
+                <div class="verification-status">
+                    <div class="verification-status-header">
+                        <div class="verification-icon">🕐</div>
+                        <div>
+                            <div class="status-badge">
+                                🕐 <span>Pending</span>
+                            </div>
+                            <h3 class="verification-title">Verification Pending</h3>
+                            <p class="verification-message">Your credentials are under review. You'll receive an email once verification is complete.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="verification-details">
+                        <div class="verification-message-alert success">
+                            ✓ Verification request resent successfully! Admin will review within 24 hours.
+                        </div>
+                        
+                        <div class="verification-detail-item">
+                            ✉️ <span>We will notify you by email when the review is complete</span>
+                        </div>
+                        <div class="verification-detail-item">
+                            🕐 <span>Typical review time: within 24 hours</span>
+                        </div>
+                        <div class="verification-detail-item">
+                            📄 <span>Last request sent: Oct 21, 2025, 2:30:00 PM</span>
+                        </div>
+                        
+                        <div class="verification-actions">
+                            <button class="resend-verification-btn disabled">
+                                🕐 Available in 23.8 hours
+                            </button>
+                            <p class="cooldown-note">
+                                To prevent spam, you can request a review once every 24 hours
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- State 4: Almost Ready (< 1 hour) -->
+            <div class="state-card">
+                <div class="state-title">4️⃣ Cooldown Almost Complete</div>
+                <div class="verification-status">
+                    <div class="verification-status-header">
+                        <div class="verification-icon">🕐</div>
+                        <div>
+                            <div class="status-badge">
+                                🕐 <span>Pending</span>
+                            </div>
+                            <h3 class="verification-title">Verification Pending</h3>
+                            <p class="verification-message">Your credentials are under review. You'll receive an email once verification is complete.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="verification-details">
+                        <div class="verification-detail-item">
+                            ✉️ <span>We will notify you by email when the review is complete</span>
+                        </div>
+                        <div class="verification-detail-item">
+                            🕐 <span>Typical review time: within 24 hours</span>
+                        </div>
+                        <div class="verification-detail-item">
+                            📄 <span>Last request sent: Oct 20, 2025, 2:45:00 PM</span>
+                        </div>
+                        
+                        <div class="verification-actions">
+                            <button class="resend-verification-btn disabled">
+                                🕐 Available in 45 minutes
+                            </button>
+                            <p class="cooldown-note">
+                                To prevent spam, you can request a review once every 24 hours
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

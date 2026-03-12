@@ -1,0 +1,10 @@
+[33m81c1a57[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m Merge fixnotif_appointment: Fix appointments and notifications
+[33m8025991[m Merge adminboard: Add admin dashboard functionality
+[33m8e1740e[m[33m ([m[1;31morigin/fixnotif_appointment[m[33m, [m[1;32mfixnotif_appointment[m[33m)[m now fetching datas in appointment/notifications
+[33m26375e3[m[33m ([m[1;31morigin/online_consultation[m[33m, [m[1;31morigin/master[m[33m, [m[1;32monline_consultation[m[33m)[m debug: Add comprehensive logging for patient data enrichment
+[33mb9fe2b7[m fix: Improve patient profile enrichment with better empty field detection
+[33m58d61f2[m fix: Fetch patient data from Firebase Auth when profile has empty fields
+[33md42aa8c[m fix: Add Firebase Auth fallback for missing patient profiles
+[33m88e46ea[m fix: Fix indentation errors and improve patient name fetching
+[33m0dfe464[m debug: Add frontend logging to trace patient data in appointments
+[33mdcd04e1[m fix: Improve patient name display in doctor schedule and add debugging

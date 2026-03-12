@@ -1,0 +1,101 @@
+condition,reason
+Acid Reflux,"Burning chest pain, regurgitation, and sour taste after meals indicate acid reflux caused by stomach acid backing up into the esophagus."
+Acne,"Presence of pimples, blackheads, and oily skin suggests acne due to clogged pores and excess oil production."
+Allergic Rhinitis,"Sneezing, runny nose, and nasal itching are typical of allergic rhinitis triggered by airborne allergens like pollen or dust."
+Allergies,"Itchy eyes, rashes, sneezing, or swelling indicate an allergic response to common triggers such as food, dust, or pollen."
+Allergy,"Runny nose, itchy skin, and watery eyes are consistent with an allergic reaction caused by sensitivity to allergens."
+Anemia,"Fatigue, pale skin, dizziness, and weakness suggest anemia due to reduced red blood cell count or hemoglobin."
+Anxiety,"Restlessness, rapid heartbeat, and trouble concentrating match anxiety-related stress responses."
+Anxiety Disorder,"Ongoing nervousness, chest tightness, and shortness of breath indicate chronic anxiety disorder symptoms."
+Arthritis,"Joint stiffness, pain, and swelling point to arthritis from inflammation of joint tissues."
+Asthma (Mild to Moderate),"Coughing, wheezing, and shortness of breath are typical signs of mild to moderate asthma due to airway inflammation."
+Back Pain,"Localized back discomfort, stiffness, and pain with movement suggest mechanical back pain or muscle strain."
+Bacterial Infection,"Fever, swelling, redness, and pus formation indicate a bacterial infection requiring antibiotic treatment."
+Body Aches,"Generalized muscle and joint pain are common in viral infections, fatigue, or physical overexertion."
+Bronchitis,"Persistent cough with mucus, fatigue, and chest tightness indicate bronchitis due to airway inflammation."
+Common Cold,"Sneezing, sore throat, and runny nose are classic signs of a viral common cold infection."
+Constipation,"Hard stools, abdominal discomfort, and infrequent bowel movements indicate constipation from slow intestinal movement."
+Cough,Dry or productive cough points to irritation or infection in the throat or respiratory tract.
+COVID-19 (Mild),"Cough, fever, sore throat, and fatigue indicate a mild COVID-19 infection affecting the respiratory system."
+Dehydration,"Thirst, dry mouth, dizziness, and dark urine suggest dehydration due to fluid loss or low intake."
+Dengue,"High fever, headache, muscle pain, and skin rash are hallmark symptoms of dengue infection."
+Depression,"Low mood, fatigue, loss of interest, and sleep changes fit the pattern of depressive disorder."
+Diabetes,"Frequent urination, excessive thirst, and fatigue suggest diabetes due to high blood sugar levels."
+Diarrhea,"Loose or watery stools with cramps indicate diarrhea, often from infection or food intolerance."
+Dizziness,"Lightheadedness and unsteady feeling indicate dizziness due to low blood pressure, dehydration, or inner ear issues."
+Ear Infection,"Ear pain, mild fever, and hearing difficulty suggest an ear infection from fluid buildup or bacteria."
+Eczema,"Dry, itchy, and inflamed skin patches indicate eczema, a chronic skin inflammation."
+Fatigue,"Persistent tiredness and lack of energy are signs of fatigue caused by stress, lack of rest, or illness."
+Fever,"Elevated body temperature, chills, and sweating suggest the body is fighting an infection or inflammation."
+Flu (Influenza),"Fever, body aches, sore throat, and cough indicate flu caused by influenza virus."
+Food Poisoning,"Nausea, vomiting, and diarrhea shortly after eating contaminated food suggest food poisoning."
+Fungal Infection,"Itchy, scaly, or red skin patches indicate a fungal infection commonly affecting moist body areas."
+Gastritis,"Abdominal pain, bloating, and nausea suggest gastritis due to stomach lining irritation."
+Gastroenteritis (Stomach Flu),"Vomiting, diarrhea, and cramps are typical of viral gastroenteritis or stomach flu."
+GERD (Gastroesophageal Reflux Disease),"Heartburn, regurgitation, and throat irritation indicate GERD due to chronic acid reflux."
+Gout,"Joint swelling, redness, and sharp pain, especially in the big toe, are signs of gout caused by uric acid buildup."
+Hay Fever,"Sneezing, nasal itching, and watery eyes point to hay fever from pollen exposure."
+Headache,Throbbing or pressure pain in the head or temples suggests a tension or stress-related headache.
+Heartburn,Burning pain in the chest or throat after meals indicates heartburn from stomach acid reflux.
+Heat Exhaustion,"Heavy sweating, dizziness, and weakness result from heat exhaustion caused by high temperature exposure."
+Hemorrhoids,"Rectal pain, itching, and bleeding during bowel movements indicate hemorrhoids from swollen veins."
+High Cholesterol (Hyperlipidemia),"Fatigue or chest discomfort may appear in high cholesterol, a condition with excess fats in the blood."
+Hypertension (High Blood Pressure),"Headache, dizziness, and blurred vision indicate hypertension due to elevated blood pressure."
+Hypotension (Low Blood Pressure),"Dizziness, fainting, and weakness suggest low blood pressure reducing blood flow to organs."
+Hypoglycemia (Mild),"Shakiness, sweating, and confusion point to mild hypoglycemia caused by low blood sugar levels."
+Indigestion (Dyspepsia),"Upper abdominal discomfort, bloating, and nausea suggest indigestion after eating."
+Influenza B,"Fever, cough, sore throat, and fatigue indicate influenza B infection of the respiratory tract."
+Insomnia,"Difficulty falling asleep, restlessness, and daytime tiredness indicate insomnia affecting sleep quality."
+Iron Deficiency,"Fatigue, weakness, and pale skin suggest iron deficiency leading to low hemoglobin."
+Itchy Skin,"Persistent itching without rash may result from dryness, allergy, or mild skin irritation."
+Joint Pain,"Swelling, stiffness, or discomfort in joints suggests inflammation or arthritis-related pain."
+Laryngitis,Hoarseness and sore throat indicate laryngitis due to inflammation of the vocal cords.
+Mild Allergic Reaction,"Itchy skin, mild swelling, and sneezing indicate a mild allergic response to an irritant."
+Mild Chest Pain (Non-cardiac),Chest discomfort without severe pain may result from muscle strain or acid reflux.
+Minor Burns,"Redness, pain, and mild blistering on skin suggest a minor first-degree burn."
+Minor Cuts or Wounds,Small open skin injuries with mild bleeding indicate minor cuts or wounds.
+Muscle Cramps,Sudden muscle tightness or pain suggests cramps due to dehydration or electrolyte imbalance.
+Muscle Strain,Localized muscle pain and stiffness after activity indicate muscle strain from overuse.
+Nasal Congestion,Blocked or stuffy nose suggests nasal congestion due to allergies or infection.
+Nausea,Uneasy stomach and urge to vomit indicate nausea often linked to indigestion or infection.
+Obesity,Increased body weight and fatigue point to obesity due to excessive fat accumulation.
+Pharyngitis (Sore Throat),"Sore throat, redness, and pain when swallowing suggest pharyngitis from infection."
+Pityriasis (Mild Skin Rash),"Mild scaly or discolored skin patches indicate pityriasis, a common harmless rash."
+Pneumonia (Early or Mild),"Cough, fever, and chest discomfort indicate early or mild pneumonia from lung infection."
+Poor Appetite,Reduced desire to eat and fatigue indicate poor appetite often linked to illness or stress.
+Postnasal Drip,"Mucus dripping down the throat causes coughing and throat irritation, consistent with postnasal drip."
+Rashes,Red or itchy patches on the skin suggest rashes from allergy or irritation.
+Reflux,Burning in the chest and throat discomfort indicate reflux from acid backing into the esophagus.
+Respiratory Tract Infection (Upper),"Cough, sore throat, and nasal congestion are common in upper respiratory infection."
+Rhinitis,Runny nose and nasal blockage suggest rhinitis caused by allergy or viral infection.
+Ringworm,"Circular, itchy rash with raised edges indicates ringworm, a fungal skin infection."
+Scabies,"Intense itching and rash, especially at night, indicate scabies due to mite infestation."
+Seasonal Allergies,Sneezing and itchy eyes occur during specific seasons from pollen or dust exposure.
+Sinus Infection,"Facial pressure, nasal blockage, and headache suggest sinus infection."
+Sinusitis,"Nasal congestion, facial pain, and headache indicate sinusitis from inflamed sinuses."
+Skin Allergy,"Red, itchy rash after exposure indicates skin allergy from contact or food triggers."
+Skin Infection (Mild),"Localized redness, warmth, and swelling indicate a mild skin infection."
+Sore Throat,Pain or scratchiness in the throat indicates infection or irritation.
+Stress Disorder,"Restlessness, fatigue, and difficulty concentrating indicate stress-related disorder."
+Stomach Ache,Abdominal pain or cramps suggest stomach ache from indigestion or infection.
+Stomach Flu,"Diarrhea, vomiting, and abdominal cramps indicate stomach flu caused by a virus."
+Stomach Pain,Burning or cramping abdominal discomfort suggests irritation or digestive issue.
+Strep Throat,"Severe sore throat, fever, and swollen lymph nodes indicate strep throat infection."
+Tension Headache,Pressure-like pain around the head and neck stiffness suggest tension headache.
+Thyroid Disorder,"Fatigue, weight change, and temperature sensitivity suggest thyroid imbalance."
+Tiredness,Low energy and sleepiness indicate tiredness from stress or insufficient rest.
+Tonsillitis,"Sore throat, swollen tonsils, and difficulty swallowing indicate tonsillitis."
+Toothache,Throbbing or sharp tooth pain suggests dental infection or cavity.
+Tuberculosis,"Chronic cough, fever, and weight loss indicate tuberculosis infection of the lungs."
+Urinary Tract Infection (UTI),"Burning urination, urgency, and lower abdominal pain indicate UTI."
+Viral Fever,"Fever, body aches, and fatigue indicate viral fever caused by infection."
+Viral Infection,"Cough, fever, and weakness suggest viral infection affecting multiple systems."
+Vomiting,Forceful expulsion of stomach contents indicates irritation or infection.
+Weakness,Low strength and fatigue indicate weakness from poor nutrition or illness.
+Wheezing,Whistling sound while breathing suggests wheezing due to airway narrowing or asthma.
+Whooping Cough,Severe coughing fits with gasping for air indicate whooping cough.
+Wound Infection (Minor),"Redness, warmth, and mild discharge from a cut indicate minor wound infection."
+Yeast Infection (Mild),"Itching, redness, and white discharge indicate a mild yeast infection."
+Upper Respiratory Infection,"Cough, runny nose, and sore throat indicate upper respiratory infection."
+Mild Dehydration,"Thirst, dry lips, and light dizziness indicate mild dehydration from fluid loss."
+Common Viral Illness,"Fever, cough, and fatigue suggest a common viral illness with mild respiratory symptoms."

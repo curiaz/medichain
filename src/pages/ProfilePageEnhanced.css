@@ -1,0 +1,57 @@
+/* Additional ProfilePage enhancements */
+
+/* ===== SMOOTH SCROLLING ===== */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ===== ENHANCED FOCUS STATES ===== */
+.profile-page *:focus-visible {
+  outline: 2px solid var(--primary-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ===== LOADING SKELETON ===== */
+.profile-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 2s infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ===== CUSTOM SCROLLBAR ===== */
+.profile-tab-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.profile-tab-content::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+  border-radius: 3px;
+}
+
+.profile-tab-content::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 3px;
+}
+
+.profile-tab-content::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-blue);
+}
+
+/* ===== DARK MODE SUPPORT (if needed in future) ===== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-tertiary: #94a3b8;
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --surface-white: #334155;
+    --border-light: #475569;
+  }
+}
